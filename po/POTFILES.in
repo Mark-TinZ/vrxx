@@ -1,0 +1,6 @@
+# List of source files containing translatable strings.
+# Please keep this file sorted alphabetically.
+data/ru.mark.vrxx.desktop.in
+data/ru.mark.vrxx.metainfo.xml.in
+data/ru.mark.vrxx.gschema.xml
+src/window.ui

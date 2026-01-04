@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=ru.mark.vrxx
+Exec=@bindir@/vrxx --gapplication-service

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=vrxx
+Exec=vrxx
+Icon=ru.mark.vrxx
+Terminal=false
+Type=Application
+Categories=Utility;
+Keywords=GTK;
+StartupNotify=true
+DBusActivatable=true
