@@ -20,6 +20,13 @@ configure_file(
     configuration: conf
 )
 
+# Подключаем папку с custom icons
+custom_icons_dir = meson.project_source_root() / 'data' / 'icons' / 'custom'
+run_command(
+  'cp', '-r', custom_icons_dir, meson.project_build_root() / 'data' / 'icons' / 'custom',
+  check: false
+)
+
 # Copy the config.rs output to the source directory.
 run_command(
   'cp',

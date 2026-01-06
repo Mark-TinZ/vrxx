@@ -11,3 +11,7 @@ gtk = { version = "0.9", package = "gtk4", features = ["gnome_47"] }
 package = "libadwaita"
 version = "0.7"
 features = ["v1_6"]
+
+[dependencies.gdk]
+package = "gdk4"
+version = "0.9"

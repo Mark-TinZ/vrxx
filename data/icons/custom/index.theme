@@ -1,0 +1,18 @@
+[Icon Theme]
+Name=vrxx-custom
+Comment=Custom icons for vrxx application
+Directories=scalable/actions,symbolic/actions
+
+[scalable/actions]
+Size=16
+Context=Actions
+Type=Scalable
+MaxSize=256
+MinSize=8
+
+[symbolic/actions]
+Size=16
+Context=Actions
+Type=Symbolic
+MaxSize=256
+MinSize=8

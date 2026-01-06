@@ -1,5 +1,6 @@
 use adw::subclass::prelude::*;
-use gtk::{gio, glib, prelude::*};
+use gtk::{gio, glib, prelude::*, TemplateChild};
+// Не забудь импортировать страницы, если нужно (обычно main делает это глобально)
 
 mod imp {
     use super::*;
@@ -7,7 +8,6 @@ mod imp {
     #[derive(Debug, Default, gtk::CompositeTemplate)]
     #[template(resource = "/ru/mark/vrxx/window.ui")]
     pub struct VrxxWindow {
-        // Template widgets
         #[template_child]
         pub navigation_list: TemplateChild<gtk::ListBox>,
         #[template_child]
@@ -32,14 +32,10 @@ mod imp {
     impl ObjectImpl for VrxxWindow {
         fn constructed(&self) {
             self.parent_constructed();
-
-            // Инициализация логики (Presenter logic)
             let obj = self.obj();
-            obj.setup_callbacks();
 
-            // Выбираем первый элемент по умолчанию
-            let row = self.navigation_list.row_at_index(0);
-            self.navigation_list.select_row(row.as_ref());
+            // Подключаем логику переключения
+            obj.setup_navigation();
         }
     }
     impl WidgetImpl for VrxxWindow {}
@@ -61,25 +57,25 @@ impl VrxxWindow {
             .build()
     }
 
-    fn setup_callbacks(&self) {
+    fn setup_navigation(&self) {
         let imp = self.imp();
 
-        // Логика переключения страниц
-        // Когда выбирается строка в ListBox, мы берем её имя (например "page_vpn")
-        // и переключаем ViewStack на эту страницу.
-        imp.navigation_list.connect_row_activated(
-            glib::clone!(@weak self as window => move |_, row| {
-                let imp = window.imp();
+        // Логика: При клике на меню берем имя строки и открываем страницу с таким же именем
+        imp.navigation_list.connect_row_activated(glib::clone!(@weak self as window => move |_, row| {
+            let imp = window.imp();
+            if let Some(child) = row.child() {
+                // Получаем имя виджета, заданное в XML (page_vpn, page_proxy)
+                let page_name = child.widget_name();
+                imp.view_stack.set_visible_child_name(&page_name);
+            }
+        }));
 
-                // Получаем виджет внутри строки (AdwActionRow)
-                if let Some(action_row) = row.child().and_downcast::<adw::ActionRow>() {
-                    // Имя страницы мы храним в свойстве "name" виджета AdwActionRow
-                    let page_name = action_row.widget_name();
-                    if !page_name.is_empty() {
-                        imp.view_stack.set_visible_child_name(&page_name);
-                    }
-                }
-            }),
-        );
+        // Активируем первую страницу при старте
+        if let Some(row) = imp.navigation_list.row_at_index(0) {
+            imp.navigation_list.select_row(Some(&row));
+            // Имитируем клик, чтобы открылась страница
+            row.activate();
+        }
     }
 }
+

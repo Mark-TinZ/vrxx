@@ -12,8 +12,7 @@
 use gettextrs::gettext;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{gio, glib};
-
+use gtk::{gio, glib, gdk};
 use crate::config::VERSION;
 use crate::VrxxWindow;
 
@@ -36,6 +35,8 @@ mod imp {
             let obj = self.obj();
             obj.setup_gactions();
             obj.set_accels_for_action("app.quit", &["<control>q"]);
+
+            obj.setup_icons();
         }
     }
 
@@ -86,17 +87,31 @@ impl VrxxApplication {
         self.add_action_entries([quit_action, about_action]);
     }
 
+    // Функция для регистрации иконок из ресурсов
+    fn setup_icons(&self) {
+        if let Some(display) = gdk::Display::default() {
+            let theme = gtk::IconTheme::for_display(&display);
+            // Добавляем путь внутри gresource
+            theme.add_resource_path("/ru/mark/vrxx/icons");
+        }
+    }
+
     fn show_about(&self) {
         let window = self.active_window().unwrap();
         let about = adw::AboutDialog::builder()
             .application_name("vrxx")
             .application_icon("ru.mark.vrxx")
-            .developer_name("Unknown")
+            .developer_name("Mark")
             .version(VERSION)
-            .developers(vec!["Unknown"])
+            .developers(vec!["Mark <marktin@duck.com>"])
+            .artists(vec!["GNOME Design Team"])
             // Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
             .translator_credits(&gettext("translator-credits"))
-            .copyright("© 2026 Unknown")
+            .copyright("© 2026 Mark")
+            .license_type(gtk::License::Mpl20)
+            .website("https://github.com/Mark-TinZ/vrxx")
+            .issue_url("https://github.com/Mark-TinZ/vrxx/issues")
+            .comments(&gettext("A graphical interface for Xray-core designed to simplify VPN and proxy configuration on Linux systems. Features include TUN device management, traffic monitoring, and an intuitive user interface for managing connection profiles."))
             .build();
 
         about.present(Some(&window));
