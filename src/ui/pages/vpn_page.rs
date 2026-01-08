@@ -160,12 +160,7 @@ impl VrxxVpnPage {
         }));
         action_group.add_action(&dup_action);
 
-        // Действие: Удалить
-        let del_action = gio::SimpleAction::new("key_delete", None);
-        del_action.connect_activate(glib::clone!(@weak self as page => move |_, _| {
-            println!("Page Logic: Удаляем ключ");
-        }));
-        action_group.add_action(&del_action);
+        пше
 
         self.insert_action_group("vpn", Some(&action_group));
     }
