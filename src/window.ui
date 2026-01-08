@@ -10,29 +10,58 @@
 
     <property name="content">
       <object class="AdwNavigationSplitView">
+
         <property name="sidebar">
           <object class="AdwNavigationPage">
-            <property name="title" translatable="yes">Меню</property>
+            <property name="title" translatable="yes">Menu</property>
             <property name="child">
               <object class="AdwToolbarView">
                 <property name="content">
                   <object class="GtkScrolledWindow">
+                    <property name="hscrollbar-policy">never</property>
                     <property name="child">
                       <object class="GtkListBox" id="navigation_list">
                         <property name="selection-mode">single</property>
-                        <style><class name="navigation-sidebar"/></style>
+                        <property name="margin-top">12</property>
+                        <property name="margin-bottom">12</property>
+                        <property name="margin-start">12</property>
+                        <property name="margin-end">12</property>
+                        <style>
+                          <class name="navigation-sidebar"/>
+                        </style>
+
                         <child>
-                          <object class="AdwActionRow" id="nav_vpn">
+                          <object class="AdwActionRow">
                             <property name="title" translatable="yes">Ключи VPN</property>
                             <property name="icon-name">key5-symbolic</property>
+                            <property name="name">page_vpn</property>
                           </object>
                         </child>
+
                         <child>
-                          <object class="AdwActionRow" id="nav_settings">
+                          <object class="AdwActionRow">
+                            <property name="title" translatable="yes">Прокси</property>
+                            <property name="icon-name">preferences-system-network-proxy-symbolic</property>
+                            <property name="name">page_proxy</property>
+                          </object>
+                        </child>
+
+                        <child>
+                          <object class="AdwActionRow">
+                            <property name="title" translatable="yes">Белый список</property>
+                            <property name="icon-name">funnel-symbolic</property>
+                            <property name="name">page_whitelist</property>
+                          </object>
+                        </child>
+
+                        <child>
+                          <object class="AdwActionRow">
                             <property name="title" translatable="yes">Настройки</property>
                             <property name="icon-name">emblem-system-symbolic</property>
+                            <property name="name">page_settings</property>
                           </object>
                         </child>
+
                       </object>
                     </property>
                   </object>
@@ -44,8 +73,10 @@
 
         <property name="content">
           <object class="AdwNavigationPage">
+            <property name="title" translatable="yes">Content</property>
             <property name="child">
               <object class="AdwViewStack" id="view_stack">
+
                 <child>
                   <object class="AdwViewStackPage">
                     <property name="name">page_vpn</property>
@@ -53,24 +84,476 @@
                       <object class="AdwToolbarView">
                         <child type="top">
                           <object class="AdwHeaderBar">
+                            <child type="end">
+                              <object class="GtkMenuButton">
+                                <property name="icon-name">open-menu-symbolic</property>
+                                <property name="menu-model">primary_menu</property>
+                                <property name="primary">True</property>
+                              </object>
+                            </child>
                             <property name="title-widget">
-                              <object class="AdwWindowTitle" id="window_title">
-                                <property name="title">Ключи VPN</property>
+                              <object class="AdwWindowTitle">
+                                <property name="title" translatable="yes">Ключи VPN</property>
+                                <property name="subtitle" translatable="yes">Mark-Vless Подключено</property>
                               </object>
                             </property>
+                            <child type="end">
+                              <object class="GtkButton">
+                                <property name="label" translatable="yes">Отключить</property>
+                                <style>
+                                  <class name="destructive-action"/>
+                                </style>
+                              </object>
+                            </child>
                           </object>
                         </child>
+
                         <property name="content">
-                          </property>
+                          <object class="AdwPreferencesPage">
+                            <child>
+                              <object class="AdwPreferencesGroup">
+                                <child>
+                                  <object class="GtkListBox">
+                                    <property name="selection-mode">none</property>
+                                    <style>
+                                      <class name="boxed-list"/>
+                                    </style>
+                                    <child>
+                                      <object class="GtkListBoxRow">
+                                        <property name="activatable">False</property>
+                                        <property name="child">
+                                          <object class="GtkBox">
+                                            <property name="orientation">vertical</property>
+
+                                            <child>
+                                              <object class="AdwActionRow">
+                                                <property name="title">Mark-Vless</property>
+                                                <property name="subtitle" translatable="yes">Подключено</property>
+                                                <child type="prefix">
+                                                  <object class="GtkImage">
+                                                    <property name="icon-name">security-high-symbolic</property>
+                                                    <style>
+                                                      <class name="success"/>
+                                                    </style>
+                                                  </object>
+                                                </child>
+                                                <child type="suffix">
+                                                  <object class="GtkMenuButton">
+                                                    <property name="icon-name">view-more-symbolic</property>
+                                                    <property name="valign">center</property>
+                                                    <property name="menu-model">toolkey_menu</property>
+                                                    <property name="primary">True</property>
+                                                    <style>
+                                                      <class name="flat"/>
+                                                    </style>
+                                                  </object>
+                                                </child>
+                                              </object>
+                                            </child>
+
+                                            <child>
+                                              <object class="GtkSeparator">
+                                                 <style>
+                                                    <class name="spacer"/>
+                                                 </style>
+                                              </object>
+                                            </child>
+
+                                            <child>
+                                              <object class="GtkGrid">
+                                                <property name="margin-top">12</property>
+                                                <property name="margin-bottom">12</property>
+                                                <property name="margin-start">16</property>
+                                                <property name="margin-end">16</property>
+                                                <property name="column-spacing">24</property>
+                                                <property name="row-spacing">8</property>
+
+                                                <child>
+                                                  <object class="GtkBox">
+                                                    <property name="spacing">12</property>
+                                                    <child>
+                                                      <object class="GtkImage">
+                                                        <property name="icon-name">go-down-symbolic</property>
+                                                        <style><class name="dim-label"/></style>
+                                                      </object>
+                                                    </child>
+                                                    <child>
+                                                      <object class="GtkLabel">
+                                                        <property name="label">120.4 MB</property>
+                                                        <style><class name="dim-label"/></style>
+                                                      </object>
+                                                    </child>
+                                                    <layout>
+                                                      <property name="column">0</property>
+                                                      <property name="row">0</property>
+                                                    </layout>
+                                                  </object>
+                                                </child>
+
+                                                <child>
+                                                  <object class="GtkBox">
+                                                    <property name="spacing">12</property>
+                                                    <child>
+                                                      <object class="GtkImage">
+                                                        <property name="icon-name">go-up-symbolic</property>
+                                                        <style><class name="dim-label"/></style>
+                                                      </object>
+                                                    </child>
+                                                    <child>
+                                                      <object class="GtkLabel">
+                                                        <property name="label">54.4 MB</property>
+                                                        <style><class name="dim-label"/></style>
+                                                      </object>
+                                                    </child>
+                                                    <layout>
+                                                      <property name="column">0</property>
+                                                      <property name="row">1</property>
+                                                    </layout>
+                                                  </object>
+                                                </child>
+
+                                                <child>
+                                                  <object class="GtkBox">
+                                                    <property name="spacing">12</property>
+                                                    <child>
+                                                      <object class="GtkImage">
+                                                        <property name="icon-name">alarm-symbolic</property>
+                                                        <style><class name="dim-label"/></style>
+                                                      </object>
+                                                    </child>
+                                                    <child>
+                                                      <object class="GtkLabel">
+                                                        <property name="label">00:45:21</property>
+                                                        <style><class name="dim-label"/></style>
+                                                      </object>
+                                                    </child>
+                                                    <layout>
+                                                      <property name="column">1</property>
+                                                      <property name="row">0</property>
+                                                    </layout>
+                                                  </object>
+                                                </child>
+
+                                                 <child>
+                                                  <object class="GtkBox">
+                                                    <property name="spacing">12</property>
+                                                    <child>
+                                                      <object class="GtkImage">
+                                                        <property name="icon-name">network-transmit-receive-symbolic</property>
+                                                        <style><class name="dim-label"/></style>
+                                                      </object>
+                                                    </child>
+                                                    <child>
+                                                      <object class="GtkLabel">
+                                                        <property name="label">2.4 Ms</property>
+                                                        <style><class name="dim-label"/></style>
+                                                      </object>
+                                                    </child>
+                                                    <layout>
+                                                      <property name="column">1</property>
+                                                      <property name="row">1</property>
+                                                    </layout>
+                                                  </object>
+                                                </child>
+
+                                              </object>
+                                            </child>
+
+                                          </object>
+                                        </property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+
+                            <child>
+                              <object class="AdwPreferencesGroup">
+                                <child>
+                                  <object class="AdwActionRow">
+                                    <property name="title">Wumt-Vless</property>
+                                    <property name="subtitle" translatable="yes">Отключено</property>
+                                    <child type="prefix">
+                                      <object class="GtkImage">
+                                        <property name="icon-name">security-low-symbolic</property>
+                                        <style>
+                                           <class name="error"/>
+                                        </style>
+                                      </object>
+                                    </child>
+                                    <child type="suffix">
+                                       <object class="GtkMenuButton">
+                                        <property name="icon-name">view-more-symbolic</property>
+                                        <property name="valign">center</property>
+                                        <property name="menu-model">toolkey_menu</property>
+                                        <property name="primary">True</property>
+                                        <style>
+                                          <class name="flat"/>
+                                        </style>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+
+                          </object>
+                        </property>
                       </object>
                     </property>
                   </object>
                 </child>
+
+                <child>
+                    <object class="AdwViewStackPage">
+                      <property name="name">page_proxy</property>
+                      <property name="child">
+                        <object class="AdwToolbarView">
+                          <child type="top">
+                            <object class="AdwHeaderBar">
+                              <property name="title-widget">
+                                  <object class="AdwWindowTitle">
+                                      <property name="title" translatable="yes">Прокси</property>
+                                  </object>
+                              </property>
+                               <child type="end">
+                                <object class="GtkMenuButton">
+                                  <property name="icon-name">open-menu-symbolic</property>
+                                  <property name="menu-model">primary_menu</property>
+                                </object>
+                              </child>
+                            </object>
+                          </child>
+
+                          <property name="content">
+                            <object class="AdwPreferencesPage">
+
+                              <child>
+                                <object class="AdwPreferencesGroup">
+                                  <property name="title" translatable="yes">Режим</property>
+                                  <child>
+                                    <object class="GtkBox">
+                                      <property name="orientation">vertical</property>
+                                      <property name="spacing">10</property>
+                                      <property name="margin-top">10</property>
+                                      <property name="margin-bottom">10</property>
+                                      <property name="margin-start">10</property>
+                                      <property name="margin-end">10</property>
+
+                                      <child>
+                                        <object class="GtkCheckButton" id="radio_system">
+                                          <property name="label" translatable="yes">Системный прокси</property>
+                                          <property name="active">True</property>
+                                        </object>
+                                      </child>
+                                      <child>
+                                        <object class="GtkCheckButton" id="radio_tun">
+                                          <property name="label" translatable="yes">Использовать TUN</property>
+                                          <property name="group">radio_system</property>
+                                        </object>
+                                      </child>
+                                      <child>
+                                        <object class="GtkCheckButton" id="radio_manual">
+                                          <property name="label" translatable="yes">Ручная настройка</property>
+                                          <property name="group">radio_system</property>
+                                        </object>
+                                      </child>
+                                    </object>
+                                  </child>
+                                </object>
+                              </child>
+
+                              <child>
+                                <object class="AdwPreferencesGroup">
+                                  <property name="title">HTTP Proxy</property>
+                                  <child>
+                                    <object class="AdwEntryRow">
+                                      <property name="title">URL</property>
+                                      <property name="text">127.0.0.1</property>
+                                      <property name="show-apply-button">True</property>
+                                    </object>
+                                  </child>
+                                  <child>
+                                    <object class="AdwSpinRow">
+                                      <property name="title">Port</property>
+                                      <property name="value">10808</property>
+                                      <property name="adjustment">
+                                        <object class="GtkAdjustment">
+                                          <property name="lower">0</property>
+                                          <property name="upper">65535</property>
+                                          <property name="step-increment">1</property>
+                                        </object>
+                                      </property>
+                                    </object>
+                                  </child>
+                                </object>
+                              </child>
+
+                              <child>
+                                <object class="AdwPreferencesGroup">
+                                  <property name="title">HTTPS Proxy</property>
+                                  <child>
+                                    <object class="AdwEntryRow">
+                                      <property name="title">URL</property>
+                                      <property name="text">127.0.0.1</property>
+                                      <property name="show-apply-button">True</property>
+                                    </object>
+                                  </child>
+                                  <child>
+                                    <object class="AdwSpinRow">
+                                      <property name="title">Port</property>
+                                      <property name="value">10808</property>
+                                      <property name="adjustment">
+                                        <object class="GtkAdjustment">
+                                          <property name="lower">0</property>
+                                          <property name="upper">65535</property>
+                                          <property name="step-increment">1</property>
+                                        </object>
+                                      </property>
+                                    </object>
+                                  </child>
+                                </object>
+                              </child>
+
+                              <child>
+                                <object class="AdwPreferencesGroup">
+                                  <property name="title">SOCKS Host</property>
+                                  <child>
+                                    <object class="AdwEntryRow">
+                                      <property name="title">URL</property>
+                                      <property name="text">127.0.0.1</property>
+                                    </object>
+                                  </child>
+                                  <child>
+                                    <object class="AdwSpinRow">
+                                      <property name="title">Port</property>
+                                      <property name="value">10808</property>
+                                      <property name="adjustment">
+                                        <object class="GtkAdjustment">
+                                          <property name="lower">0</property>
+                                          <property name="upper">65535</property>
+                                          <property name="step-increment">1</property>
+                                        </object>
+                                      </property>
+                                    </object>
+                                  </child>
+                                </object>
+                              </child>
+
+                            </object>
+                          </property>
+                        </object>
+                      </property>
+                    </object>
+                  </child>
+
+                 <child>
+                  <object class="AdwViewStackPage">
+                    <property name="name">page_whitelist</property>
+                    <property name="child">
+                      <object class="AdwToolbarView">
+                          <child type="top">
+                            <object class="AdwHeaderBar">
+                              <property name="title-widget">
+                                  <object class="AdwWindowTitle">
+                                      <property name="title" translatable="yes">Белый список</property>
+                                  </object>
+                              </property>
+                               <child type="end">
+                                <object class="GtkMenuButton">
+                                  <property name="icon-name">open-menu-symbolic</property>
+                                  <property name="menu-model">primary_menu</property>
+                                </object>
+                              </child>
+                            </object>
+                          </child>
+
+                          <property name="content">
+                            <object class="AdwStatusPage">
+                              <property name="title">Белый список</property>
+                              <property name="description">В разработке...</property>
+                              <property name="icon-name">user-available-symbolic</property>
+                            </object>
+                          </property>
+                        </object>
+                    </property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="AdwViewStackPage">
+                    <property name="name">page_settings</property>
+                    <property name="child">
+                      <object class="AdwToolbarView">
+                          <child type="top">
+                            <object class="AdwHeaderBar">
+                              <property name="title-widget">
+                                  <object class="AdwWindowTitle">
+                                      <property name="title" translatable="yes">Настройки</property>
+                                  </object>
+                              </property>
+                               <child type="end">
+                                <object class="GtkMenuButton">
+                                  <property name="icon-name">open-menu-symbolic</property>
+                                  <property name="menu-model">primary_menu</property>
+                                </object>
+                              </child>
+                            </object>
+                          </child>
+
+                          <property name="content">
+                            <object class="AdwStatusPage">
+                              <property name="title">Настройки</property>
+                              <property name="description">В разработке...</property>
+                              <property name="icon-name">emblem-system-symbolic</property>
+                            </object>
+                          </property>
+                        </object>
+                    </property>
+                  </object>
+                </child>
+
               </object>
             </property>
           </object>
         </property>
+
       </object>
     </property>
   </template>
+
+  <menu id="primary_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Preferences</attribute>
+        <attribute name="action">app.preferences</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
+        <attribute name="action">app.shortcuts</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_About Vrxx</attribute>
+        <attribute name="action">app.about</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Quit</attribute>
+        <attribute name="action">app.quit</attribute>
+      </item>
+    </section>
+  </menu>
+  <menu id="toolkey_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Edit</attribute>
+        <attribute name="action"></attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Delete</attribute>
+        <attribute name="action"></attribute>
+      </item>
+
+    </section>
+  </menu>
 </interface>

@@ -1,6 +1,6 @@
+use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{gio, glib, prelude::*, TemplateChild};
-// Не забудь импортировать страницы, если нужно (обычно main делает это глобально)
+use gtk::{gio, glib}; // Убран prelude::* так как он не использовался явно
 
 mod imp {
     use super::*;
@@ -33,9 +33,11 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
+            obj.setup_callbacks();
 
-            // Подключаем логику переключения
-            obj.setup_navigation();
+            if let Some(row) = self.navigation_list.row_at_index(0) {
+                 self.navigation_list.select_row(Some(&row));
+            }
         }
     }
     impl WidgetImpl for VrxxWindow {}
@@ -57,25 +59,20 @@ impl VrxxWindow {
             .build()
     }
 
-    fn setup_navigation(&self) {
+    fn setup_callbacks(&self) {
         let imp = self.imp();
 
-        // Логика: При клике на меню берем имя строки и открываем страницу с таким же именем
-        imp.navigation_list.connect_row_activated(glib::clone!(@weak self as window => move |_, row| {
-            let imp = window.imp();
-            if let Some(child) = row.child() {
-                // Получаем имя виджета, заданное в XML (page_vpn, page_proxy)
-                let page_name = child.widget_name();
-                imp.view_stack.set_visible_child_name(&page_name);
-            }
-        }));
+        // Чтобы избежать warning'а "old-style clone syntax", вынесем переменную
+        let view_stack = &imp.view_stack;
 
-        // Активируем первую страницу при старте
-        if let Some(row) = imp.navigation_list.row_at_index(0) {
-            imp.navigation_list.select_row(Some(&row));
-            // Имитируем клик, чтобы открылась страница
-            row.activate();
-        }
+        imp.navigation_list.connect_row_activated(
+            glib::clone!(@weak view_stack => move |_, row| {
+                if let Some(child) = row.child() {
+                    let page_name = child.widget_name();
+                    view_stack.set_visible_child_name(&page_name);
+                }
+            }),
+        );
     }
 }
 

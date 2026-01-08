@@ -12,17 +12,9 @@
 mod application;
 mod config;
 mod window;
-pub mod pages;
-pub mod components;
 
 use self::application::VrxxApplication;
 use self::window::VrxxWindow;
-
-// Импортируем страницы для регистрации типов
-use pages::page_vpn::VrxxPageVpn;
-use pages::page_whitelist::VrxxPageWhitelist;
-use pages::page_settings::VrxxPageSettings;
-use components::key_row::VrxxKeyRow;
 
 use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
@@ -41,12 +33,6 @@ fn main() -> glib::ExitCode {
         .expect("Could not load resources");
     gio::resources_register(&resources);
 
-    // Регистрируем типы, чтобы Builder их увидел
-    VrxxPageVpn::static_type();
-    VrxxPageWhitelist::static_type();
-    VrxxPageSettings::static_type();
-    VrxxKeyRow::static_type();
-
     // Create a new GtkApplication. The application manages our main loop,
     // application windows, integration with the window manager/compositor, and
     // desktop features such as file opening and single-instance applications.
@@ -58,3 +44,4 @@ fn main() -> glib::ExitCode {
     // terminal.
     app.run()
 }
+

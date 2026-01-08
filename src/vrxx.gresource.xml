@@ -3,11 +3,8 @@
   <gresource prefix="/ru/mark/vrxx">
     <file preprocess="xml-stripblanks">window.ui</file>
     <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
-    <file preprocess="xml-stripblanks">pages/page_vpn.ui</file>
-    <file preprocess="xml-stripblanks">pages/page_whitelist.ui</file>
-    <file preprocess="xml-stripblanks">pages/page_settings.ui</file>
-    <file preprocess="xml-stripblanks">components/key_row.ui</file>
 
+     <!-- Иконки -->
     <file alias="icons/scalable/actions/key5-symbolic.svg">../data/icons/custom/symbolic/actions/key5-symbolic.svg</file>
     <file alias="icons/scalable/actions/preferences-system-network-proxy-symbolic.svg">../data/icons/custom/symbolic/actions/preferences-system-network-proxy-symbolic.svg</file>
     <file alias="icons/scalable/actions/funnel-symbolic.svg">../data/icons/custom/symbolic/actions/funnel-symbolic.svg</file>

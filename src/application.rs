@@ -41,19 +41,28 @@ mod imp {
     }
 
     impl ApplicationImpl for VrxxApplication {
-        // We connect to the activate callback to create a window when the application
-        // has been launched. Additionally, this callback notifies us when the user
-        // tries to launch a "second instance" of the application. When they try
-        // to do that, we'll just present any existing window.
+        fn startup(&self) {
+            self.parent_startup();
+
+            // Настройка иконок
+            let display = gdk::Display::default().unwrap_or_else(|| {
+                // Fallback для систем без дисплея (CI/CD)
+                // ИСПРАВЛЕНИЕ: Оборачиваем результат env::var в Some()
+                gdk::Display::open(Some(std::env::var("DISPLAY").unwrap_or_default().as_str()))
+                    .expect("No display available")
+            });
+
+            let icon_theme = gtk::IconTheme::for_display(&display);
+            icon_theme.add_resource_path("/ru/mark/vrxx/icons");
+        }
+
         fn activate(&self) {
             let application = self.obj();
-            // Get the current window or create one if necessary
             let window = application.active_window().unwrap_or_else(|| {
                 let window = VrxxWindow::new(&*application);
                 window.upcast()
             });
 
-            // Ask the window manager/compositor to present the window
             window.present();
         }
     }
@@ -87,11 +96,9 @@ impl VrxxApplication {
         self.add_action_entries([quit_action, about_action]);
     }
 
-    // Функция для регистрации иконок из ресурсов
     fn setup_icons(&self) {
         if let Some(display) = gdk::Display::default() {
             let theme = gtk::IconTheme::for_display(&display);
-            // Добавляем путь внутри gresource
             theme.add_resource_path("/ru/mark/vrxx/icons");
         }
     }
@@ -105,15 +112,15 @@ impl VrxxApplication {
             .version(VERSION)
             .developers(vec!["Mark <marktin@duck.com>"])
             .artists(vec!["GNOME Design Team"])
-            // Translators: Replace "translator-credits" with your name/username, and optionally an email or URL.
             .translator_credits(&gettext("translator-credits"))
             .copyright("© 2026 Mark")
             .license_type(gtk::License::Mpl20)
             .website("https://github.com/Mark-TinZ/vrxx")
             .issue_url("https://github.com/Mark-TinZ/vrxx/issues")
-            .comments(&gettext("A graphical interface for Xray-core designed to simplify VPN and proxy configuration on Linux systems. Features include TUN device management, traffic monitoring, and an intuitive user interface for managing connection profiles."))
+            .comments(&gettext("A graphical interface for Xray-core designed to simplify VPN and proxy configuration on Linux systems."))
             .build();
 
         about.present(Some(&window));
     }
 }
+
