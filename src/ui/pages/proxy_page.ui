@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="VrxxProxyPage" parent="AdwBin">
+    <property name="child">
+      <object class="AdwToolbarView">
+
+        <!-- TITLE BAR -->
+        <child type="top">
+          <object class="AdwHeaderBar">
+            <property name="title-widget">
+                <object class="AdwWindowTitle">
+                    <property name="title" translatable="yes">Прокси</property>
+                </object>
+            </property>
+             <child type="end">
+              <object class="GtkMenuButton">
+                <property name="icon-name">open-menu-symbolic</property>
+                <property name="menu-model">primary_menu</property>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <!-- CONTENT -->
+        <property name="content">
+          <object class="AdwPreferencesPage">
+
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Режим</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <property name="spacing">10</property>
+                    <property name="margin-top">10</property>
+                    <property name="margin-bottom">10</property>
+                    <property name="margin-start">10</property>
+                    <property name="margin-end">10</property>
+
+                    <child>
+                      <object class="GtkCheckButton" id="radio_system">
+                        <property name="label" translatable="yes">Системный прокси</property>
+                        <property name="active">True</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkCheckButton" id="radio_tun">
+                        <property name="label" translatable="yes">Использовать TUN</property>
+                        <property name="group">radio_system</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkCheckButton" id="radio_manual">
+                        <property name="label" translatable="yes">Ручная настройка</property>
+                        <property name="group">radio_system</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title">HTTP Proxy</property>
+                <child>
+                  <object class="AdwEntryRow">
+                    <property name="title">URL</property>
+                    <property name="text">127.0.0.1</property>
+                    <property name="show-apply-button">True</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwSpinRow">
+                    <property name="title">Port</property>
+                    <property name="adjustment">
+                      <object class="GtkAdjustment">
+                        <property name="lower">0</property>
+                        <property name="upper">65535</property>
+                        <property name="step-increment">1</property>
+                        <property name="value">10808</property>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title">HTTPS Proxy</property>
+                <child>
+                  <object class="AdwEntryRow">
+                    <property name="title">URL</property>
+                    <property name="text">127.0.0.1</property>
+                    <property name="show-apply-button">True</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwSpinRow">
+                    <property name="title">Port</property>
+                    <property name="adjustment">
+                      <object class="GtkAdjustment">
+                        <property name="lower">0</property>
+                        <property name="upper">65535</property>
+                        <property name="step-increment">1</property>
+                        <property name="value">10808</property>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title">SOCKS Host</property>
+                <child>
+                  <object class="AdwEntryRow">
+                    <property name="title">URL</property>
+                    <property name="text">127.0.0.1</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwSpinRow">
+                    <property name="title">Port</property>
+                    <property name="adjustment">
+                      <object class="GtkAdjustment">
+                        <property name="lower">0</property>
+                        <property name="upper">65535</property>
+                        <property name="step-increment">1</property>
+                        <property name="value">10808</property>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </property>
+
+      </object>
+    </property>
+  </template>
+  <menu id="primary_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Preferences</attribute>
+        <attribute name="action">app.preferences</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
+        <attribute name="action">app.shortcuts</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_About Vrxx</attribute>
+        <attribute name="action">app.about</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Quit</attribute>
+        <attribute name="action">app.quit</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>

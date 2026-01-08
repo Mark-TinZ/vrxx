@@ -1,6 +1,8 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{gio, glib}; // Убран prelude::* так как он не использовался явно
+use gtk::{gio, glib};
+
+use crate::ui::pages::{VrxxVpnPage, VrxxProxyPage, VrxxWhitelistPage, VrxxSettingsPage};
 
 mod imp {
     use super::*;
@@ -21,6 +23,11 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
+            VrxxVpnPage::static_type();
+            VrxxProxyPage::static_type();
+            VrxxWhitelistPage::static_type();
+            VrxxSettingsPage::static_type();
+
             klass.bind_template();
         }
 
@@ -37,6 +44,10 @@ mod imp {
 
             if let Some(row) = self.navigation_list.row_at_index(0) {
                  self.navigation_list.select_row(Some(&row));
+                 // Принудительная установка начальной страницы
+                 if let Some(name) = obj.get_page_name_from_row(&row) {
+                     self.view_stack.set_visible_child_name(&name);
+                 }
             }
         }
     }
@@ -59,17 +70,38 @@ impl VrxxWindow {
             .build()
     }
 
+    // Хелпер для извлечения имени страницы из строки
+    fn get_page_name_from_row(&self, row: &gtk::ListBoxRow) -> Option<glib::GString> {
+        // Вариант 1: row - это сам AdwActionRow (имеет имя)
+        let name = row.widget_name();
+        if name != "GtkListBoxRow" && !name.is_empty() {
+             return Some(name);
+        }
+
+        // Вариант 2: row - это обертка, ищем внутри
+        if let Some(child) = row.child() {
+            return Some(child.widget_name());
+        }
+
+        None
+    }
+
     fn setup_callbacks(&self) {
         let imp = self.imp();
 
-        // Чтобы избежать warning'а "old-style clone syntax", вынесем переменную
-        let view_stack = &imp.view_stack;
+        // ИСПОЛЬЗУЕМ connect_row_selected ВМЕСТО connect_row_activated
+        imp.navigation_list.connect_row_selected(
+            glib::clone!(@weak self as window => move |_, row| {
+                // row здесь имеет тип Option<&gtk::ListBoxRow>
+                if let Some(row) = row {
+                    let imp = window.imp();
 
-        imp.navigation_list.connect_row_activated(
-            glib::clone!(@weak view_stack => move |_, row| {
-                if let Some(child) = row.child() {
-                    let page_name = child.widget_name();
-                    view_stack.set_visible_child_name(&page_name);
+                    if let Some(page_name) = window.get_page_name_from_row(row) {
+                        // println!("DEBUG: Switching to page '{}'", page_name);
+                        imp.view_stack.set_visible_child_name(&page_name);
+                    } else {
+                        // println!("DEBUG: Could not determine page name for row");
+                    }
                 }
             }),
         );

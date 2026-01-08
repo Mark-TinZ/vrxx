@@ -4,6 +4,15 @@
     <file preprocess="xml-stripblanks">window.ui</file>
     <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
 
+    <!-- Страницы интерфейса -->
+    <file preprocess="xml-stripblanks">ui/pages/vpn_page.ui</file>
+    <file preprocess="xml-stripblanks">ui/pages/proxy_page.ui</file>
+    <file preprocess="xml-stripblanks">ui/pages/whitelist_page.ui</file>
+    <file preprocess="xml-stripblanks">ui/pages/settings_page.ui</file>
+
+    <!-- Компоненты -->
+    <file preprocess="xml-stripblanks">ui/components/vpn_key_row.ui</file>
+
      <!-- Иконки -->
     <file alias="icons/scalable/actions/key5-symbolic.svg">../data/icons/custom/symbolic/actions/key5-symbolic.svg</file>
     <file alias="icons/scalable/actions/preferences-system-network-proxy-symbolic.svg">../data/icons/custom/symbolic/actions/preferences-system-network-proxy-symbolic.svg</file>

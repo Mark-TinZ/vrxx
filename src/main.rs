@@ -12,10 +12,9 @@
 mod application;
 mod config;
 mod window;
+mod ui;
 
 use self::application::VrxxApplication;
-use self::window::VrxxWindow;
-
 use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
 use gtk::{gio, glib};

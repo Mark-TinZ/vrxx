@@ -14,7 +14,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, gdk};
 use crate::config::VERSION;
-use crate::VrxxWindow;
+use crate::window::VrxxWindow;
 
 mod imp {
     use super::*;
@@ -43,6 +43,11 @@ mod imp {
     impl ApplicationImpl for VrxxApplication {
         fn startup(&self) {
             self.parent_startup();
+
+            // Инициализация менеджера стилей LibAdwaita (убирает warning)
+            let manager = adw::StyleManager::default();
+            // Вы можете задать ForceDark или оставить системную настройку
+            // manager.set_color_scheme(adw::ColorScheme::PreferDark);
 
             // Настройка иконок
             let display = gdk::Display::default().unwrap_or_else(|| {
@@ -110,7 +115,7 @@ impl VrxxApplication {
             .application_icon("ru.mark.vrxx")
             .developer_name("Mark")
             .version(VERSION)
-            .developers(vec!["Mark <marktin@duck.com>"])
+            .developers(vec!["Mark"])
             .artists(vec!["GNOME Design Team"])
             .translator_credits(&gettext("translator-credits"))
             .copyright("© 2026 Mark")

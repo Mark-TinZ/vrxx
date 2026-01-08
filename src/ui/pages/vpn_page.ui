@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="VrxxVpnPage" parent="AdwBin">
+    <property name="child">
+      <object class="AdwToolbarView">
+
+        <!-- TITLE BAR -->
+        <child type="top">
+          <object class="AdwHeaderBar">
+            <!-- Заголовок -->
+            <property name="title-widget">
+            <object class="AdwWindowTitle" id="window_title">
+              <property name="title" translatable="yes">Ключи VPN</property>
+              <property name="subtitle" translatable="yes">Mark-Vless Подключено</property>
+            </object>
+            </property>
+
+            <!-- Кнопка добавить ключ -->
+            <child type="start">
+               <object class="GtkButton" id="btn_add">
+                 <property name="icon-name">list-add-symbolic</property>
+                 <property name="action-name">vpn.add_key</property>
+               </object>
+            </child>
+
+            <child type="end">
+              <object class="GtkMenuButton">
+                <property name="icon-name">open-menu-symbolic</property>
+                <property name="menu-model">primary_menu</property>
+                <property name="primary">True</property>
+              </object>
+            </child>
+
+            <child type="end">
+              <object class="GtkButton">
+                <property name="label" translatable="yes">Отключить</property>
+                <style>
+                  <class name="destructive-action"/>
+                </style>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <!-- CONTENT -->
+        <property name="content">
+        <object class="AdwPreferencesPage">
+          <child>
+            <!-- ОДНА ГРУППА ДЛЯ ВСЕХ КЛЮЧЕЙ -->
+            <object class="AdwPreferencesGroup">
+              <property name="title" translatable="yes">Список подключений</property>
+              <child>
+                <!-- ОДИН СПИСОК С ID -->
+                <object class="GtkListBox" id="keys_list">
+                  <property name="selection-mode">none</property>
+                  <property name="show-separators">True</property> <!-- Разделители между ключами -->
+                  <style>
+                    <class name="boxed-list"/>
+                  </style>
+                  <!-- Внутренности (строки) будут созданы Rust-кодом -->
+                </object>
+              </child>
+            </object>
+          </child>
+
+        </object>
+      </property>
+
+      </object>
+    </property>
+  </template>
+  <menu id="primary_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Preferences</attribute>
+        <attribute name="action">app.preferences</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
+        <attribute name="action">app.shortcuts</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_About Vrxx</attribute>
+        <attribute name="action">app.about</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Quit</attribute>
+        <attribute name="action">app.quit</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>

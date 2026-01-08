@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="VrxxVpnKeyRow" parent="GtkListBoxRow">
+    <property name="activatable">True</property>
+    <property name="child">
+      <object class="GtkBox">
+        <property name="orientation">vertical</property>
+
+        <!-- Верхняя часть: Имя и Статус -->
+        <child>
+          <object class="AdwActionRow" id="header_row">
+            <property name="title" bind-source="VrxxVpnKeyRow" bind-property="key-name" bind-flags="sync-create"/>
+            <property name="subtitle" bind-source="VrxxVpnKeyRow" bind-property="key-protocol" bind-flags="sync-create"/>
+            <child type="prefix">
+              <object class="GtkImage" id="status_icon">
+                <property name="icon-name">security-high-symbolic</property>
+              </object>
+            </child>
+            <child type="suffix">
+              <object class="GtkMenuButton">
+                <property name="icon-name">view-more-symbolic</property>
+                <property name="valign">center</property>
+                <property name="menu-model">key_menu</property>
+                <style><class name="flat"/></style>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <!-- Разделитель (виден только если активен) -->
+        <child>
+          <object class="GtkSeparator" id="separator">
+             <property name="visible">False</property>
+             <style><class name="spacer"/></style>
+          </object>
+        </child>
+
+        <!-- Нижняя часть: Статистика (видна только если активен) -->
+        <child>
+          <object class="GtkGrid" id="stats_grid">
+            <property name="visible">False</property>
+            <property name="margin-top">12</property>
+            <property name="margin-bottom">12</property>
+            <property name="margin-start">16</property>
+            <property name="margin-end">16</property>
+            <property name="column-spacing">24</property>
+            <property name="row-spacing">8</property>
+
+            <!-- Down -->
+            <child>
+              <object class="GtkBox">
+                <property name="spacing">12</property>
+                <child><object class="GtkImage"><property name="icon-name">go-down-symbolic</property><style><class name="dim-label"/></style></object></child>
+                <child><object class="GtkLabel" id="lbl_down"><property name="label">0 MB</property><style><class name="dim-label"/></style></object></child>
+                <layout><property name="column">0</property><property name="row">0</property></layout>
+              </object>
+            </child>
+
+            <!-- Up -->
+            <child>
+              <object class="GtkBox">
+                <property name="spacing">12</property>
+                <child><object class="GtkImage"><property name="icon-name">go-up-symbolic</property><style><class name="dim-label"/></style></object></child>
+                <child><object class="GtkLabel" id="lbl_up"><property name="label">0 MB</property><style><class name="dim-label"/></style></object></child>
+                <layout><property name="column">0</property><property name="row">1</property></layout>
+              </object>
+            </child>
+
+            <!-- Time -->
+            <child>
+              <object class="GtkBox">
+                <property name="spacing">12</property>
+                <child><object class="GtkImage"><property name="icon-name">alarm-symbolic</property><style><class name="dim-label"/></style></object></child>
+                <child><object class="GtkLabel" id="lbl_time"><property name="label">00:00</property><style><class name="dim-label"/></style></object></child>
+                <layout><property name="column">1</property><property name="row">0</property></layout>
+              </object>
+            </child>
+
+             <!-- Ping -->
+             <child>
+              <object class="GtkBox">
+                <property name="spacing">12</property>
+                <child><object class="GtkImage"><property name="icon-name">network-transmit-receive-symbolic</property><style><class name="dim-label"/></style></object></child>
+                <child><object class="GtkLabel" id="lbl_ping"><property name="label">0 ms</property><style><class name="dim-label"/></style></object></child>
+                <layout><property name="column">1</property><property name="row">1</property></layout>
+              </object>
+            </child>
+
+          </object>
+        </child>
+
+      </object>
+    </property>
+  </template>
+
+  <menu id="key_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Edit</attribute>
+        <attribute name="action">row.key_edit</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Duplicate</attribute>
+        <attribute name="action">row.key_duplicate</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Delete</attribute>
+        <attribute name="action">row.delete</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>
