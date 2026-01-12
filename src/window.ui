@@ -73,10 +73,12 @@
             <property name="title" translatable="yes">Content</property>
             <property name="child">
               <!-- ВОТ ТУТ МЫ ПОДКЛЮЧАЕМ НАШИ НОВЫЕ СТРАНИЦЫ -->
-              <object class="AdwViewStack" id="view_stack">
+              <object class="GtkStack" id="view_stack">
+                <property name="transition-type">crossfade</property> <!-- Плавное затухание -->
+                <property name="transition-duration">140</property>
 
                 <child>
-                  <object class="AdwViewStackPage">
+                  <object class="GtkStackPage">
                     <property name="name">page_vpn</property>
                     <property name="child">
                       <object class="VrxxVpnPage"/>
@@ -85,7 +87,7 @@
                 </child>
 
                 <child>
-                  <object class="AdwViewStackPage">
+                  <object class="GtkStackPage">
                     <property name="name">page_proxy</property>
                     <property name="child">
                       <object class="VrxxProxyPage"/>
@@ -94,7 +96,7 @@
                 </child>
 
                 <child>
-                  <object class="AdwViewStackPage">
+                  <object class="GtkStackPage">
                     <property name="name">page_whitelist</property>
                     <property name="child">
                       <object class="VrxxWhitelistPage"/>
@@ -103,7 +105,7 @@
                 </child>
 
                 <child>
-                  <object class="AdwViewStackPage">
+                  <object class="GtkStackPage">
                     <property name="name">page_settings</property>
                     <property name="child">
                       <object class="VrxxSettingsPage"/>

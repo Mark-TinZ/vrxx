@@ -13,7 +13,7 @@ mod imp {
         #[template_child]
         pub navigation_list: TemplateChild<gtk::ListBox>,
         #[template_child]
-        pub view_stack: TemplateChild<adw::ViewStack>,
+        pub view_stack: TemplateChild<gtk::Stack>,
     }
 
     #[glib::object_subclass]
@@ -90,10 +90,15 @@ impl VrxxWindow {
         let imp = self.imp();
 
         // ИСПОЛЬЗУЕМ connect_row_selected ВМЕСТО connect_row_activated
+        let window_weak = self.downgrade();
         imp.navigation_list.connect_row_selected(
-            glib::clone!(@weak self as window => move |_, row| {
+            move |_, row| {
                 // row здесь имеет тип Option<&gtk::ListBoxRow>
                 if let Some(row) = row {
+                    let window = match window_weak.upgrade() {
+                        Some(w) => w,
+                        None => return,
+                    };
                     let imp = window.imp();
 
                     if let Some(page_name) = window.get_page_name_from_row(row) {
@@ -103,7 +108,7 @@ impl VrxxWindow {
                         // println!("DEBUG: Could not determine page name for row");
                     }
                 }
-            }),
+            },
         );
     }
 }

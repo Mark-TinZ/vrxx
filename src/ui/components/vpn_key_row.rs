@@ -79,9 +79,14 @@ impl VrxxVpnKeyRow {
         item.bind_property("time-connected", &*imp.lbl_time, "label").sync_create().build();
         item.bind_property("ping", &*imp.lbl_ping, "label").sync_create().build();
 
-        item.connect_is_active_notify(glib::clone!(@weak self as row => move |item| {
+        let row_weak = self.downgrade();
+        item.connect_is_active_notify(move |item| {
+            let row = match row_weak.upgrade() {
+                Some(r) => r,
+                None => return,
+            };
             row.update_visual_state(item.is_active());
-        }));
+        });
 
         self.update_visual_state(item.is_active());
     }
@@ -110,13 +115,17 @@ impl VrxxVpnKeyRow {
     fn setup_actions(&self) {
         let action_group = gio::SimpleActionGroup::new();
         let delete_action = gio::SimpleAction::new("delete", None);
-        delete_action.connect_activate(glib::clone!(@weak self as row => move |_, _| {
+        let row_weak = self.downgrade();
+        delete_action.connect_activate(move |_, _| {
+             let row = match row_weak.upgrade() {
+                 Some(r) => r,
+                 None => return,
+             };
              if let Some(item) = row.item() {
                 println!("Request delete for: {}", item.name());
             }
-        }));
+        });
         action_group.add_action(&delete_action);
         self.insert_action_group("row", Some(&action_group));
     }
 }
-

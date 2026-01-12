@@ -1,7 +1,8 @@
 use gtk::{glib, prelude::*};
 use adw::subclass::prelude::*;
 
-mod imp {
+// === VPN KEY OBJECT ===
+mod imp_vpn {
     use super::*;
     use std::cell::RefCell;
 
@@ -34,8 +35,32 @@ mod imp {
     impl ObjectImpl for VpnKeyObject {}
 }
 
+// === DOMAIN OBJECT ===
+mod imp_domain {
+    use super::*;
+    use std::cell::RefCell;
+
+    #[derive(Debug, Default, glib::Properties)]
+    #[properties(wrapper_type = super::DomainObject)]
+    pub struct DomainObject {
+        #[property(get, set)]
+        pub domain: RefCell<String>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for DomainObject {
+        const NAME: &'static str = "DomainObject";
+        type Type = super::DomainObject;
+    }
+
+    #[glib::derived_properties]
+    impl ObjectImpl for DomainObject {}
+}
+
+// === WRAPPERS ===
+
 glib::wrapper! {
-    pub struct VpnKeyObject(ObjectSubclass<imp::VpnKeyObject>);
+    pub struct VpnKeyObject(ObjectSubclass<imp_vpn::VpnKeyObject>);
 }
 
 impl VpnKeyObject {
@@ -48,6 +73,18 @@ impl VpnKeyObject {
             .property("traffic-up", "0.0 MB")
             .property("time-connected", "00:00:00")
             .property("ping", "0 ms")
+            .build()
+    }
+}
+
+glib::wrapper! {
+    pub struct DomainObject(ObjectSubclass<imp_domain::DomainObject>);
+}
+
+impl DomainObject {
+    pub fn new(domain: &str) -> Self {
+        glib::Object::builder()
+            .property("domain", domain)
             .build()
     }
 }

@@ -1,6 +1,6 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{gio, glib, CompositeTemplate, prelude::*};
+use gtk::{gio, glib, CompositeTemplate}; // Removed prelude::*
 
 // Импортируем модель и компонент строки
 use crate::ui::models::VpnKeyObject;
@@ -98,7 +98,12 @@ impl VrxxVpnPage {
     fn setup_callbacks(&self) {
         let imp = self.imp();
 
-        imp.keys_list.connect_row_activated(glib::clone!(@weak self as page => move |_, row| {
+        let page_weak = self.downgrade();
+        imp.keys_list.connect_row_activated(move |_, row| {
+            let page = match page_weak.upgrade() {
+                Some(p) => p,
+                None => return,
+            };
             // ИСПРАВЛЕНИЕ 1: Клонируем row перед downcast, так как row здесь ссылка
             if let Ok(key_row) = row.clone().downcast::<VrxxVpnKeyRow>() {
                 if let Some(selected_item) = key_row.item() {
@@ -114,7 +119,7 @@ impl VrxxVpnPage {
                     println!("Выбран ключ: {}", selected_item.name());
                 }
             }
-        }));
+        });
     }
 
     fn set_active_key(&self, active_item: &VpnKeyObject) {
@@ -132,7 +137,12 @@ impl VrxxVpnPage {
         let action_group = gio::SimpleActionGroup::new();
 
         let add_action = gio::SimpleAction::new("add_key", None);
-        add_action.connect_activate(glib::clone!(@weak self as page => move |_, _| {
+        let page_weak = self.downgrade();
+        add_action.connect_activate(move |_, _| {
+            let page = match page_weak.upgrade() {
+                Some(p) => p,
+                None => return,
+            };
             println!("Создаем новый ключ...");
             // ИСПРАВЛЕНИЕ 2: Разбиваем цепочку вызовов, чтобы избежать временных заимствований
             let imp = page.imp();
@@ -142,26 +152,47 @@ impl VrxxVpnPage {
                 let new_key = VpnKeyObject::new("New Key", "VLESS", false);
                 model.append(&new_key);
             }
-        }));
+        });
         action_group.add_action(&add_action);
 
         // Действие: Редактировать
         let edit_action = gio::SimpleAction::new("key_edit", None);
-        edit_action.connect_activate(glib::clone!(@weak self as page => move |_, _| {
+        let page_weak = self.downgrade();
+        edit_action.connect_activate(move |_, _| {
+            let _page = match page_weak.upgrade() {
+                Some(p) => p,
+                None => return,
+            };
             println!("Page Logic: Редактируем ключ (внутри VpnPage)");
             // Здесь мы имеем доступ к `page` и её внутреннему состоянию!
-        }));
+        });
         action_group.add_action(&edit_action);
 
         // Действие: Дублировать
         let dup_action = gio::SimpleAction::new("key_duplicate", None);
-        dup_action.connect_activate(glib::clone!(@weak self as page => move |_, _| {
+        let page_weak = self.downgrade();
+        dup_action.connect_activate(move |_, _| {
+            let _page = match page_weak.upgrade() {
+                Some(p) => p,
+                None => return,
+            };
             println!("Page Logic: Дублируем ключ");
-        }));
+        });
         action_group.add_action(&dup_action);
 
-        пше
+        // Действие: Удалить
+        let del_action = gio::SimpleAction::new("key_delete", None);
+        let page_weak = self.downgrade();
+        del_action.connect_activate(move |_, _| {
+            let _page = match page_weak.upgrade() {
+                Some(p) => p,
+                None => return,
+            };
+            println!("Page Logic: Удаляем ключ");
+        });
+        action_group.add_action(&del_action);
 
         self.insert_action_group("vpn", Some(&action_group));
     }
-}   
+}
+

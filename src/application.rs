@@ -45,7 +45,7 @@ mod imp {
             self.parent_startup();
 
             // Инициализация менеджера стилей LibAdwaita (убирает warning)
-            let manager = adw::StyleManager::default();
+            let _manager = adw::StyleManager::default();
             // Вы можете задать ForceDark или оставить системную настройку
             // manager.set_color_scheme(adw::ColorScheme::PreferDark);
 
@@ -128,4 +128,3 @@ impl VrxxApplication {
         about.present(Some(&window));
     }
 }
-

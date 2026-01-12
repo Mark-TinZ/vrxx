@@ -12,6 +12,16 @@
                     <property name="title" translatable="yes">Белый список</property>
                 </object>
             </property>
+
+            <!-- Кнопка добавить домен -->
+            <child type="start">
+               <object class="GtkButton" id="btn_add">
+                 <property name="icon-name">list-add-symbolic</property>
+                 <property name="action-name">whitelist.add_domain</property>
+                 <property name="tooltip-text" translatable="yes">Добавить домен</property>
+               </object>
+            </child>
+
              <child type="end">
               <object class="GtkMenuButton">
                 <property name="icon-name">open-menu-symbolic</property>
@@ -23,10 +33,45 @@
 
         <!-- CONTENT -->
         <property name="content">
-          <object class="AdwStatusPage">
-            <property name="title">Белый список</property>
-            <property name="description">В разработке...</property>
-            <property name="icon-name">user-available-symbolic</property>
+          <object class="AdwPreferencesPage">
+            <!-- Группа: режим -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes"></property> <!-- Пустой заголовок для отступа -->
+                <child>
+                  <object class="AdwComboRow">
+                    <property name="title" translatable="yes">Режим</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">Исключения (обход VPN)</item>
+                          <item translatable="yes">Включения (только VPN)</item>
+                        </items>
+                      </object>
+                    </property>
+                    <property name="selected">0</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- Список доменов -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Домены</property>
+                <child>
+                  <object class="GtkListBox" id="domains_list">
+                    <property name="selection-mode">none</property>
+                    <property name="show-separators">true</property>
+                    <property name="activate-on-single-click">true</property>
+                    <style>
+                      <class name="boxed-list"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+
           </object>
         </property>
 
