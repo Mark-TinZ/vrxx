@@ -10,12 +10,12 @@ mod imp {
     pub struct VrxxVpnKeyRow {
         #[template_child]
         pub header_row: TemplateChild<adw::ActionRow>,
+
+        // ИЗМЕНЕНИЕ: Новые виджеты для анимации
         #[template_child]
-        pub status_icon: TemplateChild<gtk::Image>,
+        pub icon_stack: TemplateChild<gtk::Stack>,
         #[template_child]
-        pub separator: TemplateChild<gtk::Separator>,
-        #[template_child]
-        pub stats_grid: TemplateChild<gtk::Grid>,
+        pub details_revealer: TemplateChild<gtk::Revealer>,
 
         #[template_child]
         pub lbl_down: TemplateChild<gtk::Label>,
@@ -91,24 +91,22 @@ impl VrxxVpnKeyRow {
         self.update_visual_state(item.is_active());
     }
 
-    // Вспомогательный метод для получения объекта
     pub fn item(&self) -> Option<VpnKeyObject> {
         self.imp().item.borrow().clone()
     }
 
+    // ИЗМЕНЕНИЕ: Обновляем состояние через анимацию
     fn update_visual_state(&self, is_active: bool) {
         let imp = self.imp();
-        imp.separator.set_visible(is_active);
-        imp.stats_grid.set_visible(is_active);
 
+        // 1. Анимация раскрытия списка (плавный слайд вниз)
+        imp.details_revealer.set_reveal_child(is_active);
+
+        // 2. Анимация смены иконки (плавный crossfade)
         if is_active {
-            imp.status_icon.set_icon_name(Some("security-high-symbolic"));
-            imp.status_icon.add_css_class("success");
-            imp.status_icon.remove_css_class("error");
+            imp.icon_stack.set_visible_child_name("active");
         } else {
-            imp.status_icon.set_icon_name(Some("security-low-symbolic"));
-            imp.status_icon.add_css_class("error");
-            imp.status_icon.remove_css_class("success");
+            imp.icon_stack.set_visible_child_name("inactive");
         }
     }
 

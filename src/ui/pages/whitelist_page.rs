@@ -1,6 +1,6 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{gio, glib, CompositeTemplate}; // Removed prelude::*
+use gtk::{gio, glib, gdk, CompositeTemplate};
 use crate::ui::models::DomainObject;
 
 mod imp {
@@ -204,6 +204,26 @@ impl VrxxWhitelistPage {
         dialog.add_response("apply", button_label);
         dialog.set_response_appearance("apply", adw::ResponseAppearance::Suggested);
 
+        // --- ДОБАВЛЕНО: Обработка нажатия Enter ---
+        let controller = gtk::EventControllerKey::new();
+        // Используем Capture, чтобы перехватить событие до того, как его поглотит внутренняя Entry
+        controller.set_propagation_phase(gtk::PropagationPhase::Capture);
+
+        let dialog_weak = dialog.downgrade();
+        controller.connect_key_pressed(move |_, keyval, _, _| {
+            match keyval {
+                gdk::Key::Return | gdk::Key::ISO_Enter | gdk::Key::KP_Enter => {
+                    if let Some(d) = dialog_weak.upgrade() {
+                        d.response("apply");
+                        return glib::Propagation::Stop;
+                    }
+                }
+                _ => {}
+            }
+            glib::Propagation::Proceed
+        });
+        entry_row.add_controller(controller);
+
         // --- ПОДГОТОВКА ЗАМЫКАНИЯ (РУЧНОЙ ЗАХВАТ) ---
         // 1. Создаем слабую ссылку на страницу (self)
         let page_weak = self.downgrade();
@@ -212,7 +232,6 @@ impl VrxxWhitelistPage {
         let target_obj_clone = target_obj.clone();
 
         // 3. Создаем замыкание без макроса glib::clone!
-        // ИСПРАВЛЕНИЕ: Добавлен аргумент None (detail), так как биндинг этого требует
         dialog.connect_response(None, move |d: &adw::MessageDialog, response: &str| {
             // Восстанавливаем self из слабой ссылки
             let page = match page_weak.upgrade() {
