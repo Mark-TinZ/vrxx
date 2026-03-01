@@ -18,6 +18,8 @@ mod imp_vpn {
         #[property(get, set)]
         pub is_loading: RefCell<bool>,
         #[property(get, set)]
+        pub is_error: RefCell<bool>,
+        #[property(get, set)]
         pub traffic_down: RefCell<String>,
         #[property(get, set)]
         pub traffic_up: RefCell<String>,
@@ -81,6 +83,8 @@ impl VpnKeyObject {
             .property("name", name)
             .property("protocol", protocol)
             .property("is-active", active)
+            .property("is-loading", false)
+            .property("is-error", false)
             .property("traffic-down", "0.0 MB")
             .property("traffic-up", "0.0 MB")
             .property("time-connected", "00:00:00")

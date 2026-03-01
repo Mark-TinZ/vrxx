@@ -101,7 +101,7 @@ impl VrxxVpnKeyRow {
                 Some(r) => r,
                 None => return,
             };
-            row.update_visual_state(item.is_active(), item.is_loading());
+            row.update_visual_state(item.is_active(), item.is_loading(), item.is_error());
         });
 
         let row_weak_loading = self.downgrade();
@@ -110,10 +110,19 @@ impl VrxxVpnKeyRow {
                 Some(r) => r,
                 None => return,
             };
-            row.update_visual_state(item.is_active(), item.is_loading());
+            row.update_visual_state(item.is_active(), item.is_loading(), item.is_error());
         });
 
-        self.update_visual_state(item.is_active(), item.is_loading());
+        let row_weak_error = self.downgrade();
+        item.connect_is_error_notify(move |item| {
+            let row = match row_weak_error.upgrade() {
+                Some(r) => r,
+                None => return,
+            };
+            row.update_visual_state(item.is_active(), item.is_loading(), item.is_error());
+        });
+
+        self.update_visual_state(item.is_active(), item.is_loading(), item.is_error());
     }
 
     pub fn item(&self) -> Option<VpnKeyObject> {
@@ -129,12 +138,14 @@ impl VrxxVpnKeyRow {
         });
     }
 
-    fn update_visual_state(&self, is_active: bool, is_loading: bool) {
+    fn update_visual_state(&self, is_active: bool, is_loading: bool, is_error: bool) {
         let imp = self.imp();
         imp.details_revealer.set_reveal_child(is_active);
         
         if is_loading {
             imp.icon_stack.set_visible_child_name("loading");
+        } else if is_error {
+            imp.icon_stack.set_visible_child_name("error");
         } else if is_active {
             imp.icon_stack.set_visible_child_name("active");
         } else {

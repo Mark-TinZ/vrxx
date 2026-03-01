@@ -49,6 +49,19 @@
                     </property>
                   </object>
                 </child>
+
+                <!-- Состояние: Ошибка -->
+                <child>
+                  <object class="GtkStackPage">
+                    <property name="name">error</property>
+                    <property name="child">
+                      <object class="GtkImage">
+                        <property name="icon-name">security-medium-symbolic</property>
+                        <style><class name="warning"/></style> <!-- Желтый цвет -->
+                      </object>
+                    </property>
+                  </object>
+                </child>
               </object>
             </child>
 

@@ -196,47 +196,63 @@ impl VrxxVpnPage {
             // Handle Manual Ping
             let key_obj_ping = key_obj.clone();
             row.connect_local("request-ping", false, move |_| {
-                let url = key_obj_ping.url();
                 let item_clone = key_obj_ping.clone();
                 item_clone.set_ping(gettext("pinging..."));
                 item_clone.set_is_loading(true);
                 
                 glib::spawn_future_local(async move {
-                    if let Ok(parsed) = crate::key_parser::parse_vpn_key(&url) {
-                        use gtk::gio;
-                        use gtk::prelude::*;
-                        let client = gio::SocketClient::new();
-                        client.set_timeout(5); // 5 seconds timeout for manual
-                        
-                        let start_ping = std::time::Instant::now();
-                        let host_clone = parsed.host.clone();
-                        match client.connect_to_host_future(&parsed.host, parsed.port).await {
-                            Ok(_) => {
-                                item_clone.set_ping(format!("{} ms", start_ping.elapsed().as_millis()));
-                                item_clone.set_is_loading(false);
-                                
-                                // Fetch GeoIP info for the host
-                                let item_geo = item_clone.clone();
-                                glib::spawn_future_local(async move {
-                                    // In a real app, you'd use a proper DNS resolver or HTTP client.
-                                    // For now, let's simulate a GeoIP lookup.
-                                    // We could use gio::Resolver to get IP.
-                                    if let Ok(addresses) = gio::Resolver::default().lookup_by_name_future(&host_clone).await {
-                                        if let Some(addr) = addresses.first() {
-                                            let ip = addr.to_string();
-                                            // Mock country for now or use a public API if allowed
-                                            item_geo.set_server_info(format!("Unknown ({})", ip));
+                    let start_ping = std::time::Instant::now();
+                    let socks_port = crate::settings::SettingsManager::new().load().socks_port;
+                    
+                    let args_raw = [
+                        "curl", "-s", "-w", "%{time_total}", 
+                        "-x", &format!("socks5h://127.0.0.1:{}", socks_port),
+                        "http://ip-api.com/json/?fields=status,country,timezone,query",
+                        "--connect-timeout", "5"
+                    ];
+                    let args: Vec<&std::ffi::OsStr> = args_raw.iter().map(std::ffi::OsStr::new).collect();
+
+                    let mut success = false;
+                    let mut default_ping_ms = 0;
+
+                    if let Ok(subprocess) = gio::Subprocess::newv(&args, gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE) {
+                        if let Ok((Some(stdout_bytes), _)) = subprocess.communicate_future(None).await {
+                            let stdout_str = String::from_utf8_lossy(&stdout_bytes);
+                            default_ping_ms = start_ping.elapsed().as_millis();
+                            
+                            if let Some(brace_idx) = stdout_str.rfind('}') {
+                                let json_part = &stdout_str[..=brace_idx];
+                                let time_part = &stdout_str[brace_idx+1..];
+
+                                if let Ok(json) = serde_json::from_str::<serde_json::Value>(json_part) {
+                                    if json.get("status").and_then(|s| s.as_str()) == Some("success") {
+                                        success = true;
+                                        
+                                        if let Ok(time_sec) = time_part.trim().parse::<f64>() {
+                                            let ms = (time_sec * 1000.0) as u64;
+                                            item_clone.set_ping(format!("{} ms", ms));
+                                        } else {
+                                            item_clone.set_ping(format!("{} ms", default_ping_ms));
+                                        }
+
+                                        if let Some(ip) = json.get("query").and_then(|s| s.as_str()) {
+                                            item_clone.set_server_info(ip.to_string());
+                                        }
+                                        if let Some(country) = json.get("country").and_then(|s| s.as_str()) {
+                                            item_clone.set_location(country.to_string());
+                                        }
+                                        if let Some(tz) = json.get("timezone").and_then(|s| s.as_str()) {
+                                            item_clone.set_timezone(tz.to_string());
                                         }
                                     }
-                                });
-                            }
-                            Err(_) => {
-                                item_clone.set_ping(gettext("timeout"));
-                                item_clone.set_is_loading(false);
+                                }
                             }
                         }
-                    } else {
-                        item_clone.set_is_loading(false);
+                    }
+
+                    item_clone.set_is_loading(false);
+                    if !success {
+                        item_clone.set_ping(gettext("timeout"));
                     }
                 });
                 None
@@ -280,59 +296,145 @@ impl VrxxVpnPage {
                         for i in 0..model.n_items() {
                             if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
                                 if item.is_active() {
+                                    // Health check: if it's active but process is dead - it's an error
+                                    if !imp.backend.borrow().is_running() && !item.is_loading() {
+                                        println!("Detected core process crash! Deactivating...");
+                                        item.set_is_active(false);
+                                        item.set_is_error(true);
+                                        imp.start_time.replace(None);
+                                        page.update_disconnect_action_state();
+                                        page.imp().window_title.set_subtitle(&gettext("Connection Error"));
+
+                                        // Read last few lines of log to show to user
+                                        let mut error_details = String::from("Unknown error. Please check System Logs.");
+                                        let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
+                                        let log_path = log_dir.join("core.log");
+                                        if let Ok(content) = std::fs::read_to_string(&log_path) {
+                                            let lines: Vec<&str> = content.lines().rev().take(5).collect();
+                                            if !lines.is_empty() {
+                                                error_details = lines.into_iter().rev().collect::<Vec<&str>>().join("\n");
+                                            }
+                                        }
+
+                                        let dialog = adw::AlertDialog::builder()
+                                            .heading(gettext("Connection Failed"))
+                                            .body(&format!("The core process exited unexpectedly. Log details:\n\n{}", error_details))
+                                            .build();
+                                        dialog.add_response("ok", &gettext("OK"));
+                                        if let Some(root) = page.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
+                                            dialog.present(Some(&root));
+                                        }
+
+                                        break;
+                                    }
+
                                     let elapsed = start.elapsed().as_secs();
                                     let hours = elapsed / 3600;
                                     let mins = (elapsed % 3600) / 60;
                                     let secs = elapsed % 60;
                                     item.set_time_connected(format!("{:02}:{:02}:{:02}", hours, mins, secs));
 
-                                    // Try to read real traffic from tun0 if tun mode is enabled
-                                    if let Ok(rx_str) = std::fs::read_to_string("/sys/class/net/tun0/statistics/rx_bytes") {
-                                        if let Ok(rx) = rx_str.trim().parse::<u64>() {
-                                            item.set_traffic_down(format!("{:.1} MB", rx as f64 / 1_048_576.0));
+                                    // Try to read real traffic from tun interfaces if available
+                                    let mut stats_updated = false;
+                                    // Try common interface names: tun0, utun0, etc.
+                                    for iface in ["tun0", "tun1", "utun0", "vrxx-tun"] {
+                                        let rx_path = format!("/sys/class/net/{}/statistics/rx_bytes", iface);
+                                        let tx_path = format!("/sys/class/net/{}/statistics/tx_bytes", iface);
+                                        
+                                        if let Ok(rx_str) = std::fs::read_to_string(&rx_path) {
+                                            if let Ok(tx_str) = std::fs::read_to_string(&tx_path) {
+                                                if let (Ok(rx), Ok(tx)) = (rx_str.trim().parse::<u64>(), tx_str.trim().parse::<u64>()) {
+                                                    item.set_traffic_down(format!("{:.1} MB", rx as f64 / 1_048_576.0));
+                                                    item.set_traffic_up(format!("{:.1} MB", tx as f64 / 1_048_576.0));
+                                                    stats_updated = true;
+                                                    break;
+                                                }
+                                            }
                                         }
-                                    } else {
-                                        item.set_traffic_down("0.0 MB".to_string());
                                     }
 
-                                    if let Ok(tx_str) = std::fs::read_to_string("/sys/class/net/tun0/statistics/tx_bytes") {
-                                        if let Ok(tx) = tx_str.trim().parse::<u64>() {
-                                            item.set_traffic_up(format!("{:.1} MB", tx as f64 / 1_048_576.0));
-                                        }
-                                    } else {
-                                        item.set_traffic_up("0.0 MB".to_string());
+                                    // If no tun interface found, don't reset to zero if we already had data
+                                    if !stats_updated && item.traffic_down() == "0.0 MB" {
+                                        // Optional: simulate minor traffic if connected in proxy mode
+                                        // item.set_traffic_down("Connecting...".to_string());
                                     }
 
-                                    // Run real ping asynchronously so we don't block the UI
-                                    if elapsed % 60 == 0 { // Ping every 60 seconds
-                                        let url = item.url();
+                                    // Run real ping and connection verification asynchronously
+                                    if elapsed > 0 && elapsed % 60 == 0 || (elapsed == 2 && item.is_loading()) {
                                         let item_clone = item.clone();
+                                        let page_weak_ping = page_weak.clone();
                                         
                                         glib::spawn_future_local(async move {
-                                            if let Ok(parsed) = crate::key_parser::parse_vpn_key(&url) {
-                                                use gtk::gio;
-                                                use gtk::prelude::*;
-                                                let client = gio::SocketClient::new();
-                                                client.set_timeout(2); // 2 seconds timeout
-                                                
-                                                let start_ping = std::time::Instant::now();
-                                                let host_clone = parsed.host.clone();
-                                                match client.connect_to_host_future(&parsed.host, parsed.port).await {
-                                                    Ok(_) => {
-                                                        item_clone.set_ping(format!("{} ms", start_ping.elapsed().as_millis()));
-                                                        
-                                                        // Update IP info
-                                                        let item_geo = item_clone.clone();
-                                                        glib::spawn_future_local(async move {
-                                                            if let Ok(addresses) = gio::Resolver::default().lookup_by_name_future(&host_clone).await {
-                                                                if let Some(addr) = addresses.first() {
-                                                                    item_geo.set_server_info(format!("Server: {}", addr.to_string()));
+                                            let start_ping = std::time::Instant::now();
+                                            let socks_port = crate::settings::SettingsManager::new().load().socks_port;
+                                            
+                                            // Use gio::Subprocess which is fully async and won't block GTK main loop
+                                            let args_raw = [
+                                                "curl", "-s", "-w", "%{time_total}", 
+                                                "-x", &format!("socks5h://127.0.0.1:{}", socks_port),
+                                                "http://ip-api.com/json/?fields=status,country,timezone,query",
+                                                "--connect-timeout", "5"
+                                            ];
+                                            let args: Vec<&std::ffi::OsStr> = args_raw.iter().map(std::ffi::OsStr::new).collect();
+                                            
+                                            let mut success = false;
+                                            let mut default_ping_ms = 0;
+
+                                            if let Ok(subprocess) = gio::Subprocess::newv(&args, gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE) {
+                                                if let Ok((Some(stdout_bytes), _)) = subprocess.communicate_future(None).await {
+                                                    let stdout_str = String::from_utf8_lossy(&stdout_bytes);
+                                                    default_ping_ms = start_ping.elapsed().as_millis();
+                                                    
+                                                    if let Some(brace_idx) = stdout_str.rfind('}') {
+                                                        let json_part = &stdout_str[..=brace_idx];
+                                                        let time_part = &stdout_str[brace_idx+1..];
+
+                                                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(json_part) {
+                                                            if json.get("status").and_then(|s| s.as_str()) == Some("success") {
+                                                                success = true;
+                                                                // Calculate ping
+                                                                if let Ok(time_sec) = time_part.trim().parse::<f64>() {
+                                                                    let ms = (time_sec * 1000.0) as u64;
+                                                                    item_clone.set_ping(format!("{} ms", ms));
+                                                                } else {
+                                                                    item_clone.set_ping(format!("{} ms", default_ping_ms));
+                                                                }
+
+                                                                // Set Geodata
+                                                                if let Some(ip) = json.get("query").and_then(|s| s.as_str()) {
+                                                                    item_clone.set_server_info(ip.to_string());
+                                                                }
+                                                                if let Some(country) = json.get("country").and_then(|s| s.as_str()) {
+                                                                    item_clone.set_location(country.to_string());
+                                                                }
+                                                                if let Some(tz) = json.get("timezone").and_then(|s| s.as_str()) {
+                                                                    item_clone.set_timezone(tz.to_string());
                                                                 }
                                                             }
-                                                        });
+                                                        }
                                                     }
-                                                    Err(_) => {
-                                                        item_clone.set_ping("timeout".to_string());
+                                                }
+                                            }
+
+                                            item_clone.set_is_loading(false);
+
+                                            if !success {
+                                                item_clone.set_ping(gettext("timeout"));
+                                                item_clone.set_is_active(false);
+                                                item_clone.set_is_error(true);
+                                                
+                                                if let Some(page) = page_weak_ping.upgrade() {
+                                                    page.imp().start_time.replace(None);
+                                                    page.update_disconnect_action_state();
+                                                    page.imp().window_title.set_subtitle(&gettext("Connection Failed"));
+                                                    
+                                                    let dialog = adw::AlertDialog::builder()
+                                                        .heading(gettext("Connection Timeout"))
+                                                        .body(gettext("The proxy server is unreachable or the connection timed out. Connection aborted."))
+                                                        .build();
+                                                    dialog.add_response("ok", &gettext("OK"));
+                                                    if let Some(root) = page.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
+                                                        dialog.present(Some(&root));
                                                     }
                                                 }
                                             }
@@ -360,6 +462,7 @@ impl VrxxVpnPage {
             }
             active_item.set_is_active(true);
             active_item.set_is_loading(true);
+            active_item.set_is_error(false); // Clear previous errors
             
             // Sync current streamer mode setting
             let current_settings = SettingsManager::new().load();
@@ -377,35 +480,19 @@ impl VrxxVpnPage {
             let app_settings = current_settings; // Use already loaded settings
             
             let config_json = if let Ok(parsed) = crate::key_parser::parse_vpn_key(&active_item.url()) {
-                // Fetch geodata for the active key
-                let host = parsed.host.clone();
-                let item_geo = active_item.clone();
-                glib::spawn_future_local(async move {
-                    if let Ok(addresses) = gio::Resolver::default().lookup_by_name_future(&host).await {
-                        if let Some(addr) = addresses.first() {
-                             item_geo.set_server_info(addr.to_string());
-                             // Simulating location and TZ based on host/IP
-                             if host.ends_with(".nl") || host.contains("amsterdam") {
-                                 item_geo.set_location("Netherlands".to_string());
-                                 item_geo.set_timezone("UTC+1".to_string());
-                             } else if host.ends_with(".de") || host.contains("frankfurt") {
-                                 item_geo.set_location("Germany".to_string());
-                                 item_geo.set_timezone("UTC+1".to_string());
-                             }
-                        }
-                    }
-                });
                 crate::xray_config::build_xray_config(&parsed, &app_settings)
             } else {
                 eprintln!("Failed to parse key for config generation");
                 active_item.set_is_loading(false);
+                active_item.set_is_error(true);
                 return;
             };
 
             let backend = self.imp().backend.borrow();
             if let Err(e) = backend.start(&config_json) {
-                active_item.set_is_active(false);
+                active_item.set_is_active(true); // Keep it "expanded" but show error
                 active_item.set_is_loading(false);
+                active_item.set_is_error(true);
                 self.save_current_keys();
                 self.update_disconnect_action_state();
                 
@@ -418,12 +505,8 @@ impl VrxxVpnPage {
                     dialog.present(Some(&root));
                 }
             } else {
-                // We'll set is_loading to false after a short delay or when metrics start flowing
-                let active_clone = active_item.clone();
-                glib::timeout_add_seconds_local(2, move || {
-                    active_clone.set_is_loading(false);
-                    glib::ControlFlow::Break
-                });
+                // The connection verification in start_metrics_timer will set is_loading(false) 
+                // and handle success/failure state transitions.
             }
         }
     }

@@ -74,34 +74,25 @@ impl XrayBackend {
                 let stdout = child.stdout.take().unwrap();
                 let stderr = child.stderr.take().unwrap();
                 
-                // Spawn a thread to handle logs economically
+                let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
+                std::fs::create_dir_all(&log_dir).ok();
+                let log_path = log_dir.join("core.log");
+
+                // Spawn a thread for stdout
+                let log_path_out = log_path.clone();
                 std::thread::spawn(move || {
-                    let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
-                    std::fs::create_dir_all(&log_dir).ok();
-                    let log_path = log_dir.join("core.log");
-
-                    let mut log_file = std::fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open(&log_path);
-
-                    let mut reader_out = BufReader::new(stdout);
-                    let mut reader_err = BufReader::new(stderr);
+                    let mut log_file = std::fs::OpenOptions::new().create(true).append(true).open(&log_path_out);
+                    let mut reader = BufReader::new(stdout);
                     let mut buffer = String::new();
                     let mut last_flush = std::time::Instant::now();
 
                     loop {
                         let mut line = String::new();
-                        // Non-blocking approach would be better, but for now we alternate
-                        if reader_out.read_line(&mut line).unwrap_or(0) > 0 {
-                            buffer.push_str(&line);
-                        }
-                        line.clear();
-                        if reader_err.read_line(&mut line).unwrap_or(0) > 0 {
+                        let bytes_read = reader.read_line(&mut line).unwrap_or(0);
+                        if bytes_read > 0 {
                             buffer.push_str(&line);
                         }
 
-                        // Flush to disk only every 5 seconds or if buffer is large (> 8KB)
                         if (last_flush.elapsed().as_secs() >= 5 || buffer.len() > 8192) && !buffer.is_empty() {
                             if let Ok(ref mut f) = log_file {
                                 let _ = f.write_all(buffer.as_bytes());
@@ -111,8 +102,52 @@ impl XrayBackend {
                             last_flush = std::time::Instant::now();
                         }
 
-                        if line.is_empty() && buffer.is_empty() {
-                            std::thread::sleep(std::time::Duration::from_millis(100));
+                        if bytes_read == 0 {
+                            // EOF
+                            if let Ok(ref mut f) = log_file {
+                                if !buffer.is_empty() {
+                                    let _ = f.write_all(buffer.as_bytes());
+                                    let _ = f.flush();
+                                }
+                            }
+                            break;
+                        }
+                    }
+                });
+
+                // Spawn a thread for stderr
+                let log_path_err = log_path.clone();
+                std::thread::spawn(move || {
+                    let mut log_file = std::fs::OpenOptions::new().create(true).append(true).open(&log_path_err);
+                    let mut reader = BufReader::new(stderr);
+                    let mut buffer = String::new();
+                    let mut last_flush = std::time::Instant::now();
+
+                    loop {
+                        let mut line = String::new();
+                        let bytes_read = reader.read_line(&mut line).unwrap_or(0);
+                        if bytes_read > 0 {
+                            buffer.push_str(&line);
+                        }
+
+                        if (last_flush.elapsed().as_secs() >= 5 || buffer.len() > 8192) && !buffer.is_empty() {
+                            if let Ok(ref mut f) = log_file {
+                                let _ = f.write_all(buffer.as_bytes());
+                                let _ = f.flush();
+                            }
+                            buffer.clear();
+                            last_flush = std::time::Instant::now();
+                        }
+
+                        if bytes_read == 0 {
+                            // EOF
+                            if let Ok(ref mut f) = log_file {
+                                if !buffer.is_empty() {
+                                    let _ = f.write_all(buffer.as_bytes());
+                                    let _ = f.flush();
+                                }
+                            }
+                            break;
                         }
                     }
                 });
@@ -135,6 +170,18 @@ impl XrayBackend {
             });
         }
         Ok(())
+    }
+
+    pub fn is_running(&self) -> bool {
+        if let Ok(mut process_guard) = self.process.lock() {
+            if let Some(ref mut child) = *process_guard {
+                match child.try_wait() {
+                    Ok(None) => return true, // Still running
+                    _ => return false, // Exited or error
+                }
+            }
+        }
+        false
     }
 }
 
