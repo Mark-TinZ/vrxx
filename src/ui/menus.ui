@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <menu id="primary_menu">
+    <section>
+      <!-- Custom widget slot for Theme Switcher -->
+      <item>
+        <attribute name="custom">theme_switcher</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">_Preferences</attribute>
+        <attribute name="action">app.preferences</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
+        <attribute name="action">app.shortcuts</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_About Vrxx</attribute>
+        <attribute name="action">app.about</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Quit</attribute>
+        <attribute name="action">app.quit</attribute>
+      </item>
+    </section>
+  </menu>
+</interface>

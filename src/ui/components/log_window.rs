@@ -1,0 +1,201 @@
+use adw::subclass::prelude::*;
+use adw::prelude::*;
+use gtk::{glib, gio};
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
+use std::path::PathBuf;
+
+mod imp {
+    use super::*;
+    use std::cell::RefCell;
+
+    #[derive(Debug, Default, gtk::CompositeTemplate)]
+    #[template(string = "
+    <interface>
+      <template class='VrxxLogWindow' parent='AdwWindow'>
+        <property name='title' translatable='yes'>System Logs</property>
+        <property name='default-width'>800</property>
+        <property name='default-height'>500</property>
+        <property name='content'>
+          <object class='AdwToolbarView'>
+            <child type='top'>
+              <object class='AdwHeaderBar'>
+                <property name='title-widget'>
+                  <object class='AdwWindowTitle'>
+                    <property name='title' translatable='yes'>System Logs</property>
+                  </object>
+                </property>
+                <child type='end'>
+                  <object class='GtkButton' id='btn_copy'>
+                    <property name='icon-name'>edit-copy-symbolic</property>
+                    <property name='tooltip-text' translatable='yes'>Copy Logs</property>
+                  </object>
+                </child>
+                <child type='end'>
+                  <object class='GtkButton' id='btn_clear'>
+                    <property name='icon-name'>edit-clear-all-symbolic</property>
+                    <property name='tooltip-text' translatable='yes'>Clear Logs</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <property name='content'>
+              <object class='GtkScrolledWindow' id='scrolled_window'>
+                <property name='child'>
+                  <object class='GtkTextView' id='text_view'>
+                    <property name='editable'>False</property>
+                    <property name='monospace'>True</property>
+                    <property name='left-margin'>12</property>
+                    <property name='right-margin'>12</property>
+                    <property name='top-margin'>12</property>
+                    <property name='bottom-margin'>12</property>
+                    <style>
+                      <class name='view'/>
+                    </style>
+                  </object>
+                </property>
+              </object>
+            </property>
+          </object>
+        </property>
+      </template>
+    </interface>
+    ")]
+    pub struct VrxxLogWindow {
+        #[template_child]
+        pub text_view: TemplateChild<gtk::TextView>,
+        #[template_child]
+        pub scrolled_window: TemplateChild<gtk::ScrolledWindow>,
+        #[template_child]
+        pub btn_copy: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub btn_clear: TemplateChild<gtk::Button>,
+        pub last_pos: RefCell<u64>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for VrxxLogWindow {
+        const NAME: &'static str = "VrxxLogWindow";
+        type Type = super::VrxxLogWindow;
+        type ParentType = adw::Window;
+
+        fn class_init(klass: &mut Self::Class) {
+            klass.bind_template();
+        }
+
+        fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
+            obj.init_template();
+        }
+    }
+
+    impl ObjectImpl for VrxxLogWindow {
+        fn constructed(&self) {
+            self.parent_constructed();
+            let obj = self.obj();
+
+            let buffer = self.text_view.buffer();
+            buffer.create_tag(Some("error"), &[("foreground", &"red"), ("weight", &700)]);
+            buffer.create_tag(Some("warning"), &[("foreground", &"orange")]);
+            buffer.create_tag(Some("debug"), &[("foreground", &"gray")]);
+
+            obj.setup_callbacks();
+            obj.start_log_polling();
+        }
+    }
+    impl WidgetImpl for VrxxLogWindow {}
+    impl WindowImpl for VrxxLogWindow {}
+    impl AdwWindowImpl for VrxxLogWindow {}
+}
+
+glib::wrapper! {
+    pub struct VrxxLogWindow(ObjectSubclass<imp::VrxxLogWindow>)
+        @extends gtk::Widget, gtk::Window, adw::Window;
+}
+
+impl VrxxLogWindow {
+    pub fn new() -> Self {
+        glib::Object::builder().build()
+    }
+
+    fn setup_callbacks(&self) {
+        let window_weak = self.downgrade();
+        
+        self.imp().btn_copy.connect_clicked(move |_| {
+            if let Some(window) = window_weak.upgrade() {
+                let buffer = window.imp().text_view.buffer();
+                let (start, end) = buffer.bounds();
+                let text = buffer.text(&start, &end, false);
+                window.clipboard().set_text(&text);
+            }
+        });
+
+        let window_weak_clear = self.downgrade();
+        self.imp().btn_clear.connect_clicked(move |_| {
+            if let Some(window) = window_weak_clear.upgrade() {
+                let log_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx");
+                let log_path = log_dir.join("core.log");
+                let _ = std::fs::write(log_path, ""); // Truncate file
+                window.imp().text_view.buffer().set_text("");
+            }
+        });
+    }
+
+    fn start_log_polling(&self) {
+        let log_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx");
+        let log_path = log_dir.join("core.log");
+        let window_weak = self.downgrade();
+        
+        glib::timeout_add_local(std::time::Duration::from_millis(500), move || {
+            if let Some(window) = window_weak.upgrade() {
+                let imp = window.imp();
+                if let Ok(mut file) = File::open(&log_path) {
+                    let mut last_pos = *imp.last_pos.borrow();
+                    let metadata = file.metadata().unwrap();
+                    let len = metadata.len();
+
+                    if len < last_pos {
+                        last_pos = 0;
+                        imp.text_view.buffer().set_text("");
+                    }
+
+                    if len > last_pos {
+                        let _ = file.seek(SeekFrom::Start(last_pos));
+                        let mut content = String::new();
+                        let _ = file.read_to_string(&mut content);
+                        
+                        let buffer = imp.text_view.buffer();
+                        let mut iter = buffer.end_iter();
+                        
+                        for line in content.lines() {
+                            let tag_name = if line.contains("ERROR") || line.contains("error") {
+                                Some("error")
+                            } else if line.contains("WARN") || line.contains("warning") {
+                                Some("warning")
+                            } else if line.contains("DEBUG") || line.contains("debug") {
+                                Some("debug")
+                            } else {
+                                None
+                            };
+
+                            let mut line_with_newline = line.to_string();
+                            line_with_newline.push('\n');
+
+                            if let Some(tag) = tag_name {
+                                buffer.insert_with_tags_by_name(&mut iter, &line_with_newline, &[tag]);
+                            } else {
+                                buffer.insert(&mut iter, &line_with_newline);
+                            }
+                        }
+                        
+                        let adj = imp.scrolled_window.vadjustment();
+                        adj.set_value(adj.upper() - adj.page_size());
+                        *imp.last_pos.borrow_mut() = len;
+                    }
+                }
+                glib::ControlFlow::Continue
+            } else {
+                glib::ControlFlow::Break
+            }
+        });
+    }
+}

@@ -6,39 +6,45 @@
       <object class="GtkBox">
         <property name="orientation">vertical</property>
 
-        <!-- Верхняя часть: Имя и Статус -->
         <child>
           <object class="AdwActionRow" id="header_row">
-            <!-- <property name="title" bind-source="VrxxVpnKeyRow" bind-property="key-name" bind-flags="sync-create"/>
-            <property name="subtitle" bind-source="VrxxVpnKeyRow" bind-property="key-protocol" bind-flags="sync-create"/> -->
-
-            <!-- ИЗМЕНЕНИЕ: Используем GtkStack для плавной смены иконки -->
             <child type="prefix">
               <object class="GtkStack" id="icon_stack">
                 <property name="transition-type">crossfade</property>
                 <property name="transition-duration">250</property>
 
-                <!-- Состояние: Неактивен -->
                 <child>
                   <object class="GtkStackPage">
                     <property name="name">inactive</property>
                     <property name="child">
                       <object class="GtkImage">
                         <property name="icon-name">security-low-symbolic</property>
-                        <style><class name="error"/></style> <!-- Красный цвет -->
+                        <style><class name="error"/></style>
                       </object>
                     </property>
                   </object>
                 </child>
 
-                <!-- Состояние: Активен -->
                 <child>
                   <object class="GtkStackPage">
                     <property name="name">active</property>
                     <property name="child">
                       <object class="GtkImage">
                         <property name="icon-name">security-high-symbolic</property>
-                        <style><class name="success"/></style> <!-- Зеленый цвет -->
+                        <style><class name="success"/></style>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkStackPage">
+                    <property name="name">loading</property>
+                    <property name="child">
+                      <object class="GtkSpinner">
+                        <property name="spinning">True</property>
+                        <property name="halign">center</property>
+                        <property name="valign">center</property>
                       </object>
                     </property>
                   </object>
@@ -57,7 +63,6 @@
           </object>
         </child>
 
-        <!-- ИЗМЕНЕНИЕ: Оборачиваем скрываемый контент в GtkRevealer -->
         <child>
           <object class="GtkRevealer" id="details_revealer">
             <property name="transition-type">slide-down</property>
@@ -68,14 +73,12 @@
               <object class="GtkBox">
                 <property name="orientation">vertical</property>
 
-                <!-- Разделитель -->
                 <child>
                   <object class="GtkSeparator">
                      <style><class name="spacer"/></style>
                   </object>
                 </child>
 
-                <!-- Статистика -->
                 <child>
                   <object class="GtkGrid">
                     <property name="margin-top">12</property>
@@ -121,10 +124,16 @@
                         <property name="spacing">12</property>
                         <child><object class="GtkImage"><property name="icon-name">network-transmit-receive-symbolic</property><style><class name="dim-label"/></style></object></child>
                         <child><object class="GtkLabel" id="lbl_ping"><property name="label">0 ms</property><style><class name="dim-label"/></style></object></child>
+                        <child>
+                          <object class="GtkButton" id="btn_refresh_ping">
+                            <property name="icon-name">view-refresh-symbolic</property>
+                            <style><class name="flat"/><class name="circular"/></style>
+                            <property name="tooltip-text" translatable="yes">Refresh Ping</property>
+                          </object>
+                        </child>
                         <layout><property name="column">1</property><property name="row">1</property></layout>
                       </object>
                     </child>
-
                   </object>
                 </child>
               </object>
@@ -139,8 +148,20 @@
   <menu id="key_menu">
     <section>
       <item>
+        <attribute name="label" translatable="yes">_Info</attribute>
+        <attribute name="action">row.key_info</attribute>
+      </item>
+      <item>
         <attribute name="label" translatable="yes">_Edit</attribute>
         <attribute name="action">row.key_edit</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Copy _Link</attribute>
+        <attribute name="action">row.key_copy_link</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Copy _JSON</attribute>
+        <attribute name="action">row.key_copy_json</attribute>
       </item>
       <item>
         <attribute name="label" translatable="yes">_Duplicate</attribute>

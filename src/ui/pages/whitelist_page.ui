@@ -13,7 +13,6 @@
                 </object>
             </property>
 
-            <!-- Кнопка добавить домен -->
             <child type="start">
                <object class="GtkButton" id="btn_add">
                  <property name="icon-name">list-add-symbolic</property>
@@ -21,25 +20,55 @@
                  <property name="tooltip-text" translatable="yes">Добавить домен</property>
                </object>
             </child>
+            
+            <child type="start">
+               <object class="GtkButton" id="btn_clear">
+                 <property name="icon-name">edit-clear-all-symbolic</property>
+                 <property name="action-name">whitelist.clear</property>
+                 <property name="tooltip-text" translatable="yes">Очистить список</property>
+               </object>
+            </child>
 
-             <child type="end">
-              <object class="GtkMenuButton">
+            <child type="end">
+              <object class="GtkMenuButton" id="primary_menu_btn">
                 <property name="icon-name">open-menu-symbolic</property>
-                <property name="menu-model">primary_menu</property>
+                <property name="primary">True</property>
               </object>
             </child>
+            
+            <child type="end">
+              <object class="GtkMenuButton" id="export_import_menu_btn">
+                <property name="icon-name">document-save-symbolic</property>
+                <property name="tooltip-text" translatable="yes">Экспорт / Импорт</property>
+                <property name="menu-model">export_import_menu</property>
+              </object>
+            </child>
+
           </object>
         </child>
 
         <!-- CONTENT -->
         <property name="content">
           <object class="AdwPreferencesPage">
+          
+            <child>
+              <object class="AdwClamp">
+                <property name="maximum-size">400</property>
+                <child>
+                  <object class="GtkSearchEntry" id="search_entry">
+                    <property name="placeholder-text" translatable="yes">Поиск домена или правила (e.g. domain:vk.com, *.org)...</property>
+                    <property name="margin-top">10</property>
+                    <property name="margin-bottom">10</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
             <!-- Группа: режим -->
             <child>
               <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes"></property> <!-- Пустой заголовок для отступа -->
                 <child>
-                  <object class="AdwComboRow">
+                  <object class="AdwComboRow" id="mode_row">
                     <property name="title" translatable="yes">Режим</property>
                     <property name="model">
                       <object class="GtkStringList">
@@ -58,7 +87,7 @@
             <!-- Список доменов -->
             <child>
               <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">Домены</property>
+                <property name="title" translatable="yes">Домены и IP адреса</property>
                 <child>
                   <object class="GtkListBox" id="domains_list">
                     <property name="selection-mode">none</property>
@@ -78,23 +107,16 @@
       </object>
     </property>
   </template>
-  <menu id="primary_menu">
+  
+  <menu id="export_import_menu">
     <section>
       <item>
-        <attribute name="label" translatable="yes">_Preferences</attribute>
-        <attribute name="action">app.preferences</attribute>
+        <attribute name="label" translatable="yes">Импорт из файла...</attribute>
+        <attribute name="action">whitelist.import</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
-        <attribute name="action">app.shortcuts</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_About Vrxx</attribute>
-        <attribute name="action">app.about</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_Quit</attribute>
-        <attribute name="action">app.quit</attribute>
+        <attribute name="label" translatable="yes">Экспорт в файл...</attribute>
+        <attribute name="action">whitelist.export</attribute>
       </item>
     </section>
   </menu>

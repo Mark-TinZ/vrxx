@@ -13,24 +13,40 @@ mod application;
 mod config;
 mod window;
 mod ui;
+mod backend;
+mod settings;
+mod protocol;
+mod key_parser;
+mod xray_config;
 
 use self::application::VrxxApplication;
-use config::{GETTEXT_PACKAGE, LOCALEDIR, PKGDATADIR};
-use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
+use config::{GETTEXT_PACKAGE, LOCALEDIR};
+use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain, setlocale, LocaleCategory};
 use gtk::{gio, glib};
 use gtk::prelude::*;
 
 fn main() -> glib::ExitCode {
+    // Override language if set in settings
+    let manager = settings::SettingsManager::new();
+    let app_settings = manager.load();
+    if app_settings.language != "system" {
+        std::env::set_var("LANGUAGE", &app_settings.language);
+        std::env::set_var("LANG", &app_settings.language);
+        std::env::set_var("LC_ALL", &app_settings.language);
+    }
+
     // Set up gettext translations
+    setlocale(LocaleCategory::LcAll, "");
     bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR).expect("Unable to bind the text domain");
     bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8")
         .expect("Unable to set the text domain encoding");
     textdomain(GETTEXT_PACKAGE).expect("Unable to switch to the text domain");
 
-    // Load resources
-    let resources = gio::Resource::load(PKGDATADIR.to_owned() + "/vrxx.gresource")
-        .expect("Could not load resources");
-    gio::resources_register(&resources);
+    // Load resources compiled into the binary
+    let res_data = include_bytes!(concat!(env!("OUT_DIR"), "/vrxx.gresource"));
+    let res = gio::Resource::from_data(&glib::Bytes::from(res_data))
+        .expect("Failed to load compiled resources");
+    gio::resources_register(&res);
 
     // Create a new GtkApplication. The application manages our main loop,
     // application windows, integration with the window manager/compositor, and

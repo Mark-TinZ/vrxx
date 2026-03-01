@@ -4,19 +4,17 @@ use crate::ui::models::VpnKeyObject;
 mod imp {
     use super::*;
     use std::cell::RefCell;
+    use std::sync::OnceLock;
 
     #[derive(Debug, Default, CompositeTemplate)]
     #[template(resource = "/ru/mark/vrxx/ui/components/vpn_key_row.ui")]
     pub struct VrxxVpnKeyRow {
         #[template_child]
         pub header_row: TemplateChild<adw::ActionRow>,
-
-        // ИЗМЕНЕНИЕ: Новые виджеты для анимации
         #[template_child]
         pub icon_stack: TemplateChild<gtk::Stack>,
         #[template_child]
         pub details_revealer: TemplateChild<gtk::Revealer>,
-
         #[template_child]
         pub lbl_down: TemplateChild<gtk::Label>,
         #[template_child]
@@ -25,6 +23,8 @@ mod imp {
         pub lbl_time: TemplateChild<gtk::Label>,
         #[template_child]
         pub lbl_ping: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub btn_refresh_ping: TemplateChild<gtk::Button>,
 
         pub item: RefCell<Option<VpnKeyObject>>,
     }
@@ -45,9 +45,25 @@ mod imp {
     }
 
     impl ObjectImpl for VrxxVpnKeyRow {
+        fn signals() -> &'static [glib::subclass::Signal] {
+            static SIGNALS: OnceLock<Vec<glib::subclass::Signal>> = OnceLock::new();
+            SIGNALS.get_or_init(|| {
+                vec![
+                    glib::subclass::Signal::builder("request-edit").build(),
+                    glib::subclass::Signal::builder("request-info").build(),
+                    glib::subclass::Signal::builder("request-duplicate").build(),
+                    glib::subclass::Signal::builder("request-delete").build(),
+                    glib::subclass::Signal::builder("request-copy-link").build(),
+                    glib::subclass::Signal::builder("request-copy-json").build(),
+                    glib::subclass::Signal::builder("request-ping").build(),
+                ]
+            })
+        }
+
         fn constructed(&self) {
             self.parent_constructed();
             self.obj().setup_actions();
+            self.obj().setup_callbacks();
         }
     }
     impl WidgetImpl for VrxxVpnKeyRow {}
@@ -85,25 +101,41 @@ impl VrxxVpnKeyRow {
                 Some(r) => r,
                 None => return,
             };
-            row.update_visual_state(item.is_active());
+            row.update_visual_state(item.is_active(), item.is_loading());
         });
 
-        self.update_visual_state(item.is_active());
+        let row_weak_loading = self.downgrade();
+        item.connect_is_loading_notify(move |item| {
+            let row = match row_weak_loading.upgrade() {
+                Some(r) => r,
+                None => return,
+            };
+            row.update_visual_state(item.is_active(), item.is_loading());
+        });
+
+        self.update_visual_state(item.is_active(), item.is_loading());
     }
 
     pub fn item(&self) -> Option<VpnKeyObject> {
         self.imp().item.borrow().clone()
     }
 
-    // ИЗМЕНЕНИЕ: Обновляем состояние через анимацию
-    fn update_visual_state(&self, is_active: bool) {
+    fn setup_callbacks(&self) {
+        let row_weak = self.downgrade();
+        self.imp().btn_refresh_ping.connect_clicked(move |_| {
+            if let Some(row) = row_weak.upgrade() {
+                row.emit_by_name::<()>("request-ping", &[]);
+            }
+        });
+    }
+
+    fn update_visual_state(&self, is_active: bool, is_loading: bool) {
         let imp = self.imp();
-
-        // 1. Анимация раскрытия списка (плавный слайд вниз)
         imp.details_revealer.set_reveal_child(is_active);
-
-        // 2. Анимация смены иконки (плавный crossfade)
-        if is_active {
+        
+        if is_loading {
+            imp.icon_stack.set_visible_child_name("loading");
+        } else if is_active {
             imp.icon_stack.set_visible_child_name("active");
         } else {
             imp.icon_stack.set_visible_child_name("inactive");
@@ -112,18 +144,68 @@ impl VrxxVpnKeyRow {
 
     fn setup_actions(&self) {
         let action_group = gio::SimpleActionGroup::new();
+
+        // Action: Info
+        let info_action = gio::SimpleAction::new("key_info", None);
+        let row_weak_info = self.downgrade();
+        info_action.connect_activate(move |_, _| {
+            if let Some(row) = row_weak_info.upgrade() {
+                row.emit_by_name::<()>("request-info", &[]);
+            }
+        });
+        action_group.add_action(&info_action);
+
+        // Action: Delete
         let delete_action = gio::SimpleAction::new("delete", None);
         let row_weak = self.downgrade();
         delete_action.connect_activate(move |_, _| {
-             let row = match row_weak.upgrade() {
-                 Some(r) => r,
-                 None => return,
-             };
-             if let Some(item) = row.item() {
-                println!("Request delete for: {}", item.name());
+            if let Some(row) = row_weak.upgrade() {
+                row.emit_by_name::<()>("request-delete", &[]);
             }
         });
         action_group.add_action(&delete_action);
+
+        // Action: Edit
+        let edit_action = gio::SimpleAction::new("key_edit", None);
+        let row_weak = self.downgrade();
+        edit_action.connect_activate(move |_, _| {
+            if let Some(row) = row_weak.upgrade() {
+                row.emit_by_name::<()>("request-edit", &[]);
+            }
+        });
+        action_group.add_action(&edit_action);
+
+        // Action: Duplicate
+        let dup_action = gio::SimpleAction::new("key_duplicate", None);
+        let row_weak = self.downgrade();
+        dup_action.connect_activate(move |_, _| {
+            if let Some(row) = row_weak.upgrade() {
+                row.emit_by_name::<()>("request-duplicate", &[]);
+            }
+        });
+        action_group.add_action(&dup_action);
+
+        // Action: Copy Link
+        let copy_link_action = gio::SimpleAction::new("key_copy_link", None);
+        let row_weak = self.downgrade();
+        copy_link_action.connect_activate(move |_, _| {
+            if let Some(row) = row_weak.upgrade() {
+                row.emit_by_name::<()>("request-copy-link", &[]);
+            }
+        });
+        action_group.add_action(&copy_link_action);
+
+        // Action: Copy JSON
+        let copy_json_action = gio::SimpleAction::new("key_copy_json", None);
+        let row_weak = self.downgrade();
+        copy_json_action.connect_activate(move |_, _| {
+            if let Some(row) = row_weak.upgrade() {
+                row.emit_by_name::<()>("request-copy-json", &[]);
+            }
+        });
+        action_group.add_action(&copy_json_action);
+
         self.insert_action_group("row", Some(&action_group));
     }
 }
+

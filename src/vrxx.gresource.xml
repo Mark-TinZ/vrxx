@@ -3,6 +3,7 @@
   <gresource prefix="/ru/mark/vrxx">
     <file preprocess="xml-stripblanks">window.ui</file>
     <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
+    <file preprocess="xml-stripblanks">ui/menus.ui</file>
 
     <!-- Страницы интерфейса -->
     <file preprocess="xml-stripblanks">ui/pages/vpn_page.ui</file>
@@ -12,6 +13,7 @@
 
     <!-- Компоненты -->
     <file preprocess="xml-stripblanks">ui/components/vpn_key_row.ui</file>
+    <file preprocess="xml-stripblanks">ui/components/theme_switcher.ui</file>
 
      <!-- Иконки -->
     <file alias="icons/scalable/actions/key5-symbolic.svg">../data/icons/custom/symbolic/actions/key5-symbolic.svg</file>

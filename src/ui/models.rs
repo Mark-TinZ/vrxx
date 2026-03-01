@@ -16,6 +16,8 @@ mod imp_vpn {
         #[property(get, set)]
         pub is_active: RefCell<bool>,
         #[property(get, set)]
+        pub is_loading: RefCell<bool>,
+        #[property(get, set)]
         pub traffic_down: RefCell<String>,
         #[property(get, set)]
         pub traffic_up: RefCell<String>,
@@ -23,6 +25,16 @@ mod imp_vpn {
         pub time_connected: RefCell<String>,
         #[property(get, set)]
         pub ping: RefCell<String>,
+        #[property(get, set)]
+        pub server_info: RefCell<String>,
+        #[property(get, set)]
+        pub location: RefCell<String>,
+        #[property(get, set)]
+        pub timezone: RefCell<String>,
+        #[property(get, set)]
+        pub hide_ip: RefCell<bool>,
+        #[property(get, set)]
+        pub url: RefCell<String>,
     }
 
     #[glib::object_subclass]
@@ -64,7 +76,7 @@ glib::wrapper! {
 }
 
 impl VpnKeyObject {
-    pub fn new(name: &str, protocol: &str, active: bool) -> Self {
+    pub fn new(name: &str, protocol: &str, active: bool, url: &str) -> Self {
         glib::Object::builder()
             .property("name", name)
             .property("protocol", protocol)
@@ -73,6 +85,11 @@ impl VpnKeyObject {
             .property("traffic-up", "0.0 MB")
             .property("time-connected", "00:00:00")
             .property("ping", "0 ms")
+            .property("server-info", "0.0.0.0")
+            .property("location", "Unknown")
+            .property("timezone", "UTC")
+            .property("hide-ip", false)
+            .property("url", url)
             .build()
     }
 }

@@ -1,10 +1,12 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{gio, glib, CompositeTemplate}; // Removed prelude::*
+use gtk::{gio, glib, CompositeTemplate};
+use gettextrs::gettext;
 
-// Импортируем модель и компонент строки
 use crate::ui::models::VpnKeyObject;
 use crate::ui::components::vpn_key_row::VrxxVpnKeyRow;
+use crate::ui::setup_primary_menu;
+use crate::settings::{SettingsManager, VpnKeyData};
 
 mod imp {
     use super::*;
@@ -15,13 +17,19 @@ mod imp {
     pub struct VrxxVpnPage {
         #[template_child]
         pub keys_list: TemplateChild<gtk::ListBox>,
-
-        // ДОБАВЛЯЕМ ЭТО ПОЛЕ:
         #[template_child]
         pub window_title: TemplateChild<adw::WindowTitle>,
 
-        // ДОБАВЛЕНО: Поле для хранения модели данных
+        #[template_child]
+        pub primary_menu_btn: TemplateChild<gtk::MenuButton>,
+
         pub model: RefCell<Option<gio::ListStore>>,
+        pub backend: RefCell<crate::backend::XrayBackend>,
+        pub action_group: RefCell<Option<gio::SimpleActionGroup>>,
+        
+        pub start_time: RefCell<Option<std::time::Instant>>,
+        pub bytes_down: RefCell<u64>,
+        pub bytes_up: RefCell<u64>,
     }
 
     #[glib::object_subclass]
@@ -31,8 +39,8 @@ mod imp {
         type ParentType = adw::Bin;
 
         fn class_init(klass: &mut Self::Class) {
-            // Регистрируем тип строки, чтобы GtkBuilder его увидел
             VrxxVpnKeyRow::static_type();
+            adw::WindowTitle::static_type();
             klass.bind_template();
         }
 
@@ -44,9 +52,16 @@ mod imp {
     impl ObjectImpl for VrxxVpnPage {
         fn constructed(&self) {
             self.parent_constructed();
+            
+            // Initialize backend
+            self.backend.replace(crate::backend::XrayBackend::new());
+
             self.obj().setup_model();
             self.obj().setup_actions();
             self.obj().setup_callbacks();
+            self.obj().start_metrics_timer();
+
+            setup_primary_menu(&self.primary_menu_btn.get());
         }
     }
     impl WidgetImpl for VrxxVpnPage {}
@@ -67,58 +82,270 @@ impl VrxxVpnPage {
     fn setup_model(&self) {
         let model = gio::ListStore::new::<VpnKeyObject>();
 
-        // Тестовые данные
-        let key1 = VpnKeyObject::new("Mark-Vless", "VLESS+Reality", true);
-        key1.set_traffic_down("120.4 MB");
-        key1.set_ping("25 ms");
+        let settings = SettingsManager::new();
+        let saved_keys = settings.load_keys();
 
-        let key2 = VpnKeyObject::new("Wumt-Vless", "VMess", false);
+        if saved_keys.is_empty() {
+            // Init test data
+            let key1 = VpnKeyObject::new("Mark-Vless", "VLESS+Reality", true, "vless://uuid@host:443?security=reality");
+            key1.set_traffic_down("120.4 MB");
+            key1.set_ping("25 ms");
+            let key2 = VpnKeyObject::new("Wumt-Vless", "VMess", false, "vmess://...");
+            let key3 = VpnKeyObject::new("Eleon-Vless", "VMess", false, "vmess://...");
+            key3.set_traffic_down("560.2 MB");
+            key3.set_traffic_up("205.9 MB");
+            key3.set_time_connected("00:50:25");
+            key3.set_ping("105 ms");
 
-        let key3 = VpnKeyObject::new("Eleon-Vless", "VMess", false);
-        key3.set_traffic_down("560.2 MB");
-        key3.set_traffic_up("205.9 MB");
-        key3.set_time_connected("00:50:25");
-        key3.set_ping("105 ms");
-
-
-        model.append(&key1);
-        model.append(&key2);
-        model.append(&key3);
+            model.append(&key1);
+            model.append(&key2);
+            model.append(&key3);
+        } else {
+            let streamer_mode = settings.load().streamer_mode;
+            for k in saved_keys {
+                let key_obj = VpnKeyObject::new(&k.name, &k.protocol, k.is_active, &k.url);
+                key_obj.set_traffic_down(k.traffic_down);
+                key_obj.set_traffic_up(k.traffic_up);
+                key_obj.set_time_connected(k.time_connected);
+                key_obj.set_ping(k.ping);
+                key_obj.set_location(k.location);
+                key_obj.set_timezone(k.timezone);
+                key_obj.set_hide_ip(streamer_mode);
+                model.append(&key_obj);
+            }
+        }
 
         self.imp().model.replace(Some(model.clone()));
 
+        // Bind model to ListBox
+        let page_weak = self.downgrade();
         self.imp().keys_list.bind_model(Some(&model), move |item| {
-            let key_obj = item.downcast_ref::<VpnKeyObject>().unwrap();
+            let key_obj = item.downcast_ref::<VpnKeyObject>().expect("Item should be a VpnKeyObject");
             let row = VrxxVpnKeyRow::new();
             row.bind(key_obj);
+
+            // === Connect Signals from Row ===
+
+            // Handle Edit
+            let page_weak_edit = page_weak.clone();
+            let key_obj_edit = key_obj.clone();
+            row.connect_local("request-edit", false, move |_| {
+                if let Some(page) = page_weak_edit.upgrade() {
+                    page.handle_edit_key(&key_obj_edit);
+                }
+                None
+            });
+
+            // Handle Info
+            let page_weak_info = page_weak.clone();
+            let key_obj_info = key_obj.clone();
+            row.connect_local("request-info", false, move |_| {
+                if let Some(page) = page_weak_info.upgrade() {
+                    page.handle_info_key(&key_obj_info);
+                }
+                None
+            });
+
+            // Handle Duplicate
+            let page_weak_dup = page_weak.clone();
+            let key_obj_dup = key_obj.clone();
+            row.connect_local("request-duplicate", false, move |_| {
+                if let Some(page) = page_weak_dup.upgrade() {
+                    page.handle_duplicate_key(&key_obj_dup);
+                }
+                None
+            });
+
+            // Handle Copy Link
+            let page_weak_cl = page_weak.clone();
+            let key_obj_cl = key_obj.clone();
+            row.connect_local("request-copy-link", false, move |_| {
+                if let Some(page) = page_weak_cl.upgrade() {
+                    let clipboard = page.clipboard();
+                    clipboard.set_text(&key_obj_cl.url());
+                }
+                None
+            });
+
+            // Handle Copy JSON
+            let page_weak_cj = page_weak.clone();
+            let key_obj_cj = key_obj.clone();
+            row.connect_local("request-copy-json", false, move |_| {
+                if let Some(page) = page_weak_cj.upgrade() {
+                    let url = key_obj_cj.url();
+                    if let Ok(parsed) = crate::key_parser::parse_vpn_key(&url) {
+                        if let Ok(json_str) = serde_json::to_string_pretty(&parsed) {
+                            let clipboard = page.clipboard();
+                            clipboard.set_text(&json_str);
+                        }
+                    }
+                }
+                None
+            });
+
+            // Handle Delete
+            let page_weak_del = page_weak.clone();
+            let key_obj_del = key_obj.clone();
+            row.connect_local("request-delete", false, move |_| {
+                if let Some(page) = page_weak_del.upgrade() {
+                    page.handle_delete_key(&key_obj_del);
+                }
+                None
+            });
+
+            // Handle Manual Ping
+            let key_obj_ping = key_obj.clone();
+            row.connect_local("request-ping", false, move |_| {
+                let url = key_obj_ping.url();
+                let item_clone = key_obj_ping.clone();
+                item_clone.set_ping(gettext("pinging..."));
+                item_clone.set_is_loading(true);
+                
+                glib::spawn_future_local(async move {
+                    if let Ok(parsed) = crate::key_parser::parse_vpn_key(&url) {
+                        use gtk::gio;
+                        use gtk::prelude::*;
+                        let client = gio::SocketClient::new();
+                        client.set_timeout(5); // 5 seconds timeout for manual
+                        
+                        let start_ping = std::time::Instant::now();
+                        let host_clone = parsed.host.clone();
+                        match client.connect_to_host_future(&parsed.host, parsed.port).await {
+                            Ok(_) => {
+                                item_clone.set_ping(format!("{} ms", start_ping.elapsed().as_millis()));
+                                item_clone.set_is_loading(false);
+                                
+                                // Fetch GeoIP info for the host
+                                let item_geo = item_clone.clone();
+                                glib::spawn_future_local(async move {
+                                    // In a real app, you'd use a proper DNS resolver or HTTP client.
+                                    // For now, let's simulate a GeoIP lookup.
+                                    // We could use gio::Resolver to get IP.
+                                    if let Ok(addresses) = gio::Resolver::default().lookup_by_name_future(&host_clone).await {
+                                        if let Some(addr) = addresses.first() {
+                                            let ip = addr.to_string();
+                                            // Mock country for now or use a public API if allowed
+                                            item_geo.set_server_info(format!("Unknown ({})", ip));
+                                        }
+                                    }
+                                });
+                            }
+                            Err(_) => {
+                                item_clone.set_ping(gettext("timeout"));
+                                item_clone.set_is_loading(false);
+                            }
+                        }
+                    } else {
+                        item_clone.set_is_loading(false);
+                    }
+                });
+                None
+            });
+
             row.upcast::<gtk::Widget>()
         });
     }
 
     fn setup_callbacks(&self) {
         let imp = self.imp();
-
         let page_weak = self.downgrade();
+
         imp.keys_list.connect_row_activated(move |_, row| {
             let page = match page_weak.upgrade() {
                 Some(p) => p,
                 None => return,
             };
-            // ИСПРАВЛЕНИЕ 1: Клонируем row перед downcast, так как row здесь ссылка
             if let Ok(key_row) = row.clone().downcast::<VrxxVpnKeyRow>() {
                 if let Some(selected_item) = key_row.item() {
-                    // 1. Обновляем активный ключ в модели
                     page.set_active_key(&selected_item);
-
-                    // 2. Формируем строку
-                    let new_subtitle = format!("{} Подключено", selected_item.name());
-
-                    // 3. Обращаемся к виджету заголовка через imp()
+                    let connected_text = gettext("Connected");
+                    let new_subtitle = format!("{} {}", selected_item.name(), connected_text);
                     page.imp().window_title.set_subtitle(&new_subtitle);
-
-                    println!("Выбран ключ: {}", selected_item.name());
+                    println!("Selected key: {}", selected_item.name());
                 }
             }
+        });
+    }
+
+    fn start_metrics_timer(&self) {
+        let page_weak = self.downgrade();
+        glib::timeout_add_seconds_local(1, move || {
+            if let Some(page) = page_weak.upgrade() {
+                let imp = page.imp();
+                let start_time = *imp.start_time.borrow();
+                
+                if let Some(start) = start_time {
+                    // Update the active item
+                    if let Some(model) = imp.model.borrow().as_ref() {
+                        for i in 0..model.n_items() {
+                            if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                                if item.is_active() {
+                                    let elapsed = start.elapsed().as_secs();
+                                    let hours = elapsed / 3600;
+                                    let mins = (elapsed % 3600) / 60;
+                                    let secs = elapsed % 60;
+                                    item.set_time_connected(format!("{:02}:{:02}:{:02}", hours, mins, secs));
+
+                                    // Try to read real traffic from tun0 if tun mode is enabled
+                                    if let Ok(rx_str) = std::fs::read_to_string("/sys/class/net/tun0/statistics/rx_bytes") {
+                                        if let Ok(rx) = rx_str.trim().parse::<u64>() {
+                                            item.set_traffic_down(format!("{:.1} MB", rx as f64 / 1_048_576.0));
+                                        }
+                                    } else {
+                                        item.set_traffic_down("0.0 MB".to_string());
+                                    }
+
+                                    if let Ok(tx_str) = std::fs::read_to_string("/sys/class/net/tun0/statistics/tx_bytes") {
+                                        if let Ok(tx) = tx_str.trim().parse::<u64>() {
+                                            item.set_traffic_up(format!("{:.1} MB", tx as f64 / 1_048_576.0));
+                                        }
+                                    } else {
+                                        item.set_traffic_up("0.0 MB".to_string());
+                                    }
+
+                                    // Run real ping asynchronously so we don't block the UI
+                                    if elapsed % 60 == 0 { // Ping every 60 seconds
+                                        let url = item.url();
+                                        let item_clone = item.clone();
+                                        
+                                        glib::spawn_future_local(async move {
+                                            if let Ok(parsed) = crate::key_parser::parse_vpn_key(&url) {
+                                                use gtk::gio;
+                                                use gtk::prelude::*;
+                                                let client = gio::SocketClient::new();
+                                                client.set_timeout(2); // 2 seconds timeout
+                                                
+                                                let start_ping = std::time::Instant::now();
+                                                let host_clone = parsed.host.clone();
+                                                match client.connect_to_host_future(&parsed.host, parsed.port).await {
+                                                    Ok(_) => {
+                                                        item_clone.set_ping(format!("{} ms", start_ping.elapsed().as_millis()));
+                                                        
+                                                        // Update IP info
+                                                        let item_geo = item_clone.clone();
+                                                        glib::spawn_future_local(async move {
+                                                            if let Ok(addresses) = gio::Resolver::default().lookup_by_name_future(&host_clone).await {
+                                                                if let Some(addr) = addresses.first() {
+                                                                    item_geo.set_server_info(format!("Server: {}", addr.to_string()));
+                                                                }
+                                                            }
+                                                        });
+                                                    }
+                                                    Err(_) => {
+                                                        item_clone.set_ping("timeout".to_string());
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            glib::ControlFlow::Continue
         });
     }
 
@@ -126,73 +353,458 @@ impl VrxxVpnPage {
         if let Some(model) = self.imp().model.borrow().as_ref() {
             for i in 0..model.n_items() {
                 if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
-                    let is_target = item.name() == active_item.name();
-                    item.set_is_active(is_target);
+                    if item.is_active() && item.name() != active_item.name() {
+                        item.set_is_active(false);
+                    }
                 }
+            }
+            active_item.set_is_active(true);
+            active_item.set_is_loading(true);
+            
+            // Sync current streamer mode setting
+            let current_settings = SettingsManager::new().load();
+            active_item.set_hide_ip(current_settings.streamer_mode);
+            
+            self.save_current_keys();
+            self.update_disconnect_action_state();
+
+            // Reset metrics
+            self.imp().start_time.replace(Some(std::time::Instant::now()));
+            *self.imp().bytes_down.borrow_mut() = 0;
+            *self.imp().bytes_up.borrow_mut() = 0;
+
+            // Setup real configuration
+            let app_settings = current_settings; // Use already loaded settings
+            
+            let config_json = if let Ok(parsed) = crate::key_parser::parse_vpn_key(&active_item.url()) {
+                // Fetch geodata for the active key
+                let host = parsed.host.clone();
+                let item_geo = active_item.clone();
+                glib::spawn_future_local(async move {
+                    if let Ok(addresses) = gio::Resolver::default().lookup_by_name_future(&host).await {
+                        if let Some(addr) = addresses.first() {
+                             item_geo.set_server_info(addr.to_string());
+                             // Simulating location and TZ based on host/IP
+                             if host.ends_with(".nl") || host.contains("amsterdam") {
+                                 item_geo.set_location("Netherlands".to_string());
+                                 item_geo.set_timezone("UTC+1".to_string());
+                             } else if host.ends_with(".de") || host.contains("frankfurt") {
+                                 item_geo.set_location("Germany".to_string());
+                                 item_geo.set_timezone("UTC+1".to_string());
+                             }
+                        }
+                    }
+                });
+                crate::xray_config::build_xray_config(&parsed, &app_settings)
+            } else {
+                eprintln!("Failed to parse key for config generation");
+                active_item.set_is_loading(false);
+                return;
+            };
+
+            let backend = self.imp().backend.borrow();
+            if let Err(e) = backend.start(&config_json) {
+                active_item.set_is_active(false);
+                active_item.set_is_loading(false);
+                self.save_current_keys();
+                self.update_disconnect_action_state();
+                
+                let dialog = adw::AlertDialog::builder()
+                    .heading(gettext("Connection Error"))
+                    .body(&e)
+                    .build();
+                dialog.add_response("ok", &gettext("OK"));
+                if let Some(root) = self.root() {
+                    dialog.present(Some(&root));
+                }
+            } else {
+                // We'll set is_loading to false after a short delay or when metrics start flowing
+                let active_clone = active_item.clone();
+                glib::timeout_add_seconds_local(2, move || {
+                    active_clone.set_is_loading(false);
+                    glib::ControlFlow::Break
+                });
+            }
+        }
+    }
+
+    fn save_current_keys(&self) {
+        if let Some(model) = self.imp().model.borrow().as_ref() {
+            let mut data = Vec::new();
+            for i in 0..model.n_items() {
+                if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                    data.push(VpnKeyData {
+                        name: item.name(),
+                        protocol: item.protocol(),
+                        is_active: item.is_active(),
+                        traffic_down: item.traffic_down(),
+                        traffic_up: item.traffic_up(),
+                        time_connected: item.time_connected(),
+                        ping: item.ping(),
+                        location: item.location(),
+                        timezone: item.timezone(),
+                        url: item.url(),
+                    });
+                }
+            }
+            SettingsManager::new().save_keys(&data);
+        }
+    }
+
+    // Logic for showing key info
+    fn handle_info_key(&self, key: &VpnKeyObject) {
+        let display_ip = if key.hide_ip() {
+            "***.***.***.***".to_string()
+        } else {
+            key.server_info()
+        };
+
+        let body = format!(
+            "<b>{}</b>: {}\n<b>{}</b>: {}\n<b>{}</b>: {}\n<b>{}</b>: {}",
+            gettext("Server Address"), display_ip,
+            gettext("Location"), key.location(),
+            gettext("Timezone"), key.timezone(),
+            gettext("Protocol"), key.protocol()
+        );
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(key.name())
+            .body(&body)
+            .body_use_markup(true)
+            .build();
+        
+        dialog.add_response("close", &gettext("Close"));
+        dialog.set_close_response("close");
+
+        if let Some(root) = self.root().and_downcast::<gtk::Window>() {
+            dialog.present(Some(&root));
+        }
+    }
+
+    // Logic for editing a key
+    fn handle_edit_key(&self, key: &VpnKeyObject) {
+        let page_weak = self.downgrade();
+        let key_obj_clone = key.clone();
+        let key_url = key.url();
+
+        let parsed = match crate::key_parser::parse_vpn_key(&key_url) {
+            Ok(p) => p,
+            Err(_) => return, // Fail silently or show error
+        };
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Edit VPN Key"))
+            .build();
+        
+        let name_row = adw::EntryRow::builder().title(gettext("Name")).text(&parsed.name).build();
+        let protocol_row = adw::EntryRow::builder().title(gettext("Protocol")).text(&parsed.protocol).build();
+        let host_row = adw::EntryRow::builder().title(gettext("Server Address")).text(&parsed.host).build();
+        let port_row = adw::EntryRow::builder().title(gettext("Port")).text(&parsed.port.to_string()).build();
+        let uuid_row = adw::EntryRow::builder().title(gettext("UUID / Password")).text(&parsed.uuid).build();
+
+        let list_box = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::None)
+            .css_classes(["boxed-list"])
+            .build();
+        
+        list_box.append(&name_row);
+        list_box.append(&protocol_row);
+        list_box.append(&host_row);
+        list_box.append(&port_row);
+        list_box.append(&uuid_row);
+
+        let clamp = adw::Clamp::builder()
+            .maximum_size(450)
+            .tightening_threshold(300)
+            .child(&list_box)
+            .build();
+        
+        clamp.set_margin_top(12);
+        clamp.set_margin_bottom(12);
+        clamp.set_margin_start(12);
+        clamp.set_margin_end(12);
+
+        dialog.set_extra_child(Some(&clamp));
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("save", &gettext("Save"));
+        dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
+        dialog.set_default_response(Some("save"));
+        dialog.set_close_response("cancel");
+        
+        let parsed_clone = parsed.clone();
+        let name_row_clone = name_row.clone();
+        let protocol_row_clone = protocol_row.clone();
+        let host_row_clone = host_row.clone();
+        let port_row_clone = port_row.clone();
+        let uuid_row_clone = uuid_row.clone();
+
+        dialog.connect_response(None, move |_, response| {
+            if response == "save" {
+                if let Some(page) = page_weak.upgrade() {
+                    let mut p = parsed_clone.clone();
+                    p.name = name_row_clone.text().to_string();
+                    p.protocol = protocol_row_clone.text().to_string();
+                    p.host = host_row_clone.text().to_string();
+                    p.port = port_row_clone.text().parse().unwrap_or(p.port);
+                    p.uuid = uuid_row_clone.text().to_string();
+
+                    let new_url = crate::key_parser::build_vpn_key(&p);
+                    key_obj_clone.set_name(p.name);
+                    key_obj_clone.set_protocol(p.protocol);
+                    key_obj_clone.set_url(new_url);
+                    page.save_current_keys();
+                }
+            }
+        });
+
+        if let Some(root) = self.root() {
+            dialog.present(Some(&root));
+            name_row.grab_focus();
+        }
+    }
+
+    // Logic for duplicating a key
+    fn handle_duplicate_key(&self, key: &VpnKeyObject) {
+        println!("Logic: Duplicating key '{}'", key.name());
+
+        if let Some(model) = self.imp().model.borrow().as_ref() {
+            let new_name = format!("{} (Copy)", key.name());
+            let new_protocol = key.protocol();
+            // Create a copy (in real app, you'd copy all fields)
+            let new_key = VpnKeyObject::new(&new_name, &new_protocol, false, &key.url());
+
+            // Append to model
+            model.append(&new_key);
+            self.save_current_keys();
+        }
+    }
+
+    // Logic for deleting a key
+    fn handle_delete_key(&self, key: &VpnKeyObject) {
+        let page_weak = self.downgrade();
+        let key_name = key.name();
+        
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Delete VPN Key"))
+            .body(format!("Are you sure you want to delete '{}'?", key_name))
+            .build();
+            
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("delete", &gettext("Delete"));
+        dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+        
+        let key_name_str = key_name.to_string();
+        dialog.connect_response(None, move |_, response| {
+            if response == "delete" {
+                if let Some(page) = page_weak.upgrade() {
+                    if let Some(model) = page.imp().model.borrow().as_ref() {
+                        let mut target_index = None;
+                        for i in 0..model.n_items() {
+                            if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                                if item.name() == key_name_str {
+                                    target_index = Some(i);
+                                    break;
+                                }
+                            }
+                        }
+                        if let Some(index) = target_index {
+                            let item = model.item(index).and_then(|obj| obj.downcast::<VpnKeyObject>().ok());
+                            let was_active = item.map_or(false, |it| it.is_active());
+                            model.remove(index);
+                            page.save_current_keys();
+                            if was_active {
+                                page.update_disconnect_action_state();
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        if let Some(root) = self.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
+            dialog.present(Some(&root));
+        }
+    }
+
+    fn update_disconnect_action_state(&self) {
+        use gio::prelude::ActionMapExt;
+        
+        if let Some(group) = self.imp().action_group.borrow().as_ref() {
+            if let Some(action) = group.lookup_action("disconnect").and_then(|a| a.downcast::<gio::SimpleAction>().ok()) {
+                let mut has_active = false;
+                if let Some(model) = self.imp().model.borrow().as_ref() {
+                    for i in 0..model.n_items() {
+                        if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                            if item.is_active() {
+                                has_active = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                action.set_enabled(has_active);
             }
         }
     }
 
     fn setup_actions(&self) {
         let action_group = gio::SimpleActionGroup::new();
+        self.imp().action_group.replace(Some(action_group.clone()));
 
-        let add_action = gio::SimpleAction::new("add_key", None);
+        // Action: Add Key (Parameterized with String)
+        let add_action = gio::SimpleAction::new("add_key", Some(glib::VariantTy::STRING));
         let page_weak = self.downgrade();
-        add_action.connect_activate(move |_, _| {
+        add_action.connect_activate(move |_, parameter| {
             let page = match page_weak.upgrade() {
                 Some(p) => p,
                 None => return,
             };
-            println!("Создаем новый ключ...");
-            // ИСПРАВЛЕНИЕ 2: Разбиваем цепочку вызовов, чтобы избежать временных заимствований
-            let imp = page.imp();
-            let borrowed_model = imp.model.borrow(); // Продлеваем жизнь Ref
 
-            if let Some(model) = borrowed_model.as_ref() {
-                let new_key = VpnKeyObject::new("New Key", "VLESS", false);
-                model.append(&new_key);
-            }
+            // In a real app, this might come from a dialog. For now, if the parameter is a protocol,
+            // we could open a dialog. But let's assume it's a URL if it starts with a scheme.
+            let input = parameter
+                .and_then(|v| v.get::<String>())
+                .unwrap_or_else(|| "Key".to_string());
+
+            let dialog_body = if input.is_empty() || input == "Key" {
+                gettext("Paste your VPN link below:")
+            } else {
+                format!("Paste your {} link below:", input.to_uppercase())
+            };
+
+            // We will show a quick dialog to paste the URL
+            let dialog = adw::AlertDialog::builder()
+                .heading(gettext("Add VPN Key"))
+                .build();
+            
+            let entry_row = adw::EntryRow::builder()
+                .title(gettext("VPN Link"))
+                .build();
+
+            let list_box = gtk::ListBox::builder()
+                .selection_mode(gtk::SelectionMode::None)
+                .css_classes(["boxed-list"])
+                .build();
+            list_box.append(&entry_row);
+
+            let clamp = adw::Clamp::builder()
+                .maximum_size(450)
+                .tightening_threshold(300)
+                .child(&list_box)
+                .build();
+            
+            clamp.set_margin_top(12);
+            clamp.set_margin_bottom(12);
+            clamp.set_margin_start(12);
+            clamp.set_margin_end(12);
+
+            dialog.set_extra_child(Some(&clamp));
+            dialog.add_response("cancel", &gettext("Cancel"));
+            dialog.add_response("add", &gettext("Add"));
+            dialog.set_response_appearance("add", adw::ResponseAppearance::Suggested);
+            dialog.set_default_response(Some("add"));
+            dialog.set_close_response("cancel");
+            
+            let page_weak_dialog = page_weak.clone();
+            let entry_row_clone = entry_row.clone();
+            dialog.connect_response(None, move |_, response| {
+                if response == "add" {
+                    if let Some(page) = page_weak_dialog.upgrade() {
+                        let url_str = entry_row_clone.text();
+                        match crate::key_parser::parse_vpn_key(&url_str) {
+                            Ok(parsed) => {
+                                if let Some(model) = page.imp().model.borrow().as_ref() {
+                                    let new_key = VpnKeyObject::new(&parsed.name, &parsed.protocol, false, &parsed.raw_url);
+                                    model.append(&new_key);
+                                    page.save_current_keys();
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to parse key: {}", e);
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Need root widget to present the AlertDialog
+            let root = page.root().unwrap();
+            dialog.present(Some(&root));
+            entry_row.grab_focus();
         });
         action_group.add_action(&add_action);
 
-        // Действие: Редактировать
-        let edit_action = gio::SimpleAction::new("key_edit", None);
-        let page_weak = self.downgrade();
-        edit_action.connect_activate(move |_, _| {
-            let _page = match page_weak.upgrade() {
-                Some(p) => p,
-                None => return,
-            };
-            println!("Page Logic: Редактируем ключ (внутри VpnPage)");
-            // Здесь мы имеем доступ к `page` и её внутреннему состоянию!
+        // Action: Import from Clipboard
+        let import_clip_action = gio::SimpleAction::new("import_clipboard", None);
+        let page_weak_clip = self.downgrade();
+        import_clip_action.connect_activate(move |_, _| {
+            if let Some(page) = page_weak_clip.upgrade() {
+                let display = gdk::Display::default().expect("No display");
+                let clipboard = display.clipboard();
+                
+                let p_weak = page.downgrade();
+                clipboard.read_text_async(gio::Cancellable::NONE, move |res| {
+                    if let Ok(Some(text)) = res {
+                        if let Some(p) = p_weak.upgrade() {
+                            match crate::key_parser::parse_vpn_key(&text) {
+                                Ok(parsed) => {
+                                    if let Some(model) = p.imp().model.borrow().as_ref() {
+                                        let new_key = VpnKeyObject::new(&parsed.name, &parsed.protocol, false, &parsed.raw_url);
+                                        model.append(&new_key);
+                                        p.save_current_keys();
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!("Failed to parse key from clipboard: {}", e);
+                                }
+                            }
+                        }
+                    }
+                });
+            }
         });
-        action_group.add_action(&edit_action);
+        action_group.add_action(&import_clip_action);
 
-        // Действие: Дублировать
-        let dup_action = gio::SimpleAction::new("key_duplicate", None);
+        // Action: Disconnect
+        let disconnect_action = gio::SimpleAction::new("disconnect", None);
         let page_weak = self.downgrade();
-        dup_action.connect_activate(move |_, _| {
-            let _page = match page_weak.upgrade() {
+        disconnect_action.connect_activate(move |_, _| {
+            let page = match page_weak.upgrade() {
                 Some(p) => p,
                 None => return,
             };
-            println!("Page Logic: Дублируем ключ");
-        });
-        action_group.add_action(&dup_action);
+            println!("Disconnecting VPN...");
 
-        // Действие: Удалить
-        let del_action = gio::SimpleAction::new("key_delete", None);
-        let page_weak = self.downgrade();
-        del_action.connect_activate(move |_, _| {
-            let _page = match page_weak.upgrade() {
-                Some(p) => p,
-                None => return,
-            };
-            println!("Page Logic: Удаляем ключ");
+            // Stop the backend
+            let backend = page.imp().backend.borrow();
+            if let Err(e) = backend.stop() {
+                eprintln!("Error stopping backend: {}", e);
+            }
+
+            // Deactivate all keys
+            if let Some(model) = page.imp().model.borrow().as_ref() {
+                for i in 0..model.n_items() {
+                    if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                        if item.is_active() {
+                            item.set_is_active(false);
+                        }
+                    }
+                }
+            }
+            
+            // Update title
+            page.imp().window_title.set_subtitle(&gettext("Disconnected"));
+
+            page.imp().start_time.replace(None);
+
+            page.save_current_keys();            page.update_disconnect_action_state();
         });
-        action_group.add_action(&del_action);
+        action_group.add_action(&disconnect_action);
 
         self.insert_action_group("vpn", Some(&action_group));
+        
+        // Initial state update
+        self.update_disconnect_action_state();
     }
 }
 

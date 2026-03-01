@@ -13,9 +13,10 @@
                 </object>
             </property>
              <child type="end">
-              <object class="GtkMenuButton">
+              <object class="GtkMenuButton" id="primary_menu_btn">
                 <property name="icon-name">open-menu-symbolic</property>
-                <property name="menu-model">primary_menu</property>
+                <property name="primary">True</property>
+                <property name="tooltip-text" translatable="yes">Меню</property>
               </object>
             </child>
           </object>
@@ -23,34 +24,227 @@
 
         <!-- CONTENT -->
         <property name="content">
-          <object class="AdwStatusPage">
-            <property name="title">Настройки</property>
-            <property name="description">В разработке...</property>
-            <property name="icon-name">emblem-system-symbolic</property>
+          <object class="AdwPreferencesPage">
+
+            <!-- General Settings -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Общие</property>
+
+                <child>
+                  <object class="AdwComboRow" id="language_row">
+                    <property name="title" translatable="yes">Язык (Language)</property>
+                    <property name="subtitle" translatable="yes">Требуется перезапуск приложения (Requires restart)</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">Системный (System)</item>
+                          <item translatable="yes">English</item>
+                          <item translatable="yes">Русский</item>
+                        </items>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="AdwSwitchRow" id="autostart_row">
+                    <property name="title" translatable="yes">Запускать при старте системы</property>
+                    <property name="subtitle" translatable="yes">Автоматически запускать приложение в фоновом режиме</property>
+                    <property name="active">True</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="AdwSwitchRow" id="connect_startup_row">
+                    <property name="title" translatable="yes">Подключаться при запуске</property>
+                    <property name="subtitle" translatable="yes">Восстанавливать последнее активное подключение</property>
+                    <property name="active">False</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="AdwSwitchRow" id="notifications_row">
+                    <property name="title" translatable="yes">Уведомления</property>
+                    <property name="subtitle" translatable="yes">Показывать уведомления при смене статуса подключения</property>
+                    <property name="active">True</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="AdwSwitchRow" id="streamer_mode_row">
+                    <property name="title" translatable="yes">Режим стримера</property>
+                    <property name="subtitle" translatable="yes">Скрывать IP-адреса и конфиденциальную информацию в интерфейсе</property>
+                    <property name="active">False</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- Core Settings -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Ядро (Core)</property>
+                <property name="description" translatable="yes">Выберите движок маршрутизации, используемый для подключения</property>
+
+                <child>
+                  <object class="AdwComboRow" id="core_selector">
+                    <property name="title" translatable="yes">Используемое ядро</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">Xray-core</item>
+                          <item translatable="yes">Sing-box</item>
+                        </items>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+
+                <!-- Расширенные настройки TUN спрятаны в ExpanderRow -->
+                <child>
+                  <object class="AdwExpanderRow" id="tun_mode_row">
+                    <property name="title" translatable="yes">Настройки TUN</property>
+                    <property name="subtitle" translatable="yes">Перенаправлять весь системный трафик через виртуальный интерфейс (Требуется Root)</property>
+                    <property name="show-enable-switch">True</property>
+                    <property name="enable-expansion">False</property> <!-- Раскрывается только если свитч включен -->
+                    
+                    <!-- TODO: Реализовать логику привязки к настройкам -->
+                    <child>
+                        <object class="AdwActionRow">
+                            <property name="title">Сетевой стек (Stack)</property>
+                            <property name="subtitle">Ожидается реализация (gVisor, system)</property>
+                        </object>
+                    </child>
+                    <child>
+                        <object class="AdwActionRow">
+                            <property name="title">Размер MTU</property>
+                            <property name="subtitle">Ожидается реализация (по умолчанию 9000)</property>
+                        </object>
+                    </child>
+                    <child>
+                        <object class="AdwSwitchRow">
+                            <property name="title">Включить Strict Route</property>
+                            <property name="subtitle">Предотвратить утечки (Ожидается реализация)</property>
+                        </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- Backup Settings -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Резервное копирование</property>
+                <child>
+                  <object class="AdwActionRow">
+                    <property name="title" translatable="yes">Импорт настроек</property>
+                    <property name="subtitle" translatable="yes">Загрузить профили и настройки из файла</property>
+                    <property name="activatable">True</property>
+                    <property name="action-name">app.import_config</property>
+                    <child>
+                      <object class="GtkImage">
+                        <property name="icon-name">document-open-symbolic</property>
+                        <property name="valign">center</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwActionRow">
+                    <property name="title" translatable="yes">Экспорт настроек</property>
+                    <property name="subtitle" translatable="yes">Сохранить текущую конфигурацию в файл</property>
+                    <property name="activatable">True</property>
+                    <property name="action-name">app.export_config</property>
+                    <child>
+                      <object class="GtkImage">
+                        <property name="icon-name">document-save-symbolic</property>
+                        <property name="valign">center</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- Logging Settings -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Диагностика</property>
+
+                <child>
+                  <object class="AdwComboRow" id="log_level_row">
+                    <property name="title" translatable="yes">Уровень логирования</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">Error</item>
+                          <item translatable="yes">Warning</item>
+                          <item translatable="yes">Info</item>
+                          <item translatable="yes">Debug</item>
+                        </items>
+                      </object>
+                    </property>
+                    <property name="selected">2</property> <!-- Info -->
+                  </object>
+                </child>
+
+                 <child>
+                  <object class="AdwActionRow">
+                    <property name="title" translatable="yes">Просмотр логов</property>
+                    <property name="subtitle" translatable="yes">Открыть консоль с логами в реальном времени</property>
+                    <property name="activatable">True</property>
+                    <property name="action-name">app.view_logs</property>
+                    <child>
+                        <object class="GtkImage">
+                            <property name="icon-name">utilities-terminal-symbolic</property>
+                            <property name="valign">center</property>
+                        </object>
+                    </child>
+                  </object>
+                </child>
+
+                 <child>
+                  <object class="AdwActionRow">
+                    <property name="title" translatable="yes">Открыть папку логов</property>
+                    <property name="subtitle" translatable="yes">Открыть системную папку с файлами журналов</property>
+                    <property name="activatable">True</property>
+                    <property name="action-name">app.open_log_dir</property>
+                    <child>
+                        <object class="GtkImage">
+                            <property name="icon-name">folder-open-symbolic</property>
+                            <property name="valign">center</property>
+                        </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <child>
+              <object class="AdwPreferencesGroup">
+                <child>
+                  <object class="AdwActionRow">
+                    <property name="title" translatable="yes">Сбросить настройки</property>
+                    <property name="activatable">True</property>
+                    <property name="action-name">app.reset_settings</property>
+                    <child>
+                      <object class="GtkImage">
+                        <property name="icon-name">edit-clear-all-symbolic</property>
+                        <property name="valign">center</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+
           </object>
         </property>
 
       </object>
     </property>
   </template>
-  <menu id="primary_menu">
-    <section>
-      <item>
-        <attribute name="label" translatable="yes">_Preferences</attribute>
-        <attribute name="action">app.preferences</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
-        <attribute name="action">app.shortcuts</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_About Vrxx</attribute>
-        <attribute name="action">app.about</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">_Quit</attribute>
-        <attribute name="action">app.quit</attribute>
-      </item>
-    </section>
-  </menu>
 </interface>
+

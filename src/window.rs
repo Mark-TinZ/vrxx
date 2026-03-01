@@ -71,19 +71,14 @@ impl VrxxWindow {
     }
 
     // Хелпер для извлечения имени страницы из строки
-    fn get_page_name_from_row(&self, row: &gtk::ListBoxRow) -> Option<glib::GString> {
-        // Вариант 1: row - это сам AdwActionRow (имеет имя)
-        let name = row.widget_name();
-        if name != "GtkListBoxRow" && !name.is_empty() {
-             return Some(name);
+    fn get_page_name_from_row(&self, row: &gtk::ListBoxRow) -> Option<&'static str> {
+        match row.index() {
+            0 => Some("page_vpn"),
+            1 => Some("page_proxy"),
+            2 => Some("page_whitelist"),
+            3 => Some("page_settings"),
+            _ => None,
         }
-
-        // Вариант 2: row - это обертка, ищем внутри
-        if let Some(child) = row.child() {
-            return Some(child.widget_name());
-        }
-
-        None
     }
 
     fn setup_callbacks(&self) {

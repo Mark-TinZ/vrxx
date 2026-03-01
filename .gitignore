@@ -1,0 +1,6 @@
+/target
+**/*.rs.bk
+core.log
+vrxx_core_config.json
+src/vrxx.gresource
+.env
