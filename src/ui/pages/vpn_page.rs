@@ -235,7 +235,6 @@ impl VrxxVpnPage {
                     let args: Vec<&std::ffi::OsStr> = args_raw.iter().map(std::ffi::OsStr::new).collect();
 
                     let mut success = false;
-                    let default_ping_ms = 0;
 
                     if let Ok(subprocess) = gio::Subprocess::newv(&args, gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE) {
                         if let Ok((Some(stdout_bytes), _)) = subprocess.communicate_future(None).await {
@@ -310,15 +309,16 @@ impl VrxxVpnPage {
     fn setup_dbus_listener(&self) {
         let page_weak = self.downgrade();
         if let Ok(connection) = gio::bus_get_sync(gio::BusType::System, gio::Cancellable::NONE) {
+            #[allow(deprecated)]
             connection.signal_subscribe(
                 Some("org.freedesktop.login1"),
                 Some("org.freedesktop.login1.Manager"),
                 Some("PrepareForSleep"),
                 Some("/org/freedesktop/login1"),
                 None,
-                gio::DBusSignalFlags::NONE,
-                move |_conn, _sender, _path, _interface, _signal, parameters| {
-                    let is_sleeping = parameters.child_get::<bool>(0);
+                gio::DBusSignalFlags::empty(),
+                move |_, _, _, _, _, params| {
+                    let is_sleeping = params.child_get::<bool>(0);
                     if let Some(page) = page_weak.upgrade() {
                         *page.imp().is_sleeping.borrow_mut() = is_sleeping;
                         if is_sleeping {
@@ -388,12 +388,14 @@ impl VrxxVpnPage {
                                     let secs = elapsed % 60;
                                     item.set_time_connected(format!("{:02}:{:02}:{:02}", hours, mins, secs));
 
-                                    // Fetch traffic stats from Xray API
+                                    // Fetch traffic stats from Xray API (каждые 3 секунды для снижения нагрузки)
                                     let item_clone_stats = item.clone();
                                     let core_bin = crate::settings::SettingsManager::new().load().core;
                                     let bin_name = if core_bin == "sing-box" { "sing-box" } else { "xray" };
                                     
-                                    if bin_name == "xray" {
+                                    let should_stats = elapsed % 3 == 0;
+                                    
+                                    if bin_name == "xray" && should_stats {
                                         glib::spawn_future_local(async move {
                                             let args = [
                                                 std::ffi::OsStr::new("xray"), 
@@ -467,6 +469,7 @@ impl VrxxVpnPage {
                                             let args: Vec<&std::ffi::OsStr> = args_raw.iter().map(std::ffi::OsStr::new).collect();
                                             
                                             let mut success = false;
+                                            #[allow(unused_assignments)]
                                             let mut default_ping_ms = 0;
 
                                             if let Ok(subprocess) = gio::Subprocess::newv(&args, gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE) {
@@ -628,7 +631,7 @@ impl VrxxVpnPage {
                 
                 let dialog = adw::AlertDialog::builder()
                     .heading(gettext("Connection Error"))
-                    .body(&e)
+                    .body(&e.to_string())
                     .build();
                 dialog.add_response("ok", &gettext("OK"));
                 if let Some(root) = self.root() {

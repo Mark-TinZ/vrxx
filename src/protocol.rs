@@ -66,6 +66,7 @@ pub struct HttpSettings {
 }
 
 impl ProtocolSettings {
+    #[allow(dead_code)]
     pub fn name(&self) -> &str {
         match self {
             Self::Vless(_) => "VLESS",

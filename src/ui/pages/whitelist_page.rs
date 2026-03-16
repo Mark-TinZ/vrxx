@@ -411,7 +411,7 @@ impl VrxxWhitelistPage {
         
         let dialog_weak = dialog.downgrade();
         entry_row.connect_apply(move |_| {
-            if let Some(d) = dialog_weak.upgrade() {
+            if let Some(_d) = dialog_weak.upgrade() {
                 // AdwAlertDialog doesn't have a simple way to trigger a response programmatically
                 // but we can just call present() and the default response should work if we set it correctly.
                 // However, since we want to trigger "apply", we'll just close it.
