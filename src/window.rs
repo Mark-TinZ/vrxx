@@ -60,7 +60,9 @@ mod imp {
 glib::wrapper! {
     pub struct VrxxWindow(ObjectSubclass<imp::VrxxWindow>)
         @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow, adw::ApplicationWindow,
-        @implements gio::ActionGroup, gio::ActionMap;
+        @implements gio::ActionGroup, gio::ActionMap,
+                   gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget,
+                   gtk::Native, gtk::Root, gtk::ShortcutManager;
 }
 
 impl VrxxWindow {

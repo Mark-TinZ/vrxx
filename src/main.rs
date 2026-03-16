@@ -30,10 +30,13 @@ fn main() -> glib::ExitCode {
     let manager = settings::SettingsManager::new();
     let app_settings = manager.load();
     if app_settings.language != "system" {
-        std::env::set_var("LANGUAGE", &app_settings.language);
-        std::env::set_var("LANG", &app_settings.language);
-        std::env::set_var("LC_ALL", &app_settings.language);
+        let lang_to_set = if app_settings.language == "en" { "C.UTF-8" } else { &app_settings.language };
+        std::env::set_var("LANGUAGE", lang_to_set);
+        std::env::set_var("LANG", lang_to_set);
+        std::env::set_var("LC_ALL", lang_to_set);
     }
+    
+    crate::backend::log_app_event("info", "Vrxx Application Started");
 
     // Set up gettext translations
     setlocale(LocaleCategory::LcAll, "");

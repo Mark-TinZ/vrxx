@@ -63,6 +63,7 @@ mod imp {
             }
 
             self.obj().setup_icons();
+            gtk::Window::set_default_icon_name("ru.mark.vrxx");
         }
 
         fn activate(&self) {

@@ -1,6 +1,6 @@
 use adw::subclass::prelude::*;
 use adw::prelude::*;
-use gtk::{glib, gio};
+use gtk::glib;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
@@ -97,6 +97,7 @@ mod imp {
             buffer.create_tag(Some("error"), &[("foreground", &"red"), ("weight", &700)]);
             buffer.create_tag(Some("warning"), &[("foreground", &"orange")]);
             buffer.create_tag(Some("debug"), &[("foreground", &"gray")]);
+            buffer.create_tag(Some("app"), &[("foreground", &"#3584e4"), ("weight", &700)]); // GNOME blue
 
             obj.setup_callbacks();
             obj.start_log_polling();
@@ -109,7 +110,9 @@ mod imp {
 
 glib::wrapper! {
     pub struct VrxxLogWindow(ObjectSubclass<imp::VrxxLogWindow>)
-        @extends gtk::Widget, gtk::Window, adw::Window;
+        @extends gtk::Widget, gtk::Window, adw::Window,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget,
+                   gtk::Native, gtk::Root, gtk::ShortcutManager;
 }
 
 impl VrxxLogWindow {
@@ -150,8 +153,7 @@ impl VrxxLogWindow {
                 let imp = window.imp();
                 if let Ok(mut file) = File::open(&log_path) {
                     let mut last_pos = *imp.last_pos.borrow();
-                    let metadata = file.metadata().unwrap();
-                    let len = metadata.len();
+                    let len = file.metadata().map(|m| m.len()).unwrap_or(0);
 
                     if len < last_pos {
                         last_pos = 0;
@@ -160,14 +162,26 @@ impl VrxxLogWindow {
 
                     if len > last_pos {
                         let _ = file.seek(SeekFrom::Start(last_pos));
-                        let mut content = String::new();
-                        let _ = file.read_to_string(&mut content);
+                        
+                        // Limit read if file is too large
+                        let to_read = if last_pos == 0 && len > 102400 {
+                            let _ = file.seek(SeekFrom::End(-102400));
+                            102400
+                        } else {
+                            len - last_pos
+                        };
+
+                        let mut buffer_bytes = vec![0u8; to_read as usize];
+                        let _ = file.read_exact(&mut buffer_bytes);
+                        let content = String::from_utf8_lossy(&buffer_bytes);
                         
                         let buffer = imp.text_view.buffer();
                         let mut iter = buffer.end_iter();
                         
                         for line in content.lines() {
-                            let tag_name = if line.contains("ERROR") || line.contains("error") {
+                            let tag_name = if line.contains("[APP]") {
+                                Some("app")
+                            } else if line.contains("ERROR") || line.contains("error") {
                                 Some("error")
                             } else if line.contains("WARN") || line.contains("warning") {
                                 Some("warning")
@@ -187,8 +201,10 @@ impl VrxxLogWindow {
                             }
                         }
                         
-                        let adj = imp.scrolled_window.vadjustment();
-                        adj.set_value(adj.upper() - adj.page_size());
+                        let mark = buffer.create_mark(None, &buffer.end_iter(), false);
+                        imp.text_view.scroll_to_mark(&mark, 0.0, false, 0.0, 1.0);
+                        buffer.delete_mark(&mark);
+                        
                         *imp.last_pos.borrow_mut() = len;
                     }
                 }

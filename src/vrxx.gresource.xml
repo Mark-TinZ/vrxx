@@ -16,6 +16,7 @@
     <file preprocess="xml-stripblanks">ui/components/theme_switcher.ui</file>
 
      <!-- Иконки -->
+    <file alias="icons/scalable/apps/ru.mark.vrxx.svg">../data/icons/hicolor/scalable/apps/ru.mark.vrxx.svg</file>
     <file alias="icons/scalable/actions/key5-symbolic.svg">../data/icons/custom/symbolic/actions/key5-symbolic.svg</file>
     <file alias="icons/scalable/actions/preferences-system-network-proxy-symbolic.svg">../data/icons/custom/symbolic/actions/preferences-system-network-proxy-symbolic.svg</file>
     <file alias="icons/scalable/actions/funnel-symbolic.svg">../data/icons/custom/symbolic/actions/funnel-symbolic.svg</file>

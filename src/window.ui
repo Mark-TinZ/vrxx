@@ -46,7 +46,7 @@
                         </child>
                         <child>
                           <object class="AdwActionRow">
-                            <property name="title" translatable="yes">Белый список</property>
+                            <property name="title" translatable="yes">Маршрутизация</property>
                             <property name="icon-name">funnel-symbolic</property>
                             <property name="name">page_whitelist</property>
                           </object>

@@ -1,0 +1,176 @@
+# Russian translations for PACKAGE package.
+# Copyright (C) 2026 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-03 00:10+0600\n"
+"PO-Revision-Date: 2026-03-03 00:10+0600\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ASCII\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: src/ui/pages/whitelist_page.rs:107 src/ui/pages/vpn_page.rs:793
+msgid "Delete"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:227
+msgid "Clear Whitelist"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:228
+msgid "Are you sure you want to remove all domains from the whitelist?"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:230 src/ui/pages/whitelist_page.rs:354
+#: src/ui/pages/vpn_page.rs:728 src/ui/pages/vpn_page.rs:792
+#: src/ui/pages/vpn_page.rs:902
+msgid "Cancel"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:231
+msgid "Clear"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:259
+msgid "Import Whitelist"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:294
+msgid "Export Whitelist"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:328
+msgid "Edit Domain"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:328
+msgid "New Domain"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:329 src/ui/pages/vpn_page.rs:729
+msgid "Save"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:329 src/ui/pages/vpn_page.rs:903
+msgid "Add"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:334
+msgid "Domain"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:350
+msgid "Enter the domain address or rule (e.g. google.com, domain:vk.com, *.ru)"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:202
+msgid "pinging..."
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:259 src/ui/pages/vpn_page.rs:509
+msgid "timeout"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:281
+msgid "Connected"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:340 src/ui/pages/vpn_page.rs:605
+msgid "Connection Error"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:354 src/ui/pages/vpn_page.rs:524
+#: src/ui/pages/vpn_page.rs:527
+msgid "Connection Failed"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:357 src/ui/pages/vpn_page.rs:608
+msgid "OK"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:528
+msgid "Unable to connect to the selected VPN key."
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:538
+msgid "Connection Unstable"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:539
+msgid "The VPN connection seems to be timing out."
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:652 src/ui/pages/vpn_page.rs:701
+msgid "Server Address"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:653
+msgid "Location"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:654
+msgid "Timezone"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:655 src/ui/pages/vpn_page.rs:700
+msgid "Protocol"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:676
+msgid "Close"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:696
+msgid "Edit VPN Key"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:699
+msgid "Name"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:702
+msgid "Port"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:703
+msgid "UUID / Password"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:788
+msgid "Delete VPN Key"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:870
+msgid "Paste your VPN link below:"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:877
+msgid "Add VPN Key"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:881
+msgid "VPN Link"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:996
+msgid "Disconnected"
+msgstr ""
+
+#: src/application.rs:245
+msgid "translator-credits"
+msgstr ""
+
+#: src/application.rs:250
+msgid ""
+"A graphical interface for Xray-core designed to simplify VPN and proxy "
+"configuration on Linux systems."
+msgstr ""

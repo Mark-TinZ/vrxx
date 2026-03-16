@@ -90,6 +90,8 @@
                 <child>
                   <object class="AdwComboRow" id="core_selector">
                     <property name="title" translatable="yes">Используемое ядро</property>
+                    <property name="subtitle" translatable="yes">Xray-core или Sing-box</property>
+                    <property name="sensitive">True</property>
                     <property name="model">
                       <object class="GtkStringList">
                         <items>
@@ -101,6 +103,13 @@
                   </object>
                 </child>
 
+                <child>
+                  <object class="AdwActionRow" id="core_info_row">
+                    <property name="title" translatable="yes">Версия ядра</property>
+                    <property name="subtitle" translatable="yes">Неизвестно</property>
+                  </object>
+                </child>
+
                 <!-- Расширенные настройки TUN спрятаны в ExpanderRow -->
                 <child>
                   <object class="AdwExpanderRow" id="tun_mode_row">
@@ -108,28 +117,80 @@
                     <property name="subtitle" translatable="yes">Перенаправлять весь системный трафик через виртуальный интерфейс (Требуется Root)</property>
                     <property name="show-enable-switch">True</property>
                     <property name="enable-expansion">False</property> <!-- Раскрывается только если свитч включен -->
-                    
-                    <!-- TODO: Реализовать логику привязки к настройкам -->
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- Network & Routing Settings -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Сеть и Маршрутизация</property>
+                
+                <child>
+                  <object class="AdwSwitchRow" id="sniffing_row">
+                    <property name="title" translatable="yes">Sniffing (Анализ пакетов)</property>
+                    <property name="subtitle" translatable="yes">Определять домен из трафика (требуется для маршрутизации)</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="AdwComboRow" id="domain_strategy_row">
+                    <property name="title" translatable="yes">Стратегия доменов (Domain Strategy)</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">AsIs (Как есть)</item>
+                          <item translatable="yes">IPIfNonMatch</item>
+                          <item translatable="yes">IPOnDemand</item>
+                        </items>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="AdwSwitchRow" id="bypass_lan_row">
+                    <property name="title" translatable="yes">Обход LAN (Bypass LAN)</property>
+                    <property name="subtitle" translatable="yes">Не маршрутизировать локальный трафик через VPN</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="AdwSwitchRow" id="fake_dns_row">
+                    <property name="title" translatable="yes">Fake DNS</property>
+                    <property name="subtitle" translatable="yes">Возвращать поддельные IP (улучшает скорость, но ломает некоторые приложения)</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="AdwExpanderRow" id="mux_row">
+                    <property name="title" translatable="yes">Мультиплексирование (Mux)</property>
+                    <property name="subtitle" translatable="yes">Ускоряет соединения, но может вызвать нестабильность</property>
+                    <property name="show-enable-switch">True</property>
                     <child>
-                        <object class="AdwActionRow">
-                            <property name="title">Сетевой стек (Stack)</property>
-                            <property name="subtitle">Ожидается реализация (gVisor, system)</property>
-                        </object>
-                    </child>
-                    <child>
-                        <object class="AdwActionRow">
-                            <property name="title">Размер MTU</property>
-                            <property name="subtitle">Ожидается реализация (по умолчанию 9000)</property>
-                        </object>
-                    </child>
-                    <child>
-                        <object class="AdwSwitchRow">
-                            <property name="title">Включить Strict Route</property>
-                            <property name="subtitle">Предотвратить утечки (Ожидается реализация)</property>
+                        <object class="AdwSpinRow" id="mux_concurrency_row">
+                            <property name="title">Concurrency</property>
+                            <property name="adjustment">
+                                <object class="GtkAdjustment">
+                                    <property name="lower">-1</property>
+                                    <property name="upper">1024</property>
+                                    <property name="value">8</property>
+                                    <property name="step-increment">1</property>
+                                </object>
+                            </property>
                         </object>
                     </child>
                   </object>
                 </child>
+
+                <child>
+                  <object class="AdwSwitchRow" id="fragment_row">
+                    <property name="title" translatable="yes">Фрагментация (Fragment)</property>
+                    <property name="subtitle" translatable="yes">Разделять пакеты для обхода DPI (Только для TCP/TLS)</property>
+                  </object>
+                </child>
+
               </object>
             </child>
 
@@ -227,8 +288,12 @@
                 <child>
                   <object class="AdwActionRow">
                     <property name="title" translatable="yes">Сбросить настройки</property>
+                    <property name="subtitle" translatable="yes">Удалить все сохраненные данные (опасная зона)</property>
                     <property name="activatable">True</property>
                     <property name="action-name">app.reset_settings</property>
+                    <style>
+                        <class name="error"/>
+                    </style>
                     <child>
                       <object class="GtkImage">
                         <property name="icon-name">edit-clear-all-symbolic</property>

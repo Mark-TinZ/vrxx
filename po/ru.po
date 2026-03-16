@@ -1,0 +1,544 @@
+# Russian translations for PACKAGE package.
+# Copyright (C) 2026 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-03 00:12+0600\n"
+"PO-Revision-Date: 2026-03-03 00:10+0600\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: src/ui/pages/whitelist_page.rs:107 src/ui/pages/vpn_page.rs:793
+msgid "Delete"
+msgstr "Удалить"
+
+#: src/ui/pages/whitelist_page.rs:227
+msgid "Clear Whitelist"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:228
+msgid "Are you sure you want to remove all domains from the whitelist?"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:230 src/ui/pages/whitelist_page.rs:354
+#: src/ui/pages/vpn_page.rs:728 src/ui/pages/vpn_page.rs:792
+#: src/ui/pages/vpn_page.rs:902
+msgid "Cancel"
+msgstr "Отмена"
+
+#: src/ui/pages/whitelist_page.rs:231
+msgid "Clear"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:259
+msgid "Import Whitelist"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:294
+msgid "Export Whitelist"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:328
+msgid "Edit Domain"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:328
+msgid "New Domain"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:329 src/ui/pages/vpn_page.rs:729
+msgid "Save"
+msgstr "Сохранить"
+
+#: src/ui/pages/whitelist_page.rs:329 src/ui/pages/vpn_page.rs:903
+msgid "Add"
+msgstr "Добавить"
+
+#: src/ui/pages/whitelist_page.rs:334
+msgid "Domain"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.rs:350
+msgid "Enter the domain address or rule (e.g. google.com, domain:vk.com, *.ru)"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:202
+msgid "pinging..."
+msgstr "пинг..."
+
+#: src/ui/pages/vpn_page.rs:259 src/ui/pages/vpn_page.rs:509
+msgid "timeout"
+msgstr "таймаут"
+
+#: src/ui/pages/vpn_page.rs:281
+msgid "Connected"
+msgstr "Подключено"
+
+#: src/ui/pages/vpn_page.rs:340 src/ui/pages/vpn_page.rs:605
+msgid "Connection Error"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:354 src/ui/pages/vpn_page.rs:524
+#: src/ui/pages/vpn_page.rs:527
+msgid "Connection Failed"
+msgstr "Ошибка подключения"
+
+#: src/ui/pages/vpn_page.rs:357 src/ui/pages/vpn_page.rs:608
+msgid "OK"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:528
+msgid "Unable to connect to the selected VPN key."
+msgstr "Не удалось подключиться к выбранному VPN ключу."
+
+#: src/ui/pages/vpn_page.rs:538
+msgid "Connection Unstable"
+msgstr "Нестабильное подключение"
+
+#: src/ui/pages/vpn_page.rs:539
+msgid "The VPN connection seems to be timing out."
+msgstr "Время ожидания VPN соединения истекает."
+
+#: src/ui/pages/vpn_page.rs:652 src/ui/pages/vpn_page.rs:701
+msgid "Server Address"
+msgstr "Адрес Сервера"
+
+#: src/ui/pages/vpn_page.rs:653
+msgid "Location"
+msgstr "Локация"
+
+#: src/ui/pages/vpn_page.rs:654
+msgid "Timezone"
+msgstr "Часовой пояс"
+
+#: src/ui/pages/vpn_page.rs:655 src/ui/pages/vpn_page.rs:700
+msgid "Protocol"
+msgstr "Протокол"
+
+#: src/ui/pages/vpn_page.rs:676
+msgid "Close"
+msgstr "Закрыть"
+
+#: src/ui/pages/vpn_page.rs:696
+msgid "Edit VPN Key"
+msgstr "Изменить VPN Ключ"
+
+#: src/ui/pages/vpn_page.rs:699
+msgid "Name"
+msgstr "Имя"
+
+#: src/ui/pages/vpn_page.rs:702
+msgid "Port"
+msgstr "Порт"
+
+#: src/ui/pages/vpn_page.rs:703
+msgid "UUID / Password"
+msgstr "UUID / Пароль"
+
+#: src/ui/pages/vpn_page.rs:788
+msgid "Delete VPN Key"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:870
+msgid "Paste your VPN link below:"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:877
+msgid "Add VPN Key"
+msgstr "Добавить VPN Ключ"
+
+#: src/ui/pages/vpn_page.rs:881
+msgid "VPN Link"
+msgstr "VPN Ссылка"
+
+#: src/ui/pages/vpn_page.rs:996
+msgid "Disconnected"
+msgstr "Отключено"
+
+#: src/application.rs:245
+msgid "translator-credits"
+msgstr ""
+
+#: src/application.rs:250
+msgid ""
+"A graphical interface for Xray-core designed to simplify VPN and proxy "
+"configuration on Linux systems."
+msgstr ""
+
+#: src/shortcuts-dialog.ui:6
+msgid "Shortcuts"
+msgstr ""
+
+#: src/shortcuts-dialog.ui:9
+msgctxt "shortcut window"
+msgid "Show Shortcuts"
+msgstr ""
+
+#: src/shortcuts-dialog.ui:15
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "Выход"
+
+#: src/ui/pages/settings_page.ui:12 src/window.ui:56
+msgid "Настройки"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:19
+msgid "Меню"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:32
+msgid "Общие"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:36
+msgid "Язык (Language)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:37
+msgid "Требуется перезапуск приложения (Requires restart)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:41
+msgid "Системный (System)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:42
+msgid "English"
+msgstr "English"
+
+#: src/ui/pages/settings_page.ui:43
+msgid "Русский"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:52
+msgid "Запускать при старте системы"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:53
+msgid "Автоматически запускать приложение в фоновом режиме"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:60
+msgid "Подключаться при запуске"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:61
+msgid "Восстанавливать последнее активное подключение"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:68
+msgid "Уведомления"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:69
+msgid "Показывать уведомления при смене статуса подключения"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:76
+msgid "Режим стримера"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:77
+msgid "Скрывать IP-адреса и конфиденциальную информацию в интерфейсе"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:87
+msgid "Ядро (Core)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:88
+msgid "Выберите движок маршрутизации, используемый для подключения"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:92
+msgid "Используемое ядро"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:93
+msgid "Выбор ядра временно отключен (Sing-box в разработке)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:98
+msgid "Xray-core"
+msgstr "Xray-core"
+
+#: src/ui/pages/settings_page.ui:99
+msgid "Sing-box"
+msgstr "Sing-box"
+
+#: src/ui/pages/settings_page.ui:109
+msgid "Настройки TUN"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:110
+msgid ""
+"Перенаправлять весь системный трафик через виртуальный интерфейс (Требуется "
+"Root)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:141
+msgid "Резервное копирование"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:144
+msgid "Импорт настроек"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:145
+msgid "Загрузить профили и настройки из файла"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:158
+msgid "Экспорт настроек"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:159
+msgid "Сохранить текущую конфигурацию в файл"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:176
+msgid "Диагностика"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:180
+msgid "Уровень логирования"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:184
+msgid "Error"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:185
+msgid "Warning"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:186
+msgid "Info"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:187
+msgid "Debug"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:197
+msgid "Просмотр логов"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:198
+msgid "Открыть консоль с логами в реальном времени"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:212
+msgid "Открыть папку логов"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:213
+msgid "Открыть системную папку с файлами журналов"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:231
+msgid "Сбросить настройки"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:12 src/window.ui:49
+msgid "Белый список"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:20
+msgid "Добавить домен"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:28
+msgid "Очистить список"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:42
+msgid "Экспорт / Импорт"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:59
+msgid "Поиск домена или правила (e.g. domain:vk.com, *.org)..."
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:72
+msgid "Режим"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:76
+msgid "Исключения (обход VPN)"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:77
+msgid "Включения (только VPN)"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:90
+msgid "Домены и IP адреса"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:114
+msgid "Импорт из файла..."
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:118
+msgid "Экспорт в файл..."
+msgstr ""
+
+#: src/ui/pages/vpn_page.ui:13 src/window.ui:35
+msgid "Ключи VPN"
+msgstr ""
+
+#: src/ui/pages/vpn_page.ui:14
+msgid "Mark-Vless Подключено"
+msgstr ""
+
+#: src/ui/pages/vpn_page.ui:23
+msgid "Добавить подключение"
+msgstr ""
+
+#: src/ui/pages/vpn_page.ui:36
+msgid "Отключить"
+msgstr ""
+
+#: src/ui/pages/vpn_page.ui:52
+msgid "Список подключений"
+msgstr ""
+
+#: src/ui/pages/vpn_page.ui:77
+msgid "Xray / Sing-box"
+msgstr ""
+
+#: src/ui/pages/vpn_page.ui:100
+msgid "Tunnels"
+msgstr ""
+
+#: src/ui/pages/vpn_page.ui:108
+msgid "Proxies"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:12
+msgid "Локальный прокси"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:31
+msgid "Системный прокси"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:32
+msgid "Автоматическая настройка прокси для всей системы (GNOME)"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:35
+msgid "Устанавливать системный прокси"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:36
+msgid "При активном подключении трафик приложений пойдет через прокси"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:45
+msgid "Входящие подключения (Inbounds)"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:46
+msgid "Локальные порты, на которых работают прокси-серверы ядра"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:50
+msgid "SOCKS5 Порт"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:64
+msgid "HTTP Порт"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:78
+msgid "Разрешить подключения из LAN"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:79
+msgid "Прокси будет доступен для других устройств в вашей локальной сети"
+msgstr ""
+
+#: src/ui/components/vpn_key_row.ui:144
+msgid "Refresh Ping"
+msgstr ""
+
+#: src/ui/components/vpn_key_row.ui:164
+msgid "_Info"
+msgstr "Информация"
+
+#: src/ui/components/vpn_key_row.ui:168
+msgid "_Edit"
+msgstr "Редактировать"
+
+#: src/ui/components/vpn_key_row.ui:172
+msgid "Copy _Link"
+msgstr "Скопировать ссылку"
+
+#: src/ui/components/vpn_key_row.ui:176
+msgid "Copy _JSON"
+msgstr "Скопировать JSON"
+
+#: src/ui/components/vpn_key_row.ui:180
+msgid "_Duplicate"
+msgstr "Дублировать"
+
+#: src/ui/components/vpn_key_row.ui:184
+msgid "_Delete"
+msgstr "Удалить"
+
+#: src/ui/components/theme_switcher.ui:19
+msgid "System"
+msgstr "Системный"
+
+#: src/ui/components/theme_switcher.ui:27
+msgid "Light"
+msgstr ""
+
+#: src/ui/components/theme_switcher.ui:36
+msgid "Dark"
+msgstr ""
+
+#: src/ui/menus.ui:12
+msgid "_Preferences"
+msgstr ""
+
+#: src/ui/menus.ui:16
+msgid "_Keyboard Shortcuts"
+msgstr ""
+
+#: src/ui/menus.ui:20
+msgid "_About Vrxx"
+msgstr ""
+
+#: src/ui/menus.ui:24
+msgid "_Quit"
+msgstr ""
+
+#: src/window.ui:7
+msgid "Vrxx"
+msgstr ""
+
+#: src/window.ui:16
+msgid "Menu"
+msgstr ""
+
+#: src/window.ui:42
+msgid "Прокси"
+msgstr ""
+
+#: src/window.ui:73
+msgid "Content"
+msgstr ""

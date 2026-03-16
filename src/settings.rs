@@ -56,9 +56,31 @@ pub struct AppSettings {
     #[serde(default)]
     pub allow_lan: bool,
 
+    // Advanced Routing & Net Settings
+    #[serde(default)]
+    pub enable_sniffing: bool,
+    #[serde(default = "default_domain_strategy")]
+    pub domain_strategy: String,
+    #[serde(default)]
+    pub bypass_lan: bool,
+    #[serde(default)]
+    pub enable_fake_dns: bool,
+    #[serde(default)]
+    pub enable_local_dns: bool,
+    #[serde(default)]
+    pub enable_mux: bool,
+    #[serde(default = "default_mux_concurrency")]
+    pub mux_concurrency: i32,
+    #[serde(default)]
+    pub enable_fragment: bool,
+
     pub keys: Vec<VpnKeyData>,
     #[serde(default)]
     pub whitelist: Vec<String>,
+    #[serde(default)]
+    pub enable_routing: bool,
+    #[serde(default)]
+    pub routing_mode: String, // "bypass" or "proxy"
 }
 
 fn default_language() -> String { "system".to_string() }
@@ -71,6 +93,8 @@ fn default_connect_startup() -> bool { false }
 fn default_notifications() -> bool { true }
 fn default_streamer_mode() -> bool { false }
 fn default_log_level() -> String { "info".to_string() }
+fn default_domain_strategy() -> String { "AsIs".to_string() }
+fn default_mux_concurrency() -> i32 { 8 }
 
 impl AppSettings {
     pub fn new() -> Self {
@@ -88,8 +112,18 @@ impl AppSettings {
             socks_port: default_socks_port(),
             http_port: default_http_port(),
             allow_lan: false,
+            enable_sniffing: false,
+            domain_strategy: default_domain_strategy(),
+            bypass_lan: false,
+            enable_fake_dns: false,
+            enable_local_dns: false,
+            enable_mux: false,
+            mux_concurrency: default_mux_concurrency(),
+            enable_fragment: false,
             keys: vec![],
             whitelist: vec![],
+            enable_routing: false,
+            routing_mode: "bypass".to_string(),
         }
     }
 }

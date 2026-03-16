@@ -77,7 +77,7 @@ fn parse_vmess(url_str: &str) -> Result<ParsedKey, String> {
         if let Some(obj) = json.as_object() {
             for (k, v) in obj {
                 if k != "ps" && k != "add" && k != "port" && k != "id" {
-                    let val_str = if v.is_string() { v.as_str().unwrap().to_string() } else { v.to_string() };
+                    let val_str = if v.is_string() { v.as_str().unwrap_or("").to_string() } else { v.to_string() };
                     query_params.insert(k.clone(), val_str);
                 }
             }
@@ -123,15 +123,17 @@ pub fn build_vpn_key(parsed: &ParsedKey) -> String {
         _ => "unknown"
     };
 
-    let mut url = Url::parse(&format!("{}://{}@{}:{}", scheme, parsed.uuid, parsed.host, parsed.port)).unwrap();
-    
-    if !parsed.query_params.is_empty() {
-        let mut query = url.query_pairs_mut();
-        for (k, v) in &parsed.query_params {
-            query.append_pair(k, v);
+    if let Ok(mut url) = Url::parse(&format!("{}://{}@{}:{}", scheme, parsed.uuid, parsed.host, parsed.port)) {
+        if !parsed.query_params.is_empty() {
+            let mut query = url.query_pairs_mut();
+            for (k, v) in &parsed.query_params {
+                query.append_pair(k, v);
+            }
         }
+        
+        url.set_fragment(Some(&parsed.name));
+        url.to_string()
+    } else {
+        String::new()
     }
-    
-    url.set_fragment(Some(&parsed.name));
-    url.to_string()
 }

@@ -9,7 +9,7 @@
           <object class="AdwHeaderBar">
             <property name="title-widget">
                 <object class="AdwWindowTitle">
-                    <property name="title" translatable="yes">Белый список</property>
+                    <property name="title" translatable="yes">Маршрутизация</property>
                 </object>
             </property>
 
@@ -52,6 +52,17 @@
           <object class="AdwPreferencesPage">
           
             <child>
+              <object class="AdwPreferencesGroup">
+                <child>
+                  <object class="AdwSwitchRow" id="enable_routing_row">
+                    <property name="title" translatable="yes">Включить пользовательскую маршрутизацию</property>
+                    <property name="subtitle" translatable="yes">Использовать правила ниже для направления трафика</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <child>
               <object class="AdwClamp">
                 <property name="maximum-size">400</property>
                 <child>
@@ -66,7 +77,8 @@
 
             <!-- Группа: режим -->
             <child>
-              <object class="AdwPreferencesGroup">
+              <object class="AdwPreferencesGroup" id="routing_settings_group">
+                <property name="sensitive" bind-source="enable_routing_row" bind-property="active" bind-flags="sync-create"/>
                 <child>
                   <object class="AdwComboRow" id="mode_row">
                     <property name="title" translatable="yes">Режим</property>
@@ -86,7 +98,8 @@
 
             <!-- Список доменов -->
             <child>
-              <object class="AdwPreferencesGroup">
+              <object class="AdwPreferencesGroup" id="routing_list_group">
+                <property name="sensitive" bind-source="enable_routing_row" bind-property="active" bind-flags="sync-create"/>
                 <property name="title" translatable="yes">Домены и IP адреса</property>
                 <child>
                   <object class="GtkListBox" id="domains_list">

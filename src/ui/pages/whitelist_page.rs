@@ -22,6 +22,12 @@ mod imp {
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
 
+        #[template_child]
+        pub enable_routing_row: TemplateChild<adw::SwitchRow>,
+
+        #[template_child]
+        pub mode_row: TemplateChild<adw::ComboRow>,
+
         // Хранилище списка доменов
         pub model: RefCell<Option<gio::ListStore>>,
         pub filter_model: RefCell<Option<gtk::FilterListModel>>,
@@ -36,6 +42,7 @@ mod imp {
         fn class_init(klass: &mut Self::Class) {
             adw::ComboRow::static_type();
             adw::ActionRow::static_type();
+            adw::SwitchRow::static_type();
             klass.bind_template();
         }
 
@@ -49,6 +56,7 @@ mod imp {
             self.parent_constructed();
             self.obj().setup_model();
             self.obj().setup_actions();
+            self.obj().setup_settings();
             setup_primary_menu(&self.primary_menu_btn.get());
         }
     }
@@ -59,12 +67,49 @@ mod imp {
 glib::wrapper! {
     pub struct VrxxWhitelistPage(ObjectSubclass<imp::VrxxWhitelistPage>)
         @extends gtk::Widget, adw::Bin,
-        @implements gio::ActionGroup, gio::ActionMap;
+        @implements gio::ActionGroup, gio::ActionMap,
+                   gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 impl VrxxWhitelistPage {
     pub fn new() -> Self {
         glib::Object::builder().build()
+    }
+
+    fn setup_settings(&self) {
+        let imp = self.imp();
+        let manager = SettingsManager::new();
+        let settings = manager.load();
+
+        imp.enable_routing_row.set_active(settings.enable_routing);
+        
+        let mode_idx = match settings.routing_mode.as_str() {
+            "proxy" => 1,
+            _ => 0, // bypass
+        };
+        imp.mode_row.set_selected(mode_idx);
+
+        imp.enable_routing_row.connect_active_notify(move |row| {
+            let manager = SettingsManager::new();
+            let mut s = manager.load();
+            s.enable_routing = row.is_active();
+            crate::backend::log_app_event("info", &format!("Custom routing toggled to {}", s.enable_routing));
+            manager.save(&s);
+        });
+
+        imp.mode_row.connect_selected_notify(move |row| {
+            let manager = SettingsManager::new();
+            let mut s = manager.load();
+            let old_mode = s.routing_mode.clone();
+            s.routing_mode = match row.selected() {
+                1 => "proxy".to_string(),
+                _ => "bypass".to_string(),
+            };
+            if old_mode != s.routing_mode {
+                crate::backend::log_app_event("info", &format!("Routing mode changed from {} to {}", old_mode, s.routing_mode));
+            }
+            manager.save(&s);
+        });
     }
 
     fn setup_model(&self) {
@@ -85,7 +130,9 @@ impl VrxxWhitelistPage {
 
         // Привязываем filter_model
         self.imp().domains_list.bind_model(Some(&filter_model), move |item| {
-            let domain_obj = item.downcast_ref::<DomainObject>().unwrap();
+            let Some(domain_obj) = item.downcast_ref::<DomainObject>() else {
+                return adw::ActionRow::builder().build().upcast();
+            };
 
             let row = adw::ActionRow::builder()
                 .selectable(false)
@@ -150,8 +197,9 @@ impl VrxxWhitelistPage {
                  let borrowed_filter = imp.filter_model.borrow();
                  if let Some(f_model) = borrowed_filter.as_ref() {
                      if let Some(item) = f_model.item(index as u32) {
-                         let domain_obj = item.downcast::<DomainObject>().unwrap();
-                         page.show_domain_dialog(Some(domain_obj));
+                         if let Ok(domain_obj) = item.downcast::<DomainObject>() {
+                             page.show_domain_dialog(Some(domain_obj));
+                         }
                      }
                  }
             }

@@ -53,7 +53,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct VrxxProxyPage(ObjectSubclass<imp::VrxxProxyPage>)
-        @extends gtk::Widget, adw::Bin;
+        @extends gtk::Widget, adw::Bin,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 impl VrxxProxyPage {

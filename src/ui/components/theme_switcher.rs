@@ -29,7 +29,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct VrxxThemeSwitcher(ObjectSubclass<imp::VrxxThemeSwitcher>)
-        @extends gtk::Widget, gtk::Box;
+        @extends gtk::Widget, gtk::Box,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 impl VrxxThemeSwitcher {

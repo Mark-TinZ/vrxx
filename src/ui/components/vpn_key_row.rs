@@ -73,7 +73,7 @@ mod imp {
 glib::wrapper! {
     pub struct VrxxVpnKeyRow(ObjectSubclass<imp::VrxxVpnKeyRow>)
         @extends gtk::Widget, gtk::ListBoxRow,
-        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 
 impl VrxxVpnKeyRow {
