@@ -606,7 +606,11 @@ impl VrxxVpnPage {
             let app_settings = current_settings;
             
             let config_json = if let Ok(parsed) = crate::key_parser::parse_vpn_key(&active_item.url()) {
-                crate::xray_config::build_xray_config(&parsed, &app_settings)
+                if app_settings.core == "sing-box" {
+                    crate::singbox_config::build_singbox_config(&parsed, &app_settings)
+                } else {
+                    crate::xray_config::build_xray_config(&parsed, &app_settings)
+                }
             } else {
                 eprintln!("Не удалось распарсить ключ для генерации конфигурации");
                 active_item.set_is_loading(false);
@@ -849,7 +853,7 @@ impl VrxxVpnPage {
         
         let dialog = adw::AlertDialog::builder()
             .heading(gettext("Удалить VPN ключ"))
-            .body(format!("Вы уверены, что хотите удалить '{}'?", key_name))
+            .body(format!("Вы уверены, что хотите удалить '{key_name}'?"))
             .build();
             
         dialog.add_response("cancel", &gettext("Отмена"));

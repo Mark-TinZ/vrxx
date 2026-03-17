@@ -1,49 +1,32 @@
 {
-    "id" : "ru.mark.vrxx",
-    "runtime" : "org.gnome.Platform",
-    "runtime-version" : "master",
-    "sdk" : "org.gnome.Sdk",
-    "sdk-extensions" : [
+    "app-id": "ru.mark.vrxx",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "45",
+    "sdk": "org.gnome.Sdk",
+    "sdk-extensions": [
         "org.freedesktop.Sdk.Extension.rust-stable"
     ],
-    "command" : "vrxx",
-    "finish-args" : [
+    "command": "vrxx",
+    "finish-args": [
         "--share=network",
         "--share=ipc",
         "--socket=fallback-x11",
-        "--device=dri",
-        "--socket=wayland"
+        "--socket=wayland",
+        "--device=dri"
     ],
-    "build-options" : {
-        "append-path" : "/usr/lib/sdk/rust-stable/bin",
-        "build-args" : [
-            "--share=network"
-        ],
-        "env" : {
-            "RUST_BACKTRACE" : "1",
-            "RUST_LOG" : "vrxx=debug"
+    "build-options": {
+        "append-env": {
+            "CARGO_HOME": "/run/build/vrxx/cargo"
         }
     },
-    "cleanup" : [
-        "/include",
-        "/lib/pkgconfig",
-        "/man",
-        "/share/doc",
-        "/share/gtk-doc",
-        "/share/man",
-        "/share/pkgconfig",
-        "*.la",
-        "*.a"
-    ],
-    "modules" : [
+    "modules": [
         {
-            "name" : "vrxx",
-            "builddir" : true,
-            "buildsystem" : "meson",
-            "sources" : [
+            "name": "vrxx",
+            "buildsystem": "meson",
+            "sources": [
                 {
-                    "type" : "git",
-                    "url" : "file:///home/mihail/Developer/builder"
+                    "type": "dir",
+                    "path": "."
                 }
             ]
         }

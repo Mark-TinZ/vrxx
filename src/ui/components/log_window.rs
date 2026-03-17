@@ -34,17 +34,6 @@ mod imp {
                 </child>
                 <child type='start'>
                   <object class='GtkDropDown' id='dropdown_filter'>
-                    <property name='model'>
-                      <object class='GtkStringList'>
-                        <property name='strings'>
-                          <array>
-                            <item translatable='yes'>Все логи</item>
-                            <item translatable='yes'>Логи приложения</item>
-                            <item translatable='yes'>Логи ядра</item>
-                          </array>
-                        </property>
-                      </object>
-                    </property>
                   </object>
                 </child>
                 <child type='end'>
@@ -118,6 +107,13 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
+
+            let strings = gtk::StringList::new(&[
+                gettextrs::gettext("Все логи").as_str(),
+                gettextrs::gettext("Логи приложения").as_str(),
+                gettextrs::gettext("Логи ядра").as_str(),
+            ]);
+            self.dropdown_filter.set_model(Some(&strings));
 
             let buffer = self.text_view.buffer();
             buffer.create_tag(Some("error"), &[("foreground", &"red"), ("weight", &700)]);

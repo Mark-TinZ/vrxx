@@ -131,6 +131,8 @@ impl XrayBackend {
         cmd.arg("run").arg("-c").arg(&temp_path);
 
         // Перехватываем потоки вывода для SSD-безопасного логирования
+        log_app_event("info", &format!("Запуск ядра {bin_name}..."));
+
         let mut child = cmd
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

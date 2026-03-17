@@ -18,6 +18,7 @@ mod settings;
 mod protocol;
 mod key_parser;
 mod xray_config;
+mod singbox_config;
 
 use self::application::VrxxApplication;
 use config::{GETTEXT_PACKAGE, LOCALEDIR};

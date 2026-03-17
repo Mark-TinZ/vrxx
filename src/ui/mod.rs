@@ -20,3 +20,4 @@ pub fn setup_primary_menu(menu_button: &gtk::MenuButton) {
         popover.add_child(&switcher, "theme_switcher");
     }
 }
+mod tests;

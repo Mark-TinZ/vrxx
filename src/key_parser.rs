@@ -137,3 +137,35 @@ pub fn build_vpn_key(parsed: &ParsedKey) -> String {
         String::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_vless_reality_url() {
+        let url = "vless://a3482e88-6860-4a1c-914c-4b4ea5c49f87@1.2.3.4:443?security=reality&sni=google.com&fp=chrome&pbk=pubkey123&sid=shortid&type=tcp&flow=xtls-rprx-vision#MyVLESS";
+        let parsed = parse_vpn_key(url).expect("Should parse vless reality url");
+        assert_eq!(parsed.protocol, "VLESS");
+        assert_eq!(parsed.uuid, "a3482e88-6860-4a1c-914c-4b4ea5c49f87");
+        assert_eq!(parsed.host, "1.2.3.4");
+        assert_eq!(parsed.port, 443);
+        assert_eq!(parsed.name, "MyVLESS");
+        assert_eq!(parsed.query_params.get("security").map(|s| s.as_str()), Some("reality"));
+        assert_eq!(parsed.query_params.get("flow").map(|s| s.as_str()), Some("xtls-rprx-vision"));
+    }
+
+    #[test]
+    fn test_parse_vmess_url() {
+        // {"v":"2","ps":"VMess Key","add":"1.1.1.1","port":443,"id":"my-uuid","net":"ws"}
+        // eyJ2IjoiMiIsInBzIjoiVk1lc3MgS2V5IiwiYWRkIjoiMS4xLjEuMSIsInBvcnQiOjQ0MywiaWQiOiJteS11dWlkIiwibmV0Ijoid3MifQ==
+        let url = "vmess://eyJ2IjoiMiIsInBzIjoiVk1lc3MgS2V5IiwiYWRkIjoiMS4xLjEuMSIsInBvcnQiOjQ0MywiaWQiOiJteS11dWlkIiwibmV0Ijoid3MifQ==";
+        let parsed = parse_vpn_key(url).expect("Should parse vmess base64 url");
+        assert_eq!(parsed.protocol, "VMess");
+        assert_eq!(parsed.name, "VMess Key");
+        assert_eq!(parsed.host, "1.1.1.1");
+        assert_eq!(parsed.port, 443);
+        assert_eq!(parsed.uuid, "my-uuid");
+        assert_eq!(parsed.query_params.get("net").map(|s| s.as_str()), Some("ws"));
+    }
+}
