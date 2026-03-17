@@ -85,6 +85,12 @@ glib::wrapper! {
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
+impl Default for VrxxSettingsPage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VrxxSettingsPage {
     pub fn new() -> Self {
         glib::Object::builder().build()
@@ -329,7 +335,7 @@ impl VrxxSettingsPage {
                 // Extract version from first line
                 s.lines().next().unwrap_or("Unknown Version").to_string()
             }
-            Err(_) => format!("{} не найден", bin_name),
+            Err(_) => format!("{bin_name} не найден"),
         };
 
         self.imp().core_info_row.set_subtitle(&version_str);

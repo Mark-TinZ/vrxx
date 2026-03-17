@@ -117,7 +117,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
 
     let mut stream_settings = json!({});
     
-    // Parse query parameters for transport and security
+    // Разбор параметров строки запроса для транспорта и безопасности
     let qp = &parsed_key.query_params;
     let net = qp.get("type").map(|s| s.as_str()).unwrap_or("tcp");
     let security = qp.get("security").map(|s| s.as_str()).unwrap_or("none");
@@ -125,28 +125,31 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
     stream_settings["network"] = json!(net);
     stream_settings["security"] = json!(security);
 
+    let default_chrome = "chrome".to_string();
+    let default_host = parsed_key.host.clone();
+
     if security == "tls" {
         stream_settings["tlsSettings"] = json!({
-            "serverName": qp.get("sni").unwrap_or(&parsed_key.host),
-            "fingerprint": qp.get("fp").unwrap_or(&"chrome".to_string()),
+            "serverName": qp.get("sni").unwrap_or(&default_host),
+            "fingerprint": qp.get("fp").unwrap_or(&default_chrome),
             "alpn": qp.get("alpn").map(|s| s.split(',').collect::<Vec<&str>>()).unwrap_or_else(|| vec!["h2", "http/1.1"])
         });
     } else if security == "reality" {
         stream_settings["realitySettings"] = json!({
-            "serverName": qp.get("sni").unwrap_or(&parsed_key.host),
-            "fingerprint": qp.get("fp").unwrap_or(&"chrome".to_string()),
+            "serverName": qp.get("sni").unwrap_or(&default_host),
+            "fingerprint": qp.get("fp").unwrap_or(&default_chrome),
             "publicKey": qp.get("pbk").unwrap_or(&"".to_string()),
             "shortId": qp.get("sid").unwrap_or(&"".to_string()),
             "spiderX": qp.get("spx").unwrap_or(&"/".to_string()),
         });
     }
 
-    // Transport specific settings
+    // Специфичные настройки транспорта
     if net == "ws" {
         stream_settings["wsSettings"] = json!({
             "path": qp.get("path").unwrap_or(&"/".to_string()),
             "headers": {
-                "Host": qp.get("host").unwrap_or(&parsed_key.host)
+                "Host": qp.get("host").unwrap_or(&default_host)
             }
         });
     } else if net == "grpc" {
@@ -155,26 +158,39 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
             "multiMode": qp.get("mode").map(|m| m == "multi").unwrap_or(false)
         });
     } else if net == "tcp" {
-        // TCP settings
+        // Настройки TCP
     }
 
-    // Mux and Fragment
+    // Mux и фрагментация
     let mut proxy_outbound = json!({
         "tag": "proxy",
         "protocol": parsed_key.protocol.to_lowercase(),
         "streamSettings": stream_settings
     });
 
-    if settings.enable_mux {
+    let is_vless_reality = parsed_key.protocol.to_lowercase() == "vless" && security == "reality";
+
+    if settings.enable_mux && !is_vless_reality {
         proxy_outbound["mux"] = json!({
             "enabled": true,
             "concurrency": settings.mux_concurrency,
             "xudpConcurrency": settings.mux_concurrency,
             "xudpProxyUDP443": "reject"
         });
+    } else if is_vless_reality {
+        // Отключаем mux для VLESS+Reality или задаем низкую конкурентность для обхода ТСПУ
+        proxy_outbound["mux"] = json!({
+            "enabled": false,
+            "concurrency": -1
+        });
     }
 
     let outbound_settings = if parsed_key.protocol.to_lowercase() == "vless" {
+        let default_flow = if security == "reality" {
+            "xtls-rprx-vision".to_string()
+        } else {
+            "".to_string()
+        };
         json!({
             "vnext": [{
                 "address": parsed_key.host,
@@ -182,7 +198,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
                 "users": [{
                     "id": parsed_key.uuid,
                     "encryption": "none",
-                    "flow": qp.get("flow").unwrap_or(&"".to_string())
+                    "flow": qp.get("flow").unwrap_or(&default_flow)
                 }]
             }]
         })
@@ -258,36 +274,46 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
             "outboundTag": "direct",
             "ip": ["geoip:private"]
         }));
+        rules.push(json!({
+            "type": "field",
+            "outboundTag": "direct",
+            "domain": ["geosite:private"]
+        }));
     }
 
-    // Whitelist rules handling
+    // Обработка правил белого/черного списка с поддержкой geosite/geoip
     if settings.enable_routing && !settings.whitelist.is_empty() {
         let mut domains = vec![];
+        let mut ips = vec![];
         for d in &settings.whitelist {
-            if d.contains('*') {
+            if d.starts_with("geosite:") || d.starts_with("domain:") || d.starts_with("full:") || d.starts_with("regexp:") || d.starts_with("keyword:") {
+                domains.push(d.clone());
+            } else if d.starts_with("geoip:") {
+                ips.push(d.clone());
+            } else if d.contains('*') {
                 let pattern = d.replace(".", "\\.").replace("*", ".*");
-                domains.push(format!("regexp:{}$", pattern));
+                domains.push(format!("regexp:{pattern}$"));
             } else {
-                domains.push(format!("domain:{}", d));
+                domains.push(format!("domain:{d}"));
             }
         }
         
         let target_tag = if settings.routing_mode == "proxy" { "proxy" } else { "direct" };
-        rules.push(json!({
+        let mut rule = json!({
             "type": "field",
             "outboundTag": target_tag,
-            "domain": domains
-        }));
+        });
         
-        // If mode is proxy, we also want to ensure default traffic goes direct if no rules matched
-        // But Xray's default rule handling depends on the first outbound. The first outbound is "proxy".
-        // Wait, if it's "proxy", and rule says proxy, what about the rest? 
-        // We probably should append a rule for direct if we want others to bypass, but standard VPN defaults all to proxy.
-        // If mode is proxy (Включения), it means ONLY those domains go through VPN, others go direct.
-        // To do this, we need a catch-all rule or swap the first outbound. Let's keep it simple:
-        // By default all traffic goes to the first outbound ("proxy").
-        // If routing_mode is "bypass" (Исключения), we add a rule to route `domains` to "direct". The rest goes to "proxy" (default).
-        // If routing_mode is "proxy" (Включения), we want ONLY `domains` to go to "proxy". Then the rest should go to "direct".
+        if !domains.is_empty() {
+            rule["domain"] = json!(domains);
+        }
+        if !ips.is_empty() {
+            rule["ip"] = json!(ips);
+        }
+        rules.push(rule);
+        
+        // Если режим proxy (Включения), то ТОЛЬКО указанные домены/IP идут через proxy.
+        // Остальной трафик должен идти напрямую (direct).
         if settings.routing_mode == "proxy" {
             rules.push(json!({
                 "type": "field",
@@ -310,11 +336,11 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
                 "fakedns"
             ]
         }));
-        // Note: Full fakedns implementation requires configuring fakedns inbound/sniffing.
+        // Примечание: Полная реализация fakedns требует настройки fakedns inbound/sniffing.
     }
 
     let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
-    std::fs::create_dir_all(&log_dir).ok();
+    let _ = std::fs::create_dir_all(&log_dir);
     let access_log = log_dir.join("access.log").to_string_lossy().to_string();
     let error_log = log_dir.join("error.log").to_string_lossy().to_string();
 

@@ -57,6 +57,12 @@ glib::wrapper! {
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
+impl Default for VrxxProxyPage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VrxxProxyPage {
     pub fn new() -> Self {
         glib::Object::builder().build()

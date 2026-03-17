@@ -33,6 +33,12 @@ glib::wrapper! {
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
+impl Default for VrxxThemeSwitcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VrxxThemeSwitcher {
     pub fn new() -> Self {
         glib::Object::builder().build()

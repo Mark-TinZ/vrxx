@@ -6,6 +6,18 @@ use nix::sys::signal::{kill, Signal};
 use nix::unistd::Pid;
 use tempfile::NamedTempFile;
 use anyhow::{Result, Context, anyhow};
+use std::path::Path;
+
+/// Вспомогательная функция для ротации логов, если они превышают 5 МБ
+fn rotate_log_if_needed(path: &Path) {
+    if let Ok(metadata) = std::fs::metadata(path) {
+        if metadata.len() > 5 * 1024 * 1024 { // 5 MB
+            let mut backup_path = path.to_path_buf();
+            backup_path.set_extension("log.old");
+            let _ = std::fs::rename(path, &backup_path);
+        }
+    }
+}
 
 /// Функция для логирования событий приложения
 pub fn log_app_event(level: &str, message: &str) {
@@ -13,6 +25,8 @@ pub fn log_app_event(level: &str, message: &str) {
     let _ = std::fs::create_dir_all(&log_dir);
     let log_path = log_dir.join("core.log");
     
+    rotate_log_if_needed(&log_path);
+
     // Используем добавление в файл (append)
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
         let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
@@ -45,7 +59,7 @@ impl XrayBackend {
     /// Запускает ядро Xray/Sing-box с переданной конфигурацией
     pub fn start(&self, config_json: &str) -> Result<()> {
         // Останавливаем предыдущий процесс в фоне (без блокировки UI)
-        self.stop().unwrap_or_else(|e| log_app_event("error", &format!("Failed to stop previous process: {}", e)));
+        self.stop().unwrap_or_else(|e| log_app_event("error", &format!("Failed to stop previous process: {e}")));
 
         // Сохраняем конфиг во временный файл безопасно
         let mut named_temp_file = tempfile::Builder::new()
@@ -59,7 +73,7 @@ impl XrayBackend {
         let temp_path = named_temp_file.path().to_path_buf();
         
         let mut config_file_guard = self.config_file.lock()
-            .map_err(|e| anyhow!("Mutex lock failed: {}", e))?;
+            .map_err(|e| anyhow!("Mutex lock failed: {e}"))?;
         *config_file_guard = Some(named_temp_file);
 
         // Получаем настройки для выбора ядра
@@ -78,11 +92,11 @@ impl XrayBackend {
         };
         
         if binary_missing {
-            return Err(anyhow!("Ядро {} не найдено в системе.\n\nПожалуйста, установите его (например, через ваш пакетный менеджер) или выберите другое ядро в Настройках.", bin_name));
+            return Err(anyhow!("Ядро {bin_name} не найдено в системе.\n\nПожалуйста, установите его (например, через ваш пакетный менеджер) или выберите другое ядро в Настройках."));
         }
 
         if settings.tun_mode {
-            let which_core = Command::new("which").arg(&bin_name).output();
+            let which_core = Command::new("which").arg(bin_name).output();
             let core_path = match which_core {
                 Ok(out) => String::from_utf8_lossy(&out.stdout).trim().to_string(),
                 Err(_) => bin_name.to_string(),
@@ -96,9 +110,20 @@ impl XrayBackend {
             };
             
             if !has_caps {
-                return Err(anyhow!("Режим TUN включен, но ядро {} не имеет необходимых прав (cap_net_admin).\n\nВыполните в терминале:\nsudo setcap cap_net_admin=ep {}", bin_name, core_path));
+                return Err(anyhow!("Режим TUN включен, но ядро {bin_name} не имеет необходимых прав (cap_net_admin).\n\nВыполните в терминале:\nsudo setcap cap_net_admin=ep {core_path}"));
             }
         }
+
+        // Выполняем ротацию логов ядра Xray
+        let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
+        std::fs::create_dir_all(&log_dir).ok();
+        let log_path = log_dir.join("core.log");
+        let error_log_path = log_dir.join("error.log");
+        let access_log_path = log_dir.join("access.log");
+        
+        rotate_log_if_needed(&log_path);
+        rotate_log_if_needed(&error_log_path);
+        rotate_log_if_needed(&access_log_path);
 
         let mut cmd = Command::new(bin_name);
 
@@ -110,14 +135,10 @@ impl XrayBackend {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .context(format!("Failed to start {}", bin_name))?;
+            .context(format!("Failed to start {bin_name}"))?;
 
         let stdout = child.stdout.take().context("Failed to capture stdout")?;
         let stderr = child.stderr.take().context("Failed to capture stderr")?;
-        
-        let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
-        std::fs::create_dir_all(&log_dir).ok();
-        let log_path = log_dir.join("core.log");
 
         // Фоновый поток для stdout
         let log_path_out = log_path.clone();
@@ -135,6 +156,10 @@ impl XrayBackend {
                 }
 
                 if (last_flush.elapsed().as_secs() >= 5 || buffer.len() > 8192) && !buffer.is_empty() {
+                    rotate_log_if_needed(&log_path_out);
+                    // Переоткрываем файл на случай ротации
+                    log_file = std::fs::OpenOptions::new().create(true).append(true).open(&log_path_out);
+                    
                     if let Ok(ref mut f) = log_file {
                         let _ = f.write_all(buffer.as_bytes());
                         let _ = f.flush();
@@ -171,6 +196,9 @@ impl XrayBackend {
                 }
 
                 if (last_flush.elapsed().as_secs() >= 5 || buffer.len() > 8192) && !buffer.is_empty() {
+                    rotate_log_if_needed(&log_path_err);
+                    log_file = std::fs::OpenOptions::new().create(true).append(true).open(&log_path_err);
+
                     if let Ok(ref mut f) = log_file {
                         let _ = f.write_all(buffer.as_bytes());
                         let _ = f.flush();
@@ -191,16 +219,16 @@ impl XrayBackend {
             }
         });
 
-        let mut process_guard = self.process.lock().map_err(|e| anyhow!("Mutex lock failed: {}", e))?;
+        let mut process_guard = self.process.lock().map_err(|e| anyhow!("Mutex lock failed: {e}"))?;
         *process_guard = Some(child);
         Ok(())
     }
 
     /// Останавливает ядро не блокируя текущий поток
     pub fn stop(&self) -> Result<()> {
-        let mut process_guard = self.process.lock().map_err(|e| anyhow!("Mutex lock failed: {}", e))?;
+        let mut process_guard = self.process.lock().map_err(|e| anyhow!("Mutex lock failed: {e}"))?;
         if let Some(mut child) = process_guard.take() {
-            log_app_event("info", "Stopping core process...");
+            log_app_event("info", "Остановка процесса ядра...");
             let pid = Pid::from_raw(child.id() as i32);
             let _ = kill(pid, Signal::SIGTERM);
             
@@ -218,15 +246,15 @@ impl XrayBackend {
                 }
                 // Если процесс всё ещё жив после 5 секунд
                 if max_wait == 0 {
-                    log_app_event("warn", "Core process did not stop gracefully, killing...");
+                    log_app_event("warn", "Процесс ядра не завершился вовремя, принудительное убийство...");
                     let _ = child.kill();
                 }
                 let _ = child.wait();
-                log_app_event("info", "Core process exited.");
+                log_app_event("info", "Процесс ядра завершен.");
             });
         }
         
-        let mut config_guard = self.config_file.lock().map_err(|e| anyhow!("Mutex lock failed: {}", e))?;
+        let mut config_guard = self.config_file.lock().map_err(|e| anyhow!("Mutex lock failed: {e}"))?;
         *config_guard = None; // Автоматически удалит временный файл при Drop
         
         Ok(())
@@ -250,4 +278,3 @@ impl Drop for XrayBackend {
         let _ = self.stop();
     }
 }
-

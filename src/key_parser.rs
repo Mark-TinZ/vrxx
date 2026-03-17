@@ -25,7 +25,7 @@ pub fn parse_vpn_key(url_str: &str) -> Result<ParsedKey, String> {
         "vless" => "VLESS",
         "trojan" => "Trojan",
         "ss" => "Shadowsocks",
-        other => return Err(format!("Unsupported protocol: {}", other)),
+        other => return Err(format!("Unsupported protocol: {other}")),
     };
 
     let uuid = parsed_url.username().to_string();
@@ -35,7 +35,7 @@ pub fn parse_vpn_key(url_str: &str) -> Result<ParsedKey, String> {
     // Fragment is often used for the name in these URI schemes
     let name = parsed_url.fragment()
         .map(|s| percent_encoding::percent_decode_str(s).decode_utf8_lossy().to_string())
-        .unwrap_or_else(|| format!("{}:{}", host, port));
+        .unwrap_or_else(|| format!("{host}:{port}"));
 
     let mut query_params = HashMap::new();
     for (k, v) in parsed_url.query_pairs() {
@@ -64,11 +64,11 @@ fn parse_vmess(url_str: &str) -> Result<ParsedKey, String> {
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&json_str) {
         let name = json.get("ps").and_then(|v| v.as_str()).unwrap_or("VMess Key").to_string();
         let host = json.get("add").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let port = json.get("port").and_then(|v| {
+        let port = json.get("port").map(|v| {
             if v.is_string() {
-                Some(v.as_str().unwrap_or("443").parse::<u16>().unwrap_or(443))
+                v.as_str().unwrap_or("443").parse::<u16>().unwrap_or(443)
             } else {
-                Some(v.as_u64().unwrap_or(443) as u16)
+                v.as_u64().unwrap_or(443) as u16
             }
         }).unwrap_or(443);
         let uuid = json.get("id").and_then(|v| v.as_str()).unwrap_or("").to_string();
@@ -113,7 +113,7 @@ pub fn build_vpn_key(parsed: &ParsedKey) -> String {
         let json_str = serde_json::to_string(&map).unwrap_or_default();
         use base64::{Engine as _, engine::general_purpose};
         let encoded = general_purpose::STANDARD.encode(json_str);
-        return format!("vmess://{}", encoded);
+        return format!("vmess://{encoded}");
     }
 
     let scheme = match parsed.protocol.to_lowercase().as_str() {

@@ -105,7 +105,7 @@ impl VrxxApplication {
             .build();
         
         let color_scheme_action = gio::ActionEntry::builder("set-color-scheme")
-            .parameter_type(Some(&glib::VariantTy::STRING))
+            .parameter_type(Some(glib::VariantTy::STRING))
             .state(glib::Variant::from("default"))
             .activate(move |_app: &Self, action, parameter| {
                 if let Some(param) = parameter {
@@ -183,7 +183,7 @@ impl VrxxApplication {
             .activate(move |_, _, _| {
                 let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
                 std::fs::create_dir_all(&log_dir).ok();
-                if let Some(uri) = glib::filename_to_uri(&log_dir, None).ok() {
+                if let Ok(uri) = glib::filename_to_uri(&log_dir, None) {
                     let _ = gio::AppInfo::launch_default_for_uri(&uri, None::<&gio::AppLaunchContext>);
                 }
             })
@@ -242,12 +242,12 @@ impl VrxxApplication {
             .version(VERSION)
             .developers(vec!["Mark"])
             .artists(vec!["GNOME Design Team"])
-            .translator_credits(&gettext("translator-credits"))
+            .translator_credits(gettext("translator-credits"))
             .copyright("© 2026 Mark")
             .license_type(gtk::License::Mpl20)
             .website("https://github.com/Mark-TinZ/vrxx")
             .issue_url("https://github.com/Mark-TinZ/vrxx/issues")
-            .comments(&gettext("A graphical interface for Xray-core designed to simplify VPN and proxy configuration on Linux systems."))
+            .comments(gettext("A graphical interface for Xray-core designed to simplify VPN and proxy configuration on Linux systems."))
             .build();
 
         about.present(Some(&window));

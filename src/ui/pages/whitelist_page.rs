@@ -71,6 +71,12 @@ glib::wrapper! {
                    gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
+impl Default for VrxxWhitelistPage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VrxxWhitelistPage {
     pub fn new() -> Self {
         glib::Object::builder().build()
@@ -149,7 +155,7 @@ impl VrxxWhitelistPage {
                 .icon_name("user-trash-symbolic")
                 .valign(gtk::Align::Center)
                 .has_frame(false)
-                .tooltip_text(&gettext("Delete"))
+                .tooltip_text(gettext("Delete"))
                 .css_classes(vec!["flat", "destructive-action"])
                 .build();
 
@@ -173,7 +179,7 @@ impl VrxxWhitelistPage {
                     let domain = obj.domain().to_lowercase();
                     if text.contains('*') {
                         let pattern = text.replace(".", "\\.").replace("*", ".*");
-                        if let Ok(re) = regex::Regex::new(&format!("^{}$", pattern)) {
+                        if let Ok(re) = regex::Regex::new(&format!("^{pattern}$")) {
                             return re.is_match(&domain);
                         }
                     }
@@ -376,7 +382,7 @@ impl VrxxWhitelistPage {
 
         // Поле ввода
         let entry_row = adw::EntryRow::builder()
-            .title(&gettext("Domain"))
+            .title(gettext("Domain"))
             .text(&initial_text)
             .show_apply_button(false)
             .build();
@@ -392,7 +398,7 @@ impl VrxxWhitelistPage {
         // Создаем диалог
         let dialog = adw::AlertDialog::builder()
             .heading(&title)
-            .body(&gettext("Enter the domain address or rule (e.g. google.com, domain:vk.com, *.ru)"))
+            .body(gettext("Enter the domain address or rule (e.g. google.com, domain:vk.com, *.ru)"))
             .extra_child(&content_area)
             .build();
 
@@ -436,7 +442,7 @@ impl VrxxWhitelistPage {
                         let mut exists = false;
                         for i in 0..model.n_items() {
                             if let Some(obj) = model.item(i).and_then(|o| o.downcast::<DomainObject>().ok()) {
-                                if obj.domain() == text && target_obj_clone.as_ref().map_or(true, |to| to.domain() != text) {
+                                if obj.domain() == text && target_obj_clone.as_ref().is_none_or(|to| to.domain() != text) {
                                     exists = true;
                                     break;
                                 }

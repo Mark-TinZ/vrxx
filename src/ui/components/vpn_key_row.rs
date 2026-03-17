@@ -76,6 +76,12 @@ glib::wrapper! {
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }
 
+impl Default for VrxxVpnKeyRow {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VrxxVpnKeyRow {
     pub fn new() -> Self {
         glib::Object::builder().build()

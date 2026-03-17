@@ -46,7 +46,7 @@ mod imp {
                  self.navigation_list.select_row(Some(&row));
                  // Принудительная установка начальной страницы
                  if let Some(name) = obj.get_page_name_from_row(&row) {
-                     self.view_stack.set_visible_child_name(&name);
+                     self.view_stack.set_visible_child_name(name);
                  }
             }
         }
@@ -100,7 +100,7 @@ impl VrxxWindow {
 
                     if let Some(page_name) = window.get_page_name_from_row(row) {
                         // println!("DEBUG: Switching to page '{}'", page_name);
-                        imp.view_stack.set_visible_child_name(&page_name);
+                        imp.view_stack.set_visible_child_name(page_name);
                     } else {
                         // println!("DEBUG: Could not determine page name for row");
                     }
