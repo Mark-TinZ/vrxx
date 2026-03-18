@@ -99,10 +99,10 @@ impl VrxxWindow {
                     let imp = window.imp();
 
                     if let Some(page_name) = window.get_page_name_from_row(row) {
-                        // println!("DEBUG: Switching to page '{}'", page_name);
+                        // crate::backend::log_app_event("info", &format!("DEBUG: Switching to page '{}'", page_name));
                         imp.view_stack.set_visible_child_name(page_name);
                     } else {
-                        // println!("DEBUG: Could not determine page name for row");
+                        // crate::backend::log_app_event("warn", "DEBUG: Could not determine page name for row");
                     }
                 }
             },

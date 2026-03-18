@@ -73,7 +73,11 @@ mod imp {
                 window.upcast()
             });
 
-            window.present();
+            // Prevent presenting the window if launched with --hidden
+            let is_hidden = std::env::args().any(|arg| arg == "--hidden");
+            if !is_hidden {
+                window.present();
+            }
         }
     }
 
@@ -173,7 +177,15 @@ impl VrxxApplication {
 
         let view_logs_action = gio::ActionEntry::builder("view_logs")
             .activate(move |app: &Self, _, _| {
+                // Check if a LogWindow is already open
+                for window in app.windows() {
+                    if window.is::<crate::ui::components::log_window::VrxxLogWindow>() {
+                        window.present();
+                        return;
+                    }
+                }
                 let log_window = crate::ui::components::log_window::VrxxLogWindow::new();
+                app.add_window(&log_window);
                 log_window.set_transient_for(app.active_window().as_ref());
                 log_window.present();
             })
@@ -231,7 +243,7 @@ impl VrxxApplication {
         let window = match self.active_window() {
             Some(w) => w,
             None => {
-                eprintln!("Warning: No active window found for about dialog.");
+                crate::backend::log_app_event("warn", "Warning: No active window found for about dialog.");
                 return;
             }
         };

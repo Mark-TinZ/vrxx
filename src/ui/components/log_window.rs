@@ -179,6 +179,19 @@ impl VrxxLogWindow {
                 *window.imp().last_pos.borrow_mut() = 0;
             }
         });
+
+        let window_weak_scroll = self.downgrade();
+        self.imp().btn_autoscroll.connect_toggled(move |btn| {
+            if btn.is_active() {
+                if let Some(window) = window_weak_scroll.upgrade() {
+                    let imp = window.imp();
+                    let buffer = imp.text_view.buffer();
+                    let mark = buffer.create_mark(None, &buffer.end_iter(), false);
+                    imp.text_view.scroll_to_mark(&mark, 0.0, false, 0.0, 1.0);
+                    buffer.delete_mark(&mark);
+                }
+            }
+        });
     }
 
     fn start_log_polling(&self) {

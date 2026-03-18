@@ -27,7 +27,7 @@ mod imp {
         #[template_child]
         pub streamer_mode_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
-        pub tun_mode_row: TemplateChild<adw::ExpanderRow>,
+        pub tun_mode_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub log_level_row: TemplateChild<adw::ComboRow>,
         #[template_child]
@@ -121,7 +121,7 @@ impl VrxxSettingsPage {
         imp.connect_startup_row.set_active(settings.connect_on_startup);
         imp.notifications_row.set_active(settings.notifications);
         imp.streamer_mode_row.set_active(settings.streamer_mode);
-        imp.tun_mode_row.set_enable_expansion(settings.tun_mode);
+        imp.tun_mode_row.set_active(settings.tun_mode);
 
         imp.sniffing_row.set_active(settings.enable_sniffing);
         imp.bypass_lan_row.set_active(settings.bypass_lan);
@@ -154,7 +154,7 @@ impl VrxxSettingsPage {
             let old_core = s.core.clone();
             s.core = if row.selected() == 1 { "sing-box".to_string() } else { "xray".to_string() };
             if old_core != s.core {
-                crate::backend::log_app_event("info", &format!("Core changed from {} to {}", old_core, s.core));
+                crate::backend::log_app_event("debug", &format!("Core changed from {} to {}", old_core, s.core));
             }
             manager.save(&s);
             if let Some(page) = self_weak.upgrade() {
@@ -175,7 +175,7 @@ impl VrxxSettingsPage {
                 _ => "system".to_string(),
             };
             if old_lang != s.language {
-                crate::backend::log_app_event("info", &format!("Language changed from {} to {}", old_lang, s.language));
+                crate::backend::log_app_event("debug", &format!("Language changed from {} to {}", old_lang, s.language));
             }
             manager.save(&s);
             
@@ -192,19 +192,25 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.autostart = row.is_active();
-            crate::backend::log_app_event("info", &format!("Autostart toggled to {}", s.autostart));
+            crate::backend::log_app_event("debug", &format!("Autostart toggled to {}", s.autostart));
             manager.save(&s);
-            
-            // Apply autostart
+
             let autostart_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("autostart");
-            let desktop_file = autostart_dir.join("ru.mark.vrxx.desktop");
-            
+            std::fs::create_dir_all(&autostart_dir).ok();
+            let desktop_file_path = autostart_dir.join("ru.mark.vrxx.desktop");
+
             if s.autostart {
-                std::fs::create_dir_all(&autostart_dir).ok();
-                let content = "[Desktop Entry]\nName=Vrxx\nComment=Advanced Xray/Sing-box Client\nExec=vrxx\nIcon=ru.mark.vrxx\nTerminal=false\nType=Application\nCategories=Network;VPN;\nStartupWMClass=vrxx\nX-GNOME-Autostart-enabled=true\n";
-                let _ = std::fs::write(desktop_file, content);
+                let exe_path = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("vrxx"));
+                let exec_cmd = if std::env::var("FLATPAK_ID").is_ok() {
+                    "flatpak run ru.mark.vrxx --hidden".to_string()
+                } else {
+                    format!("{} --hidden", exe_path.display())
+                };
+
+                let desktop_content = format!("[Desktop Entry]\nType=Application\nName=Vrxx\nExec={}\nIcon=ru.mark.vrxx\nComment=VPN Client\nTerminal=false\nCategories=Network;\n", exec_cmd);
+                let _ = std::fs::write(&desktop_file_path, desktop_content);
             } else {
-                let _ = std::fs::remove_file(desktop_file);
+                let _ = std::fs::remove_file(&desktop_file_path);
             }
         });
 
@@ -212,7 +218,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.connect_on_startup = row.is_active();
-            crate::backend::log_app_event("info", &format!("Connect on startup toggled to {}", s.connect_on_startup));
+            crate::backend::log_app_event("debug", &format!("Connect on startup toggled to {}", s.connect_on_startup));
             manager.save(&s);
         });
 
@@ -220,7 +226,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.notifications = row.is_active();
-            crate::backend::log_app_event("info", &format!("Notifications toggled to {}", s.notifications));
+            crate::backend::log_app_event("debug", &format!("Notifications toggled to {}", s.notifications));
             manager.save(&s);
         });
 
@@ -228,15 +234,15 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.streamer_mode = row.is_active();
-            crate::backend::log_app_event("info", &format!("Streamer mode toggled to {}", s.streamer_mode));
+            crate::backend::log_app_event("debug", &format!("Streamer mode toggled to {}", s.streamer_mode));
             manager.save(&s);
         });
 
-        imp.tun_mode_row.connect_enable_expansion_notify(move |row| {
+        imp.tun_mode_row.connect_active_notify(move |row| {
             let manager = SettingsManager::new();
             let mut s = manager.load();
-            s.tun_mode = row.enables_expansion();
-            crate::backend::log_app_event("info", &format!("TUN mode toggled to {}", s.tun_mode));
+            s.tun_mode = row.is_active();
+            crate::backend::log_app_event("debug", &format!("TUN mode toggled to {}", s.tun_mode));
             manager.save(&s);
         });
 
@@ -244,7 +250,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.enable_sniffing = row.is_active();
-            crate::backend::log_app_event("info", &format!("Sniffing toggled to {}", s.enable_sniffing));
+            crate::backend::log_app_event("debug", &format!("Sniffing toggled to {}", s.enable_sniffing));
             manager.save(&s);
         });
 
@@ -252,7 +258,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.bypass_lan = row.is_active();
-            crate::backend::log_app_event("info", &format!("Bypass LAN toggled to {}", s.bypass_lan));
+            crate::backend::log_app_event("debug", &format!("Bypass LAN toggled to {}", s.bypass_lan));
             manager.save(&s);
         });
 
@@ -260,7 +266,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.enable_fake_dns = row.is_active();
-            crate::backend::log_app_event("info", &format!("Fake DNS toggled to {}", s.enable_fake_dns));
+            crate::backend::log_app_event("debug", &format!("Fake DNS toggled to {}", s.enable_fake_dns));
             manager.save(&s);
         });
 
@@ -268,7 +274,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.enable_fragment = row.is_active();
-            crate::backend::log_app_event("info", &format!("Fragment toggled to {}", s.enable_fragment));
+            crate::backend::log_app_event("debug", &format!("Fragment toggled to {}", s.enable_fragment));
             manager.save(&s);
         });
 
@@ -276,7 +282,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.enable_mux = row.enables_expansion();
-            crate::backend::log_app_event("info", &format!("MUX toggled to {}", s.enable_mux));
+            crate::backend::log_app_event("debug", &format!("MUX toggled to {}", s.enable_mux));
             manager.save(&s);
         });
 
@@ -284,7 +290,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.mux_concurrency = row.value() as i32;
-            crate::backend::log_app_event("info", &format!("MUX concurrency set to {}", s.mux_concurrency));
+            crate::backend::log_app_event("debug", &format!("MUX concurrency set to {}", s.mux_concurrency));
             manager.save(&s);
         });
 
@@ -298,7 +304,7 @@ impl VrxxSettingsPage {
                 _ => "AsIs".to_string(),
             };
             if old_strategy != s.domain_strategy {
-                crate::backend::log_app_event("info", &format!("Domain strategy changed from {} to {}", old_strategy, s.domain_strategy));
+                crate::backend::log_app_event("debug", &format!("Domain strategy changed from {} to {}", old_strategy, s.domain_strategy));
             }
             manager.save(&s);
         });
@@ -314,7 +320,7 @@ impl VrxxSettingsPage {
                 _ => "info".to_string(),
             };
             if old_level != s.log_level {
-                crate::backend::log_app_event("info", &format!("Log level changed from {} to {}", old_level, s.log_level));
+                crate::backend::log_app_event("debug", &format!("Log level changed from {} to {}", old_level, s.log_level));
             }
             manager.save(&s);
         });

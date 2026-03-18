@@ -168,14 +168,17 @@
         <attribute name="label" translatable="yes">_Edit</attribute>
         <attribute name="action">row.key_edit</attribute>
       </item>
-      <item>
-        <attribute name="label" translatable="yes">Copy _Link</attribute>
-        <attribute name="action">row.key_copy_link</attribute>
-      </item>
-      <item>
-        <attribute name="label" translatable="yes">Copy _JSON</attribute>
-        <attribute name="action">row.key_copy_json</attribute>
-      </item>
+      <submenu>
+        <attribute name="label" translatable="yes">_Copy</attribute>
+        <item>
+          <attribute name="label" translatable="yes">_Link</attribute>
+          <attribute name="action">row.key_copy_link</attribute>
+        </item>
+        <item>
+          <attribute name="label" translatable="yes">_JSON</attribute>
+          <attribute name="action">row.key_copy_json</attribute>
+        </item>
+      </submenu>
       <item>
         <attribute name="label" translatable="yes">_Duplicate</attribute>
         <attribute name="action">row.key_duplicate</attribute>

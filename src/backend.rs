@@ -2,8 +2,6 @@ use std::process::{Command, Child, Stdio};
 use std::sync::{Arc, Mutex};
 use std::io::{BufRead, BufReader, Write};
 use crate::settings::SettingsManager;
-use nix::sys::signal::{kill, Signal};
-use nix::unistd::Pid;
 use tempfile::NamedTempFile;
 use anyhow::{Result, Context, anyhow};
 use std::path::Path;
@@ -58,7 +56,7 @@ impl XrayBackend {
 
     /// Запускает ядро Xray/Sing-box с переданной конфигурацией
     pub fn start(&self, config_json: &str) -> Result<()> {
-        // Останавливаем предыдущий процесс в фоне (без блокировки UI)
+        // Останавливаем предыдущий процесс
         self.stop().unwrap_or_else(|e| log_app_event("error", &format!("Failed to stop previous process: {e}")));
 
         // Сохраняем конфиг во временный файл безопасно
@@ -226,34 +224,18 @@ impl XrayBackend {
         Ok(())
     }
 
-    /// Останавливает ядро не блокируя текущий поток
+    /// Останавливает ядро, ожидая завершения процесса
     pub fn stop(&self) -> Result<()> {
         let mut process_guard = self.process.lock().map_err(|e| anyhow!("Mutex lock failed: {e}"))?;
         if let Some(mut child) = process_guard.take() {
             log_app_event("info", "Остановка процесса ядра...");
-            let pid = Pid::from_raw(child.id() as i32);
-            let _ = kill(pid, Signal::SIGTERM);
             
-            // Запускаем фоновый поток для ожидания и принудительного убийства (kill -9)
-            std::thread::spawn(move || {
-                let mut max_wait = 50; // 50 * 100ms = 5s
-                while max_wait > 0 {
-                    match child.try_wait() {
-                        Ok(Some(_)) => break,
-                        _ => {
-                            std::thread::sleep(std::time::Duration::from_millis(100));
-                            max_wait -= 1;
-                        }
-                    }
-                }
-                // Если процесс всё ещё жив после 5 секунд
-                if max_wait == 0 {
-                    log_app_event("warn", "Процесс ядра не завершился вовремя, принудительное убийство...");
-                    let _ = child.kill();
-                }
-                let _ = child.wait();
-                log_app_event("info", "Процесс ядра завершен.");
-            });
+            // Отправляем сигнал завершения (SIGKILL через std::process::Child::kill)
+            let _ = child.kill();
+            
+            // Ожидаем завершения процесса
+            let _ = child.wait();
+            log_app_event("info", "Процесс ядра завершен.");
         }
         
         let mut config_guard = self.config_file.lock().map_err(|e| anyhow!("Mutex lock failed: {e}"))?;

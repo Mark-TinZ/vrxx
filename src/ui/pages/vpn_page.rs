@@ -316,9 +316,9 @@ impl VrxxVpnPage {
                     if let Some(page) = page_weak.upgrade() {
                         *page.imp().is_sleeping.borrow_mut() = is_sleeping;
                         if is_sleeping {
-                            println!("Система переходит в спящий режим! Приостановка мониторинга VPN.");
+                            crate::backend::log_app_event("info", "Система переходит в спящий режим! Приостановка мониторинга VPN.");
                         } else {
-                            println!("Система проснулась! Возобновление мониторинга VPN.");
+                            crate::backend::log_app_event("info", "Система проснулась! Возобновление мониторинга VPN.");
                         }
                     }
                 },
@@ -346,7 +346,7 @@ impl VrxxVpnPage {
                                 if item.is_active() {
                                     // Проверка здоровья: если активно, но процесс мертв - это ошибка
                                     if !imp.backend.borrow().is_running() && !item.is_loading() {
-                                        println!("Обнаружено падение процесса ядра! Отключение...");
+                                        crate::backend::log_app_event("error", "Обнаружено падение процесса ядра! Отключение...");
                                         item.set_is_active(false);
                                         item.set_is_error(true);
                                         imp.start_time.replace(None);
@@ -443,7 +443,7 @@ impl VrxxVpnPage {
 
                                     // Если загрузка идет больше 12 секунд и нет успеха - прерываем соединение
                                     if is_loading && elapsed > 12 {
-                                        println!("Таймаут подключения (более 12 сек).");
+                                        crate::backend::log_app_event("warn", "Таймаут подключения (более 12 сек).");
                                         item.set_is_active(false);
                                         item.set_is_loading(false);
                                         item.set_is_error(true);
@@ -612,7 +612,7 @@ impl VrxxVpnPage {
                     crate::xray_config::build_xray_config(&parsed, &app_settings)
                 }
             } else {
-                eprintln!("Не удалось распарсить ключ для генерации конфигурации");
+                crate::backend::log_app_event("error", "Не удалось распарсить ключ для генерации конфигурации");
                 active_item.set_is_loading(false);
                 active_item.set_is_error(true);
                 self.imp().window_title.set_subtitle(&gettext("Ошибка конфигурации"));
@@ -935,15 +935,18 @@ impl VrxxVpnPage {
                 .heading(gettext("Добавить VPN ключ"))
                 .build();
             
-            let entry_row = adw::EntryRow::builder()
-                .title(gettext("VPN Ссылка"))
+            let entry = gtk::Entry::builder()
+                .placeholder_text(gettext("VPN Ссылка"))
+                .activates_default(true)
                 .build();
 
             let list_box = gtk::ListBox::builder()
                 .selection_mode(gtk::SelectionMode::None)
                 .css_classes(["boxed-list"])
                 .build();
-            list_box.append(&entry_row);
+            
+            let row = gtk::ListBoxRow::builder().child(&entry).activatable(false).build();
+            list_box.append(&row);
 
             let clamp = adw::Clamp::builder()
                 .maximum_size(450)
@@ -964,11 +967,11 @@ impl VrxxVpnPage {
             dialog.set_close_response("cancel");
             
             let page_weak_dialog = page_weak.clone();
-            let entry_row_clone = entry_row.clone();
+            let entry_clone = entry.clone();
             dialog.connect_response(None, move |_, response| {
                 if response == "add" {
                     if let Some(page) = page_weak_dialog.upgrade() {
-                        let url_str = entry_row_clone.text();
+                        let url_str = entry_clone.text();
                         match crate::key_parser::parse_vpn_key(&url_str) {
                             Ok(parsed) => {
                                 if let Some(model) = page.imp().model.borrow().as_ref() {
@@ -978,7 +981,7 @@ impl VrxxVpnPage {
                                 }
                             }
                             Err(e) => {
-                                eprintln!("Ошибка парсинга ключа: {e}");
+                                crate::backend::log_app_event("error", &format!("Ошибка парсинга ключа: {e}"));
                             }
                         }
                     }
@@ -987,7 +990,7 @@ impl VrxxVpnPage {
 
             if let Some(root) = page.root() {
                 dialog.present(Some(&root));
-                entry_row.grab_focus();
+                entry.grab_focus();
             }
         });
         action_group.add_action(&add_action);
@@ -1013,7 +1016,7 @@ impl VrxxVpnPage {
                                     }
                                 }
                                 Err(e) => {
-                                    eprintln!("Ошибка парсинга ключа из буфера: {e}");
+                                    crate::backend::log_app_event("error", &format!("Ошибка парсинга ключа из буфера: {e}"));
                                 }
                             }
                         }

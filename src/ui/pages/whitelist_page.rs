@@ -99,7 +99,7 @@ impl VrxxWhitelistPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.enable_routing = row.is_active();
-            crate::backend::log_app_event("info", &format!("Custom routing toggled to {}", s.enable_routing));
+            crate::backend::log_app_event("debug", &format!("Custom routing toggled to {}", s.enable_routing));
             manager.save(&s);
         });
 
@@ -112,7 +112,7 @@ impl VrxxWhitelistPage {
                 _ => "bypass".to_string(),
             };
             if old_mode != s.routing_mode {
-                crate::backend::log_app_event("info", &format!("Routing mode changed from {} to {}", old_mode, s.routing_mode));
+                crate::backend::log_app_event("debug", &format!("Routing mode changed from {} to {}", old_mode, s.routing_mode));
             }
             manager.save(&s);
         });
@@ -381,15 +381,23 @@ impl VrxxWhitelistPage {
         let initial_text = target_obj.as_ref().map(|o| o.domain()).unwrap_or_default();
 
         // Поле ввода
-        let entry_row = adw::EntryRow::builder()
-            .title(gettext("Domain"))
+        let entry = gtk::Entry::builder()
+            .placeholder_text(gettext("Domain"))
             .text(&initial_text)
-            .show_apply_button(false)
+            .activates_default(true)
             .build();
+
+        let list_box = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::None)
+            .css_classes(["boxed-list"])
+            .build();
+            
+        let row = gtk::ListBoxRow::builder().child(&entry).activatable(false).build();
+        list_box.append(&row);
 
         let group = adw::PreferencesGroup::builder()
             .build();
-        group.add(&entry_row);
+        group.add(&list_box);
 
         let content_area = adw::PreferencesPage::builder()
             .build();
@@ -409,31 +417,30 @@ impl VrxxWhitelistPage {
         dialog.set_response_appearance("apply", adw::ResponseAppearance::Suggested);
 
         // Фокус при открытии
-        entry_row.grab_focus();
+        entry.grab_focus();
 
         let page_weak = self.downgrade();
-        let entry_row_clone = entry_row.clone();
+        let entry_clone = entry.clone();
         let target_obj_clone = target_obj.clone();
         
-        let dialog_weak = dialog.downgrade();
-        entry_row.connect_apply(move |_| {
-            if let Some(_d) = dialog_weak.upgrade() {
-                // AdwAlertDialog doesn't have a simple way to trigger a response programmatically
-                // but we can just call present() and the default response should work if we set it correctly.
-                // However, since we want to trigger "apply", we'll just close it.
-                // Actually, the best way is to set it as default and just let the entry pass the key.
-            }
-        });
-
-        dialog.connect_response(None, move |_, response: &str| {
+        dialog.connect_response(None, move |d, response: &str| {
             let page = match page_weak.upgrade() {
                 Some(p) => p,
                 None => return,
             };
 
             if response == "apply" {
-                let text = entry_row_clone.text().trim().to_string();
-                if !text.is_empty() {
+                let text = entry_clone.text().trim().to_string();
+                
+                // Простая валидация домена или правила
+                let is_valid = text.starts_with("*.") || 
+                               text.starts_with("domain:") || 
+                               text.starts_with("keyword:") ||
+                               text.starts_with("full:") ||
+                               text.starts_with("geosite:") ||
+                               (!text.is_empty() && !text.contains(' '));
+
+                if is_valid {
                     let imp = page.imp();
                     let model_borrow = imp.model.borrow();
 
@@ -450,12 +457,26 @@ impl VrxxWhitelistPage {
                         }
 
                         if !exists {
-                            if let Some(existing_obj) = target_obj_clone.as_ref() {
-                                existing_obj.set_domain(text.as_str());
+                            if let Some(target) = target_obj_clone.as_ref() {
+                                target.set_domain(text);
                             } else {
-                                model.append(&DomainObject::new(text.as_str()));
+                                model.append(&DomainObject::new(&text));
                             }
                             page.save_whitelist();
+                        } else {
+                            if let Some(window) = d.root().and_downcast::<adw::Window>() {
+                                let toast = adw::Toast::new(&gettext("Домен уже существует в списке"));
+                                if let Some(overlay) = window.child().and_downcast::<adw::ToastOverlay>() {
+                                    overlay.add_toast(toast);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if let Some(window) = d.root().and_downcast::<adw::Window>() {
+                        let toast = adw::Toast::new(&gettext("Некорректный формат домена"));
+                        if let Some(overlay) = window.child().and_downcast::<adw::ToastOverlay>() {
+                            overlay.add_toast(toast);
                         }
                     }
                 }
@@ -465,7 +486,7 @@ impl VrxxWhitelistPage {
         if let Some(root) = self.root() {
             dialog.present(Some(&root));
             // Повторный grab_focus после презентации
-            entry_row.grab_focus();
+            entry.grab_focus();
         }
     }
 }

@@ -112,11 +112,10 @@
 
                 <!-- Расширенные настройки TUN спрятаны в ExpanderRow -->
                 <child>
-                  <object class="AdwExpanderRow" id="tun_mode_row">
-                    <property name="title" translatable="yes">Настройки TUN</property>
+                  <object class="AdwSwitchRow" id="tun_mode_row">
+                    <property name="title" translatable="yes">Режим TUN</property>
                     <property name="subtitle" translatable="yes">Перенаправлять весь системный трафик через виртуальный интерфейс (Требуется Root)</property>
-                    <property name="show-enable-switch">True</property>
-                    <property name="enable-expansion">False</property> <!-- Раскрывается только если свитч включен -->
+                    <property name="active">False</property>
                   </object>
                 </child>
               </object>
