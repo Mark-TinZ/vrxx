@@ -9,14 +9,14 @@
           <object class="AdwHeaderBar">
             <property name="title-widget">
                 <object class="AdwWindowTitle">
-                    <property name="title" translatable="yes">Настройки</property>
+                    <property name="title" translatable="yes">Settings</property>
                 </object>
             </property>
              <child type="end">
               <object class="GtkMenuButton" id="primary_menu_btn">
                 <property name="icon-name">open-menu-symbolic</property>
                 <property name="primary">True</property>
-                <property name="tooltip-text" translatable="yes">Меню</property>
+                <property name="tooltip-text" translatable="yes">Menu</property>
               </object>
             </child>
           </object>
@@ -29,18 +29,18 @@
             <!-- General Settings -->
             <child>
               <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">Общие</property>
+                <property name="title" translatable="yes">General</property>
 
                 <child>
                   <object class="AdwComboRow" id="language_row">
-                    <property name="title" translatable="yes">Язык (Language)</property>
-                    <property name="subtitle" translatable="yes">Требуется перезапуск приложения (Requires restart)</property>
+                    <property name="title" translatable="yes">Language</property>
+                    <property name="subtitle" translatable="yes">Application restart required</property>
                     <property name="model">
                       <object class="GtkStringList">
                         <items>
-                          <item translatable="yes">Системный (System)</item>
+                          <item translatable="yes">System default</item>
                           <item translatable="yes">English</item>
-                          <item translatable="yes">Русский</item>
+                          <item translatable="yes">Russian</item>
                         </items>
                       </object>
                     </property>
@@ -49,32 +49,32 @@
 
                 <child>
                   <object class="AdwSwitchRow" id="autostart_row">
-                    <property name="title" translatable="yes">Запускать при старте системы</property>
-                    <property name="subtitle" translatable="yes">Автоматически запускать приложение в фоновом режиме</property>
+                    <property name="title" translatable="yes">Run at startup</property>
+                    <property name="subtitle" translatable="yes">Automatically start application in the background</property>
                     <property name="active">True</property>
                   </object>
                 </child>
 
                 <child>
                   <object class="AdwSwitchRow" id="connect_startup_row">
-                    <property name="title" translatable="yes">Подключаться при запуске</property>
-                    <property name="subtitle" translatable="yes">Восстанавливать последнее активное подключение</property>
+                    <property name="title" translatable="yes">Connect on startup</property>
+                    <property name="subtitle" translatable="yes">Restore last active connection</property>
                     <property name="active">False</property>
                   </object>
                 </child>
 
                 <child>
                   <object class="AdwSwitchRow" id="notifications_row">
-                    <property name="title" translatable="yes">Уведомления</property>
-                    <property name="subtitle" translatable="yes">Показывать уведомления при смене статуса подключения</property>
+                    <property name="title" translatable="yes">Notifications</property>
+                    <property name="subtitle" translatable="yes">Show notifications on connection status change</property>
                     <property name="active">True</property>
                   </object>
                 </child>
 
                 <child>
                   <object class="AdwSwitchRow" id="streamer_mode_row">
-                    <property name="title" translatable="yes">Режим стримера</property>
-                    <property name="subtitle" translatable="yes">Скрывать IP-адреса и конфиденциальную информацию в интерфейсе</property>
+                    <property name="title" translatable="yes">Streamer mode</property>
+                    <property name="subtitle" translatable="yes">Hide IP addresses and sensitive information in the interface</property>
                     <property name="active">False</property>
                   </object>
                 </child>
@@ -84,13 +84,13 @@
             <!-- Core Settings -->
             <child>
               <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">Ядро (Core)</property>
-                <property name="description" translatable="yes">Выберите движок маршрутизации, используемый для подключения</property>
+                <property name="title" translatable="yes">Core</property>
+                <property name="description" translatable="yes">Select the routing engine used for connection</property>
 
                 <child>
                   <object class="AdwComboRow" id="core_selector">
-                    <property name="title" translatable="yes">Используемое ядро</property>
-                    <property name="subtitle" translatable="yes">Xray-core или Sing-box</property>
+                    <property name="title" translatable="yes">Used core</property>
+                    <property name="subtitle" translatable="yes">Xray-core or Sing-box</property>
                     <property name="sensitive">True</property>
                     <property name="model">
                       <object class="GtkStringList">
@@ -105,16 +105,16 @@
 
                 <child>
                   <object class="AdwActionRow" id="core_info_row">
-                    <property name="title" translatable="yes">Версия ядра</property>
-                    <property name="subtitle" translatable="yes">Неизвестно</property>
+                    <property name="title" translatable="yes">Core version</property>
+                    <property name="subtitle" translatable="yes">Unknown</property>
                   </object>
                 </child>
 
                 <!-- Расширенные настройки TUN спрятаны в ExpanderRow -->
                 <child>
                   <object class="AdwSwitchRow" id="tun_mode_row">
-                    <property name="title" translatable="yes">Режим TUN</property>
-                    <property name="subtitle" translatable="yes">Перенаправлять весь системный трафик через виртуальный интерфейс (Требуется Root)</property>
+                    <property name="title" translatable="yes">TUN mode</property>
+                    <property name="subtitle" translatable="yes">Redirect all system traffic through a virtual interface (Requires Root)</property>
                     <property name="active">False</property>
                   </object>
                 </child>
@@ -124,22 +124,22 @@
             <!-- Network & Routing Settings -->
             <child>
               <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">Сеть и Маршрутизация</property>
+                <property name="title" translatable="yes">Network and Routing</property>
                 
                 <child>
                   <object class="AdwSwitchRow" id="sniffing_row">
-                    <property name="title" translatable="yes">Sniffing (Анализ пакетов)</property>
-                    <property name="subtitle" translatable="yes">Определять домен из трафика (требуется для маршрутизации)</property>
+                    <property name="title" translatable="yes">Sniffing (Packet analysis)</property>
+                    <property name="subtitle" translatable="yes">Determine domain from traffic (required for routing)</property>
                   </object>
                 </child>
 
                 <child>
                   <object class="AdwComboRow" id="domain_strategy_row">
-                    <property name="title" translatable="yes">Стратегия доменов (Domain Strategy)</property>
+                    <property name="title" translatable="yes">Domain Strategy</property>
                     <property name="model">
                       <object class="GtkStringList">
                         <items>
-                          <item translatable="yes">AsIs (Как есть)</item>
+                          <item translatable="yes">AsIs</item>
                           <item translatable="yes">IPIfNonMatch</item>
                           <item translatable="yes">IPOnDemand</item>
                         </items>
@@ -150,22 +150,22 @@
 
                 <child>
                   <object class="AdwSwitchRow" id="bypass_lan_row">
-                    <property name="title" translatable="yes">Обход LAN (Bypass LAN)</property>
-                    <property name="subtitle" translatable="yes">Не маршрутизировать локальный трафик через VPN</property>
+                    <property name="title" translatable="yes">Bypass LAN</property>
+                    <property name="subtitle" translatable="yes">Do not route local traffic through VPN</property>
                   </object>
                 </child>
 
                 <child>
                   <object class="AdwSwitchRow" id="fake_dns_row">
                     <property name="title" translatable="yes">Fake DNS</property>
-                    <property name="subtitle" translatable="yes">Возвращать поддельные IP (улучшает скорость, но ломает некоторые приложения)</property>
+                    <property name="subtitle" translatable="yes">Return fake IPs (improves speed but breaks some apps)</property>
                   </object>
                 </child>
 
                 <child>
                   <object class="AdwExpanderRow" id="mux_row">
-                    <property name="title" translatable="yes">Мультиплексирование (Mux)</property>
-                    <property name="subtitle" translatable="yes">Ускоряет соединения, но может вызвать нестабильность</property>
+                    <property name="title" translatable="yes">Multiplexing (Mux)</property>
+                    <property name="subtitle" translatable="yes">Speeds up connections but may cause instability</property>
                     <property name="show-enable-switch">True</property>
                     <child>
                         <object class="AdwSpinRow" id="mux_concurrency_row">
@@ -185,8 +185,8 @@
 
                 <child>
                   <object class="AdwSwitchRow" id="fragment_row">
-                    <property name="title" translatable="yes">Фрагментация (Fragment)</property>
-                    <property name="subtitle" translatable="yes">Разделять пакеты для обхода DPI (Только для TCP/TLS)</property>
+                    <property name="title" translatable="yes">Fragmentation (Fragment)</property>
+                    <property name="subtitle" translatable="yes">Split packets to bypass DPI (TCP/TLS only)</property>
                   </object>
                 </child>
 
@@ -196,11 +196,11 @@
             <!-- Backup Settings -->
             <child>
               <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">Резервное копирование</property>
+                <property name="title" translatable="yes">Backup</property>
                 <child>
                   <object class="AdwActionRow">
-                    <property name="title" translatable="yes">Импорт настроек</property>
-                    <property name="subtitle" translatable="yes">Загрузить профили и настройки из файла</property>
+                    <property name="title" translatable="yes">Import settings</property>
+                    <property name="subtitle" translatable="yes">Load profiles and settings from file</property>
                     <property name="activatable">True</property>
                     <property name="action-name">app.import_config</property>
                     <child>
@@ -213,8 +213,8 @@
                 </child>
                 <child>
                   <object class="AdwActionRow">
-                    <property name="title" translatable="yes">Экспорт настроек</property>
-                    <property name="subtitle" translatable="yes">Сохранить текущую конфигурацию в файл</property>
+                    <property name="title" translatable="yes">Export settings</property>
+                    <property name="subtitle" translatable="yes">Save current configuration to file</property>
                     <property name="activatable">True</property>
                     <property name="action-name">app.export_config</property>
                     <child>
@@ -231,11 +231,11 @@
             <!-- Logging Settings -->
             <child>
               <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">Диагностика</property>
+                <property name="title" translatable="yes">Diagnostics</property>
 
                 <child>
                   <object class="AdwComboRow" id="log_level_row">
-                    <property name="title" translatable="yes">Уровень логирования</property>
+                    <property name="title" translatable="yes">Logging level</property>
                     <property name="model">
                       <object class="GtkStringList">
                         <items>
@@ -252,8 +252,8 @@
 
                  <child>
                   <object class="AdwActionRow">
-                    <property name="title" translatable="yes">Просмотр логов</property>
-                    <property name="subtitle" translatable="yes">Открыть консоль с логами в реальном времени</property>
+                    <property name="title" translatable="yes">View logs</property>
+                    <property name="subtitle" translatable="yes">Open console with real-time logs</property>
                     <property name="activatable">True</property>
                     <property name="action-name">app.view_logs</property>
                     <child>
@@ -267,8 +267,8 @@
 
                  <child>
                   <object class="AdwActionRow">
-                    <property name="title" translatable="yes">Открыть папку логов</property>
-                    <property name="subtitle" translatable="yes">Открыть системную папку с файлами журналов</property>
+                    <property name="title" translatable="yes">Open logs folder</property>
+                    <property name="subtitle" translatable="yes">Open system folder with log files</property>
                     <property name="activatable">True</property>
                     <property name="action-name">app.open_log_dir</property>
                     <child>
@@ -286,8 +286,8 @@
               <object class="AdwPreferencesGroup">
                 <child>
                   <object class="AdwActionRow">
-                    <property name="title" translatable="yes">Сбросить настройки</property>
-                    <property name="subtitle" translatable="yes">Удалить все сохраненные данные (опасная зона)</property>
+                    <property name="title" translatable="yes">Reset settings</property>
+                    <property name="subtitle" translatable="yes">Delete all saved data (danger zone)</property>
                     <property name="activatable">True</property>
                     <property name="action-name">app.reset_settings</property>
                     <style>

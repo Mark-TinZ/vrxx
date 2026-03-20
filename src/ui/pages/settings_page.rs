@@ -1,6 +1,7 @@
 use adw::subclass::prelude::*;
 use adw::prelude::*;
 use gtk::{glib, CompositeTemplate};
+use gettextrs::gettext;
 use crate::ui::setup_primary_menu;
 use crate::settings::SettingsManager;
 
@@ -154,7 +155,7 @@ impl VrxxSettingsPage {
             let old_core = s.core.clone();
             s.core = if row.selected() == 1 { "sing-box".to_string() } else { "xray".to_string() };
             if old_core != s.core {
-                crate::backend::log_app_event("debug", &format!("Core changed from {} to {}", old_core, s.core));
+                tracing::debug!("{}", &format!("Core changed from {} to {}", old_core, s.core));
             }
             manager.save(&s);
             if let Some(page) = self_weak.upgrade() {
@@ -175,13 +176,13 @@ impl VrxxSettingsPage {
                 _ => "system".to_string(),
             };
             if old_lang != s.language {
-                crate::backend::log_app_event("debug", &format!("Language changed from {} to {}", old_lang, s.language));
+                tracing::debug!("{}", &format!("Language changed from {} to {}", old_lang, s.language));
             }
             manager.save(&s);
             
             // Show toast for restart
             if let Some(window) = lang_row_clone.root().and_then(|r| r.downcast::<adw::Window>().ok()) {
-                let toast = adw::Toast::new("Требуется перезапуск приложения для применения языка");
+                let toast = adw::Toast::new(&gettext("Application restart required to apply language"));
                 if let Some(toast_overlay) = window.child().and_then(|c| c.downcast::<adw::ToastOverlay>().ok()) {
                     toast_overlay.add_toast(toast);
                 }
@@ -192,7 +193,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.autostart = row.is_active();
-            crate::backend::log_app_event("debug", &format!("Autostart toggled to {}", s.autostart));
+            tracing::debug!("{}", &format!("Autostart toggled to {}", s.autostart));
             manager.save(&s);
 
             let autostart_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("autostart");
@@ -218,7 +219,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.connect_on_startup = row.is_active();
-            crate::backend::log_app_event("debug", &format!("Connect on startup toggled to {}", s.connect_on_startup));
+            tracing::debug!("{}", &format!("Connect on startup toggled to {}", s.connect_on_startup));
             manager.save(&s);
         });
 
@@ -226,7 +227,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.notifications = row.is_active();
-            crate::backend::log_app_event("debug", &format!("Notifications toggled to {}", s.notifications));
+            tracing::debug!("{}", &format!("Notifications toggled to {}", s.notifications));
             manager.save(&s);
         });
 
@@ -234,7 +235,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.streamer_mode = row.is_active();
-            crate::backend::log_app_event("debug", &format!("Streamer mode toggled to {}", s.streamer_mode));
+            tracing::debug!("{}", &format!("Streamer mode toggled to {}", s.streamer_mode));
             manager.save(&s);
         });
 
@@ -242,7 +243,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.tun_mode = row.is_active();
-            crate::backend::log_app_event("debug", &format!("TUN mode toggled to {}", s.tun_mode));
+            tracing::debug!("{}", &format!("TUN mode toggled to {}", s.tun_mode));
             manager.save(&s);
         });
 
@@ -250,7 +251,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.enable_sniffing = row.is_active();
-            crate::backend::log_app_event("debug", &format!("Sniffing toggled to {}", s.enable_sniffing));
+            tracing::debug!("{}", &format!("Sniffing toggled to {}", s.enable_sniffing));
             manager.save(&s);
         });
 
@@ -258,7 +259,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.bypass_lan = row.is_active();
-            crate::backend::log_app_event("debug", &format!("Bypass LAN toggled to {}", s.bypass_lan));
+            tracing::debug!("{}", &format!("Bypass LAN toggled to {}", s.bypass_lan));
             manager.save(&s);
         });
 
@@ -266,7 +267,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.enable_fake_dns = row.is_active();
-            crate::backend::log_app_event("debug", &format!("Fake DNS toggled to {}", s.enable_fake_dns));
+            tracing::debug!("{}", &format!("Fake DNS toggled to {}", s.enable_fake_dns));
             manager.save(&s);
         });
 
@@ -274,7 +275,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.enable_fragment = row.is_active();
-            crate::backend::log_app_event("debug", &format!("Fragment toggled to {}", s.enable_fragment));
+            tracing::debug!("{}", &format!("Fragment toggled to {}", s.enable_fragment));
             manager.save(&s);
         });
 
@@ -282,7 +283,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.enable_mux = row.enables_expansion();
-            crate::backend::log_app_event("debug", &format!("MUX toggled to {}", s.enable_mux));
+            tracing::debug!("{}", &format!("MUX toggled to {}", s.enable_mux));
             manager.save(&s);
         });
 
@@ -290,7 +291,7 @@ impl VrxxSettingsPage {
             let manager = SettingsManager::new();
             let mut s = manager.load();
             s.mux_concurrency = row.value() as i32;
-            crate::backend::log_app_event("debug", &format!("MUX concurrency set to {}", s.mux_concurrency));
+            tracing::debug!("{}", &format!("MUX concurrency set to {}", s.mux_concurrency));
             manager.save(&s);
         });
 
@@ -304,7 +305,7 @@ impl VrxxSettingsPage {
                 _ => "AsIs".to_string(),
             };
             if old_strategy != s.domain_strategy {
-                crate::backend::log_app_event("debug", &format!("Domain strategy changed from {} to {}", old_strategy, s.domain_strategy));
+                tracing::debug!("{}", &format!("Domain strategy changed from {} to {}", old_strategy, s.domain_strategy));
             }
             manager.save(&s);
         });
@@ -320,7 +321,7 @@ impl VrxxSettingsPage {
                 _ => "info".to_string(),
             };
             if old_level != s.log_level {
-                crate::backend::log_app_event("debug", &format!("Log level changed from {} to {}", old_level, s.log_level));
+                tracing::debug!("{}", &format!("Log level changed from {} to {}", old_level, s.log_level));
             }
             manager.save(&s);
         });
@@ -341,7 +342,7 @@ impl VrxxSettingsPage {
                 // Extract version from first line
                 s.lines().next().unwrap_or("Unknown Version").to_string()
             }
-            Err(_) => format!("{bin_name} не найден"),
+            Err(_) => format!("{bin_name} not found"),
         };
 
         self.imp().core_info_row.set_subtitle(&version_str);

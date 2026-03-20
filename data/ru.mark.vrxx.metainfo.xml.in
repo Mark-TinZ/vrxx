@@ -58,13 +58,14 @@
   </screenshots>
 
   <releases>
-    <release version="1.0.1" date="2024-01-18">
-      <url type="details">https://example.org/changelog.html#version_1.0.1</url>
+    <release version="0.1.7" date="2026-03-19">
+      <url type="details">https://example.org/changelog.html#version_0.1.7</url>
       <description translate="no">
-        <p>Release description</p>
+        <p>Release 0.1.7</p>
         <ul>
-          <li>List of changes</li>
-          <li>List of changes</li>
+          <li>Updated routing with geosite/geoip</li>
+          <li>Improved ping measurement</li>
+          <li>UI and UX updates</li>
         </ul>
       </description>
     </release>

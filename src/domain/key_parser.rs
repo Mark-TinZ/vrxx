@@ -58,8 +58,8 @@ fn parse_vmess(url_str: &str) -> Result<ParsedKey, String> {
     let base64_str = url_str.trim_start_matches("vmess://");
     use base64::{Engine as _, engine::general_purpose};
     
-    let decoded = general_purpose::STANDARD.decode(base64_str).unwrap_or_else(|_| vec![]);
-    let json_str = String::from_utf8(decoded).unwrap_or_default();
+    let decoded = general_purpose::STANDARD.decode(base64_str).map_err(|e| format!("Base64 decode error: {}", e))?;
+    let json_str = String::from_utf8(decoded).map_err(|e| format!("Invalid UTF-8 sequence: {}", e))?;
     
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&json_str) {
         let name = json.get("ps").and_then(|v| v.as_str()).unwrap_or("VMess Key").to_string();
@@ -167,5 +167,54 @@ mod tests {
         assert_eq!(parsed.port, 443);
         assert_eq!(parsed.uuid, "my-uuid");
         assert_eq!(parsed.query_params.get("net").map(|s| s.as_str()), Some("ws"));
+    }
+
+    #[test]
+    fn test_parse_vmess_valid() {
+        // {"add":"127.0.0.1","port":443,"id":"my-uuid","ps":"TestKey"}
+        let valid_base64 = "vmess://eyJhZGQiOiIxMjcuMC4wLjEiLCJwb3J0Ijo0NDMsImlkIjoibXktdXVpZCIsInBzIjoiVGVzdEtleSJ9";
+        
+        let res = parse_vmess(valid_base64);
+        assert!(res.is_ok(), "Parser should accept valid Base64 Vmess");
+        let key = res.unwrap();
+        
+        assert_eq!(key.name, "TestKey");
+        assert_eq!(key.host, "127.0.0.1");
+        assert_eq!(key.port, 443);
+        assert_eq!(key.uuid, "my-uuid");
+    }
+
+    #[test]
+    fn test_parse_invalid_base64() {
+        let res = parse_vmess("vmess://!!!invalid&&&");
+        assert!(res.is_err(), "Parser should return Err on invalid Base64");
+    }
+
+    #[test]
+    fn test_parse_vpn_key_garbage() {
+        assert!(parse_vpn_key("not_a_url_at_all").is_err());
+        assert!(parse_vpn_key("http://google.com").is_err()); // Unsupported protocol
+    }
+
+    #[test]
+    fn test_parse_trojan_url() {
+        let url = "trojan://mypassword@example.com:443?security=tls&sni=example.com#MyTrojan";
+        let parsed = parse_vpn_key(url).expect("Should parse trojan url");
+        assert_eq!(parsed.protocol, "Trojan");
+        assert_eq!(parsed.uuid, "mypassword");
+        assert_eq!(parsed.host, "example.com");
+        assert_eq!(parsed.port, 443);
+        assert_eq!(parsed.name, "MyTrojan");
+    }
+
+    #[test]
+    fn test_parse_shadowsocks_url() {
+        let url = "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@example.com:8388#MySS";
+        let parsed = parse_vpn_key(url).expect("Should parse ss url");
+        assert_eq!(parsed.protocol, "Shadowsocks");
+        assert_eq!(parsed.uuid, "Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA");
+        assert_eq!(parsed.host, "example.com");
+        assert_eq!(parsed.port, 8388);
+        assert_eq!(parsed.name, "MySS");
     }
 }

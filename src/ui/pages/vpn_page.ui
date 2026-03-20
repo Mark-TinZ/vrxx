@@ -10,8 +10,8 @@
             <!-- Заголовок -->
             <property name="title-widget">
             <object class="AdwWindowTitle" id="window_title">
-              <property name="title" translatable="yes">Ключи VPN</property>
-              <property name="subtitle" translatable="yes">Mark-Vless Подключено</property>
+              <property name="title" translatable="yes">VPN Keys</property>
+              <property name="subtitle" translatable="yes">Mark-Vless Connected</property>
             </object>
             </property>
 
@@ -20,7 +20,7 @@
                <object class="GtkMenuButton" id="btn_add">
                  <property name="icon-name">list-add-symbolic</property>
                  <property name="menu-model">add_key_menu</property>
-                 <property name="tooltip-text" translatable="yes">Добавить подключение</property>
+                 <property name="tooltip-text" translatable="yes">Add connection</property>
                </object>
             </child>
 
@@ -33,7 +33,7 @@
 
             <child type="end">
               <object class="GtkButton">
-                <property name="label" translatable="yes">Отключить</property>
+                <property name="label" translatable="yes">Disconnect</property>
                 <property name="action-name">vpn.disconnect</property>
                 <style>
                   <class name="destructive-action"/>
@@ -49,9 +49,9 @@
           <child>
             <!-- ОДНА ГРУППА ДЛЯ ВСЕХ КЛЮЧЕЙ -->
             <object class="AdwPreferencesGroup">
-              <property name="title" translatable="yes">Список подключений</property>
+              <property name="title" translatable="yes">Connection list</property>
               <child>
-                <!-- ОДИН СПИСОК С ID -->
+                <!-- ОДИН СПИСOK С ID -->
                 <object class="GtkListBox" id="keys_list">
                   <property name="selection-mode">none</property>
                   <property name="show-separators">True</property> <!-- Разделители между ключами -->

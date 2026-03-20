@@ -8,10 +8,7 @@
     <property name="margin-bottom">6</property>
     <property name="margin-start">6</property>
     <property name="margin-end">6</property>
-    <property name="spacing">0</property>
-    <style>
-      <class name="linked"/>
-    </style>
+    <property name="spacing">6</property>
 
     <child>
       <object class="GtkToggleButton" id="btn_system">
@@ -19,6 +16,9 @@
         <property name="tooltip-text" translatable="yes">System</property>
         <property name="action-name">app.set-color-scheme</property>
         <property name="action-target">'default'</property>
+        <style>
+          <class name="circular"/>
+        </style>
       </object>
     </child>
     <child>
@@ -28,6 +28,9 @@
         <property name="action-name">app.set-color-scheme</property>
         <property name="action-target">'force-light'</property>
         <property name="group">btn_system</property>
+        <style>
+          <class name="circular"/>
+        </style>
       </object>
     </child>
     <child>
@@ -37,6 +40,9 @@
         <property name="action-name">app.set-color-scheme</property>
         <property name="action-target">'force-dark'</property>
         <property name="group">btn_system</property>
+        <style>
+          <class name="circular"/>
+        </style>
       </object>
     </child>
 

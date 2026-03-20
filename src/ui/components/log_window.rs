@@ -13,7 +13,7 @@ mod imp {
     #[template(string = "
     <interface>
       <template class='VrxxLogWindow' parent='AdwWindow'>
-        <property name='title' translatable='yes'>Системные логи</property>
+        <property name='title' translatable='yes'>System Logs</property>
         <property name='default-width'>800</property>
         <property name='default-height'>500</property>
         <property name='content'>
@@ -22,13 +22,13 @@ mod imp {
               <object class='AdwHeaderBar'>
                 <property name='title-widget'>
                   <object class='AdwWindowTitle'>
-                    <property name='title' translatable='yes'>Системные логи</property>
+                    <property name='title' translatable='yes'>System Logs</property>
                   </object>
                 </property>
                 <child type='start'>
                   <object class='GtkToggleButton' id='btn_autoscroll'>
                     <property name='icon-name'>go-down-symbolic</property>
-                    <property name='tooltip-text' translatable='yes'>Автопрокрутка</property>
+                    <property name='tooltip-text' translatable='yes'>Auto-scroll</property>
                     <property name='active'>True</property>
                   </object>
                 </child>
@@ -37,15 +37,69 @@ mod imp {
                   </object>
                 </child>
                 <child type='end'>
-                  <object class='GtkButton' id='btn_copy'>
-                    <property name='icon-name'>edit-copy-symbolic</property>
-                    <property name='tooltip-text' translatable='yes'>Скопировать логи</property>
-                  </object>
-                </child>
-                <child type='end'>
-                  <object class='GtkButton' id='btn_clear'>
-                    <property name='icon-name'>edit-clear-all-symbolic</property>
-                    <property name='tooltip-text' translatable='yes'>Очистить логи</property>
+                  <object class='GtkMenuButton' id='menu_btn'>
+                    <property name='icon-name'>open-menu-symbolic</property>
+                    <property name='tooltip-text' translatable='yes'>Menu</property>
+                    <property name='popover'>
+                      <object class='GtkPopover'>
+                        <child>
+                          <object class='GtkBox'>
+                            <property name='orientation'>vertical</property>
+                            <property name='spacing'>6</property>
+                            <property name='margin-start'>6</property>
+                            <property name='margin-end'>6</property>
+                            <property name='margin-top'>6</property>
+                            <property name='margin-bottom'>6</property>
+                            
+                            <child>
+                              <object class='GtkBox'>
+                                <property name='orientation'>horizontal</property>
+                                <property name='spacing'>6</property>
+                                <child>
+                                  <object class='GtkButton' id='btn_zoom_out'>
+                                    <property name='icon-name'>zoom-out-symbolic</property>
+                                    <property name='tooltip-text' translatable='yes'>Zoom Out</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class='GtkLabel' id='lbl_zoom_percent'>
+                                    <property name='label' translatable='yes'>100%</property>
+                                    <property name='hexpand'>True</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class='GtkButton' id='btn_zoom_in'>
+                                    <property name='icon-name'>zoom-in-symbolic</property>
+                                    <property name='tooltip-text' translatable='yes'>Zoom In</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                            
+                            <child>
+                              <object class='GtkSeparator'/>
+                            </child>
+
+                            <child>
+                              <object class='GtkButton' id='btn_copy'>
+                                <property name='label' translatable='yes'>Copy logs</property>
+                                <property name='icon-name'>edit-copy-symbolic</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class='GtkButton' id='btn_clear'>
+                                <property name='label' translatable='yes'>Clear logs</property>
+                                <property name='icon-name'>edit-clear-all-symbolic</property>
+                                <style>
+                                  <class name='destructive-action'/>
+                                </style>
+                              </object>
+                            </child>
+                            
+                          </object>
+                        </child>
+                      </object>
+                    </property>
                   </object>
                 </child>
               </object>
@@ -85,7 +139,14 @@ mod imp {
         pub btn_autoscroll: TemplateChild<gtk::ToggleButton>,
         #[template_child]
         pub dropdown_filter: TemplateChild<gtk::DropDown>,
+        #[template_child]
+        pub btn_zoom_in: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub btn_zoom_out: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub lbl_zoom_percent: TemplateChild<gtk::Label>,
         pub last_pos: RefCell<u64>,
+        pub font_size: RefCell<i32>,
     }
 
     #[glib::object_subclass]
@@ -109,9 +170,9 @@ mod imp {
             let obj = self.obj();
 
             let strings = gtk::StringList::new(&[
-                gettextrs::gettext("Все логи").as_str(),
-                gettextrs::gettext("Логи приложения").as_str(),
-                gettextrs::gettext("Логи ядра").as_str(),
+                gettextrs::gettext("Core logs").as_str(),
+                gettextrs::gettext("Application logs").as_str(),
+                gettextrs::gettext("Access logs").as_str(),
             ]);
             self.dropdown_filter.set_model(Some(&strings));
 
@@ -149,6 +210,8 @@ impl VrxxLogWindow {
     }
 
     fn setup_callbacks(&self) {
+        *self.imp().font_size.borrow_mut() = 12;
+
         let window_weak = self.downgrade();
         
         self.imp().btn_copy.connect_clicked(move |_| {
@@ -163,11 +226,50 @@ impl VrxxLogWindow {
         let window_weak_clear = self.downgrade();
         self.imp().btn_clear.connect_clicked(move |_| {
             if let Some(window) = window_weak_clear.upgrade() {
-                let log_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx");
-                let log_path = log_dir.join("core.log");
+                let log_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx").join("logs");
+                let filter_index = window.imp().dropdown_filter.selected();
+                let file_name = match filter_index {
+                    1 => "app.log",
+                    2 => "access.log",
+                    _ => "core.log",
+                };
+                let log_path = log_dir.join(file_name);
                 let _ = std::fs::write(log_path, ""); // Очищаем файл
                 window.imp().text_view.buffer().set_text("");
                 *window.imp().last_pos.borrow_mut() = 0;
+            }
+        });
+
+        let window_weak_in = self.downgrade();
+        self.imp().btn_zoom_in.connect_clicked(move |_| {
+            if let Some(window) = window_weak_in.upgrade() {
+                let imp = window.imp();
+                *imp.font_size.borrow_mut() += 2;
+                let size = *imp.font_size.borrow();
+                let percent = (size as f32 / 12.0 * 100.0) as i32;
+                imp.lbl_zoom_percent.set_label(&format!("{}%", percent));
+                
+                let provider = gtk::CssProvider::new();
+                provider.load_from_string(&format!("textview {{ font-size: {}pt; }}", size));
+                imp.text_view.style_context().add_provider(&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
+            }
+        });
+
+        let window_weak_out = self.downgrade();
+        self.imp().btn_zoom_out.connect_clicked(move |_| {
+            if let Some(window) = window_weak_out.upgrade() {
+                let imp = window.imp();
+                let mut size = *imp.font_size.borrow();
+                if size > 6 {
+                    size -= 2;
+                    *imp.font_size.borrow_mut() = size;
+                    let percent = (size as f32 / 12.0 * 100.0) as i32;
+                    imp.lbl_zoom_percent.set_label(&format!("{}%", percent));
+                    
+                    let provider = gtk::CssProvider::new();
+                    provider.load_from_string(&format!("textview {{ font-size: {}pt; }}", size));
+                    imp.text_view.style_context().add_provider(&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
+                }
             }
         });
 
@@ -195,13 +297,22 @@ impl VrxxLogWindow {
     }
 
     fn start_log_polling(&self) {
-        let log_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx");
-        let log_path = log_dir.join("core.log");
         let window_weak = self.downgrade();
         
         glib::timeout_add_local(std::time::Duration::from_millis(500), move || {
             if let Some(window) = window_weak.upgrade() {
                 let imp = window.imp();
+                let log_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx").join("logs");
+                let filter_index = imp.dropdown_filter.selected();
+                
+                let file_name = match filter_index {
+                    1 => "app.log",
+                    2 => "access.log",
+                    _ => "core.log",
+                };
+                
+                let log_path = log_dir.join(file_name);
+                
                 if let Ok(mut file) = File::open(&log_path) {
                     let mut last_pos = *imp.last_pos.borrow();
                     let len = file.metadata().map(|m| m.len()).unwrap_or(0);
@@ -229,20 +340,13 @@ impl VrxxLogWindow {
                         
                         let buffer = imp.text_view.buffer();
                         let mut iter = buffer.end_iter();
-                        let filter_index = imp.dropdown_filter.selected(); // 0 = Все, 1 = App, 2 = Core
                         
                         let mut has_new_lines = false;
 
                         for line in content.lines() {
-                            let is_app = line.contains("[APP]");
-                            
-                            // Применяем фильтр
-                            if filter_index == 1 && !is_app { continue; }
-                            if filter_index == 2 && is_app { continue; }
-
-                            let tag_name = if is_app {
+                            let tag_name = if filter_index == 1 {
                                 Some("app")
-                            } else if line.contains("ERROR") || line.contains("error") {
+                            } else if line.contains("ERROR") || line.contains("error") || line.contains("FATAL") {
                                 Some("error")
                             } else if line.contains("WARN") || line.contains("warning") {
                                 Some("warning")
@@ -263,7 +367,7 @@ impl VrxxLogWindow {
                             has_new_lines = true;
                         }
                         
-                        // Автопрокрутка
+                        // Auto-scroll
                         if has_new_lines && imp.btn_autoscroll.is_active() {
                             let mark = buffer.create_mark(None, &buffer.end_iter(), false);
                             imp.text_view.scroll_to_mark(&mark, 0.0, false, 0.0, 1.0);

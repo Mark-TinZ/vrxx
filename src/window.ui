@@ -32,28 +32,28 @@
 
                         <child>
                           <object class="AdwActionRow">
-                            <property name="title" translatable="yes">Ключи VPN</property>
+                            <property name="title" translatable="yes">VPN Keys</property>
                             <property name="icon-name">key5-symbolic</property>
                             <property name="name">page_vpn</property>
                           </object>
                         </child>
                         <child>
                           <object class="AdwActionRow">
-                            <property name="title" translatable="yes">Прокси</property>
+                            <property name="title" translatable="yes">Proxy</property>
                             <property name="icon-name">preferences-system-network-proxy-symbolic</property>
                             <property name="name">page_proxy</property>
                           </object>
                         </child>
                         <child>
                           <object class="AdwActionRow">
-                            <property name="title" translatable="yes">Маршрутизация</property>
+                            <property name="title" translatable="yes">Routing</property>
                             <property name="icon-name">funnel-symbolic</property>
                             <property name="name">page_whitelist</property>
                           </object>
                         </child>
                         <child>
                           <object class="AdwActionRow">
-                            <property name="title" translatable="yes">Настройки</property>
+                            <property name="title" translatable="yes">Settings</property>
                             <property name="icon-name">emblem-system-symbolic</property>
                             <property name="name">page_settings</property>
                           </object>

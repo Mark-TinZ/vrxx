@@ -185,15 +185,20 @@ impl VrxxApplication {
                     }
                 }
                 let log_window = crate::ui::components::log_window::VrxxLogWindow::new();
+                if let Some(parent) = app.active_window() {
+                    // Убеждаемся, что мы не пытаемся привязать окно к самому себе
+                    if parent.upcast_ref::<gtk::Widget>() != log_window.upcast_ref::<gtk::Widget>() {
+                        log_window.set_transient_for(Some(&parent));
+                    }
+                }
                 app.add_window(&log_window);
-                log_window.set_transient_for(app.active_window().as_ref());
                 log_window.present();
             })
             .build();
 
         let open_log_dir_action = gio::ActionEntry::builder("open_log_dir")
             .activate(move |_, _, _| {
-                let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
+                let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
                 std::fs::create_dir_all(&log_dir).ok();
                 if let Ok(uri) = glib::filename_to_uri(&log_dir, None) {
                     let _ = gio::AppInfo::launch_default_for_uri(&uri, None::<&gio::AppLaunchContext>);
@@ -243,7 +248,7 @@ impl VrxxApplication {
         let window = match self.active_window() {
             Some(w) => w,
             None => {
-                crate::backend::log_app_event("warn", "Warning: No active window found for about dialog.");
+                tracing::warn!("Warning: No active window found for about dialog.");
                 return;
             }
         };

@@ -2,7 +2,7 @@
 # Description: Your project description here
 
 project('vrxx', 'rust',
-          version: '0.1.5',
+          version: '0.1.7',
     meson_version: '>= 1.0.0',
   default_options: [ 'warning_level=2', 'werror=false', ],
 )

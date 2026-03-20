@@ -193,7 +193,7 @@ impl VrxxVpnPage {
             row.connect_local("request-copy-json", false, move |_| {
                 if let Some(page) = page_weak_cj.upgrade() {
                     let url = key_obj_cj.url();
-                    if let Ok(parsed) = crate::key_parser::parse_vpn_key(&url) {
+                    if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&url) {
                         if let Ok(json_str) = serde_json::to_string_pretty(&parsed) {
                             let clipboard = page.clipboard();
                             clipboard.set_text(&json_str);
@@ -203,7 +203,7 @@ impl VrxxVpnPage {
                 None
             });
 
-            // Удалить
+            // Delete
             let page_weak_del = page_weak.clone();
             let key_obj_del = key_obj.clone();
             row.connect_local("request-delete", false, move |_| {
@@ -213,68 +213,58 @@ impl VrxxVpnPage {
                 None
             });
 
-            // Ручной пинг
+            // Ручной пинг (ИСПРАВЛЕНО: Явное указание типов)
             let key_obj_ping = key_obj.clone();
             row.connect_local("request-ping", false, move |_| {
                 let item_clone = key_obj_ping.clone();
                 item_clone.set_ping(gettext("pinging..."));
                 item_clone.set_is_loading(true);
                 
+                // Извлекаем хост и порт из ключа для прямого пинга
+                let raw_url = item_clone.url();
+                let parsed = crate::domain::key_parser::parse_vpn_key(&raw_url).unwrap_or_else(|_| crate::domain::key_parser::ParsedKey {
+                    protocol: "".to_string(), name: "".to_string(), host: "127.0.0.1".to_string(), port: 0, uuid: "".to_string(), query_params: std::collections::HashMap::new(), raw_url: "".to_string()
+                });
+                let target_host = parsed.host.clone();
+                let target_port = parsed.port;
+
+                // 1. Создаем канал с ЯВНЫМ указанием типов <(bool, u128)>
+                let (sender, receiver) = async_channel::unbounded::<(bool, u128)>();
+
+                // 2. Получатель работает в главном UI потоке
+                let item_clone_ui = item_clone.clone();
                 glib::spawn_future_local(async move {
-                    let start_ping = std::time::Instant::now();
-                    let socks_port = crate::settings::SettingsManager::new().load().socks_port;
-                    
-                    let args_raw = [
-                        "curl", "-s", "-w", "%{time_total}", 
-                        "-x", &format!("socks5h://127.0.0.1:{socks_port}"),
-                        "http://ip-api.com/json/?fields=status,country,timezone,query",
-                        "--connect-timeout", "5"
-                    ];
-                    let args: Vec<&std::ffi::OsStr> = args_raw.iter().map(std::ffi::OsStr::new).collect();
+                    if let Ok((success, ms)) = receiver.recv().await {
+                        item_clone_ui.set_is_loading(false);
+                        if success {
+                            item_clone_ui.set_ping(format!("{ms} ms"));
+                        } else {
+                            item_clone_ui.set_ping(gettext("timeout"));
+                        }
+                    }
+                });
 
+                // 3. Отправитель работает в фоне (БЕЗ объектов UI)
+                std::thread::spawn(move || {
+                    use std::net::{TcpStream, ToSocketAddrs};
+                    use std::time::{Instant, Duration};
+
+                    let start_ping = Instant::now();
                     let mut success = false;
+                    let timeout = Duration::from_secs(2);
 
-                    if let Ok(subprocess) = gio::Subprocess::newv(&args, gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE) {
-                        if let Ok((Some(stdout_bytes), _)) = subprocess.communicate_future(None).await {
-                            let is_cmd_successful = subprocess.is_successful();
-                            let stdout_str = String::from_utf8_lossy(&stdout_bytes);
-                            let default_ping_ms = start_ping.elapsed().as_millis();
-
-                            if is_cmd_successful {
-                                if let Some(brace_idx) = stdout_str.rfind('}') {
-                                    let json_part = &stdout_str[..=brace_idx];
-                                    let time_part = &stdout_str[brace_idx+1..];
-
-                                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(json_part) {
-                                        if json.get("status").and_then(|s| s.as_str()) == Some("success") {
-                                            success = true;
-
-                                            if let Ok(time_sec) = time_part.trim().parse::<f64>() {
-                                                let ms = (time_sec * 1000.0) as u64;
-                                                item_clone.set_ping(format!("{ms} ms"));
-                                            } else {
-                                                item_clone.set_ping(format!("{default_ping_ms} ms"));
-                                            }
-
-                                            if let Some(ip) = json.get("query").and_then(|s| s.as_str()) {
-                                                item_clone.set_server_info(ip.to_string());
-                                            }
-                                            if let Some(country) = json.get("country").and_then(|s| s.as_str()) {
-                                                item_clone.set_location(country.to_string());
-                                            }
-                                            if let Some(tz) = json.get("timezone").and_then(|s| s.as_str()) {
-                                                item_clone.set_timezone(tz.to_string());
-                                            }
-                                        }
-                                    }
-                                }
+                    // Разрешаем доменное имя в IP, если это не IP
+                    let addr = format!("{}:{}", target_host, target_port);
+                    if let Ok(mut addrs) = addr.to_socket_addrs() {
+                        if let Some(socket_addr) = addrs.next() {
+                            if let Ok(mut stream) = TcpStream::connect_timeout(&socket_addr, timeout) {
+                                success = true;
+                                let _ = stream.shutdown(std::net::Shutdown::Both);
                             }
                         }
                     }
-                    item_clone.set_is_loading(false);
-                    if !success {
-                        item_clone.set_ping(gettext("timeout"));
-                    }
+                    
+                    let _ = sender.send_blocking((success, start_ping.elapsed().as_millis()));
                 });
                 None
             });
@@ -316,9 +306,9 @@ impl VrxxVpnPage {
                     if let Some(page) = page_weak.upgrade() {
                         *page.imp().is_sleeping.borrow_mut() = is_sleeping;
                         if is_sleeping {
-                            crate::backend::log_app_event("info", "Система переходит в спящий режим! Приостановка мониторинга VPN.");
+                            tracing::info!("System is going to sleep! Suspending VPN monitoring.");
                         } else {
-                            crate::backend::log_app_event("info", "Система проснулась! Возобновление мониторинга VPN.");
+                            tracing::info!("System woke up! Resuming VPN monitoring.");
                         }
                     }
                 },
@@ -346,16 +336,16 @@ impl VrxxVpnPage {
                                 if item.is_active() {
                                     // Проверка здоровья: если активно, но процесс мертв - это ошибка
                                     if !imp.backend.borrow().is_running() && !item.is_loading() {
-                                        crate::backend::log_app_event("error", "Обнаружено падение процесса ядра! Отключение...");
+                                        tracing::error!("Core process crash detected! Disconnecting...");
                                         item.set_is_active(false);
                                         item.set_is_error(true);
                                         imp.start_time.replace(None);
                                         page.update_disconnect_action_state();
-                                        page.imp().window_title.set_subtitle(&gettext("Ошибка соединения"));
+                                        page.imp().window_title.set_subtitle(&gettext("Connection error"));
 
                                         // Читаем последние строки лога для отображения пользователю
-                                        let mut error_details = String::from("Неизвестная ошибка. Пожалуйста, проверьте Системные логи.");
-                                        let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
+                                        let mut error_details = String::from("Unknown error. Please check System logs.");
+                                        let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
                                         let log_path = log_dir.join("core.log");
                                         if let Ok(content) = std::fs::read_to_string(&log_path) {
                                             let lines: Vec<&str> = content.lines().rev().take(5).collect();
@@ -365,10 +355,10 @@ impl VrxxVpnPage {
                                         }
 
                                         let dialog = adw::AlertDialog::builder()
-                                            .heading(gettext("Сбой подключения"))
-                                            .body(format!("Процесс ядра неожиданно завершился. Детали лога:\n\n{error_details}"))
+                                            .heading(gettext("Connection failure"))
+                                            .body(format!("Core process unexpectedly terminated. Log details:\n\n{error_details}"))
                                             .build();
-                                        dialog.add_response("ok", &gettext("ОК"));
+                                        dialog.add_response("ok", &gettext("OK"));
                                         if let Some(root) = page.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
                                             dialog.present(Some(&root));
                                         }
@@ -419,10 +409,10 @@ impl VrxxVpnPage {
                                                                     }
                                                                 }
                                                             }
-                                                            if total_down > 0 || total_up > 0 {
-                                                                item_clone_stats.set_traffic_down(format!("{:.1} MB", total_down as f64 / 1_048_576.0));
-                                                                item_clone_stats.set_traffic_up(format!("{:.1} MB", total_up as f64 / 1_048_576.0));
-                                                            }
+                                                        }
+                                                        if total_down > 0 || total_up > 0 {
+                                                            item_clone_stats.set_traffic_down(format!("{:.1} MB", total_down as f64 / 1_048_576.0));
+                                                            item_clone_stats.set_traffic_up(format!("{:.1} MB", total_up as f64 / 1_048_576.0));
                                                         }
                                                     }
                                                 }
@@ -443,20 +433,20 @@ impl VrxxVpnPage {
 
                                     // Если загрузка идет больше 12 секунд и нет успеха - прерываем соединение
                                     if is_loading && elapsed > 12 {
-                                        crate::backend::log_app_event("warn", "Таймаут подключения (более 12 сек).");
+                                        tracing::warn!("Connection timeout (over 12 sec).");
                                         item.set_is_active(false);
                                         item.set_is_loading(false);
                                         item.set_is_error(true);
                                         
                                         imp.start_time.replace(None);
                                         page.update_disconnect_action_state();
-                                        page.imp().window_title.set_subtitle(&gettext("Сбой подключения"));
+                                        page.imp().window_title.set_subtitle(&gettext("Connection failure"));
                                         
                                         if let Some(app) = gio::Application::default().and_downcast::<gtk::Application>() {
                                             if let Some(window) = app.active_window() {
                                                 if !window.is_active() {
-                                                    let notification = gio::Notification::new(&gettext("Сбой подключения"));
-                                                    notification.set_body(Some(&gettext("Не удалось подключиться к выбранному VPN ключу.")));
+                                                    let notification = gio::Notification::new(&gettext("Connection failure"));
+                                                    notification.set_body(Some(&gettext("Failed to connect to the selected VPN key.")));
                                                     app.send_notification(Some("vpn_fail"), &notification);
                                                 }
                                             }
@@ -467,102 +457,90 @@ impl VrxxVpnPage {
                                     if should_ping {
                                         let item_clone = item.clone();
                                         let page_weak_ping = page_weak.clone();
+                                        let is_currently_loading = item_clone.is_loading();
+                                        let socks_port = crate::settings::SettingsManager::new().load().socks_port;
                                         
+                                        // 1. Создаем канал (ИСПРАВЛЕНО: Явное указание типов)
+                                        let (sender, receiver) = async_channel::unbounded::<(bool, u128, String, String, String)>();
+
+                                        // 2. UI Поток ловит результаты и обновляет интерфейс
+                                        let item_clone_ui = item_clone.clone();
+                                        let page_weak_ui = page_weak_ping.clone();
                                         glib::spawn_future_local(async move {
+                                            if let Ok((success, ms, ip, country, tz)) = receiver.recv().await {
+                                                if success {
+                                                    item_clone_ui.set_ping(format!("{ms} ms"));
+                                                    if !ip.is_empty() { item_clone_ui.set_server_info(ip); }
+                                                    if !country.is_empty() { item_clone_ui.set_location(country); }
+                                                    if !tz.is_empty() { item_clone_ui.set_timezone(tz); }
+
+                                                    item_clone_ui.set_is_loading(false);
+                                                    item_clone_ui.set_is_error(false);
+                                                    if let Some(page) = page_weak_ui.upgrade() {
+                                                        let new_subtitle = format!("{} {}", item_clone_ui.name(), gettext("Connected"));
+                                                        page.imp().window_title.set_subtitle(&new_subtitle);
+                                                    }
+                                                } else {
+                                                    item_clone_ui.set_ping(gettext("timeout"));
+                                                    item_clone_ui.set_is_loading(false);
+                                                    item_clone_ui.set_is_error(true);
+                                                    if is_currently_loading {
+                                                        if let Some(page) = page_weak_ui.upgrade() {
+                                                            page.imp().window_title.set_subtitle(&gettext("Connection timeout"));
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        });
+
+                                        // 3. Фоновый поток (только сетевые запросы)
+                                        let raw_url_bg = item.url();
+                                        std::thread::spawn(move || {
                                             let start_ping = std::time::Instant::now();
-                                            let socks_port = crate::settings::SettingsManager::new().load().socks_port;
-                                            
-                                            // Загружаем геоданные только в начале
-                                            let fetch_geodata = is_loading;
-                                            let target_url = if fetch_geodata {
-                                                "http://ip-api.com/json/?fields=status,country,timezone,query"
-                                            } else {
-                                                "http://cp.cloudflare.com/generate_204"
-                                            };
-
-                                            let args_raw = [
-                                                "curl", "-s", "-w", "%{time_total}", 
-                                                "-x", &format!("socks5h://127.0.0.1:{socks_port}"),
-                                                target_url,
-                                                "--connect-timeout", "4"
-                                            ];
-                                            let args: Vec<&std::ffi::OsStr> = args_raw.iter().map(std::ffi::OsStr::new).collect();
-                                            
                                             let mut success = false;
-                                            #[allow(unused_assignments)]
-                                            let mut default_ping_ms = 0;
+                                            let mut ms = 0;
+                                            let mut ip = String::new();
+                                            let mut country = String::new();
+                                            let mut tz = String::new();
 
-                                            if let Ok(subprocess) = gio::Subprocess::newv(&args, gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE) {
-                                                if let Ok((Some(stdout_bytes), _)) = subprocess.communicate_future(None).await {
-                                                    let is_cmd_successful = subprocess.is_successful();
-                                                    let stdout_str = String::from_utf8_lossy(&stdout_bytes);
-                                                    default_ping_ms = start_ping.elapsed().as_millis();
-                                                    
-                                                    if is_cmd_successful {
-                                                        if fetch_geodata {
-                                                            if let Some(brace_idx) = stdout_str.rfind('}') {
-                                                                let json_part = &stdout_str[..=brace_idx];
-                                                                let time_part = &stdout_str[brace_idx+1..];
-
-                                                                if let Ok(json) = serde_json::from_str::<serde_json::Value>(json_part) {
-                                                                    if json.get("status").and_then(|s| s.as_str()) == Some("success") {
-                                                                        success = true;
-                                                                        if let Ok(time_sec) = time_part.trim().parse::<f64>() {
-                                                                            let ms = (time_sec * 1000.0) as u64;
-                                                                            item_clone.set_ping(format!("{ms} ms"));
-                                                                        } else {
-                                                                            item_clone.set_ping(format!("{default_ping_ms} ms"));
-                                                                        }
-
-                                                                        if let Some(ip) = json.get("query").and_then(|s| s.as_str()) {
-                                                                            item_clone.set_server_info(ip.to_string());
-                                                                        }
-                                                                        if let Some(country) = json.get("country").and_then(|s| s.as_str()) {
-                                                                            item_clone.set_location(country.to_string());
-                                                                        }
-                                                                        if let Some(tz) = json.get("timezone").and_then(|s| s.as_str()) {
-                                                                            item_clone.set_timezone(tz.to_string());
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        } else {
-                                                            // Обычный пинг до cloudflare
-                                                            if let Ok(time_sec) = stdout_str.trim().parse::<f64>() {
-                                                                if time_sec > 0.0 {
-                                                                    success = true;
-                                                                    let ms = (time_sec * 1000.0) as u64;
-                                                                    item_clone.set_ping(format!("{ms} ms"));
-                                                                }
-                                                            }
-                                                            if !success && default_ping_ms > 0 {
-                                                                success = true;
-                                                                item_clone.set_ping(format!("{default_ping_ms} ms"));
-                                                            }
+                                            if is_currently_loading {
+                                                let proxy_url = format!("socks5://127.0.0.1:{}", socks_port);
+                                                let agent = match ureq::Proxy::new(&proxy_url) {
+                                                    Ok(proxy) => ureq::builder().proxy(proxy).timeout(std::time::Duration::from_secs(4)).build(),
+                                                    Err(_) => return,
+                                                };
+                                                if let Ok(resp) = agent.get("http://ip-api.com/json/?fields=status,country,timezone,query").call() {
+                                                    if let Ok(json) = resp.into_json::<serde_json::Value>() {
+                                                        if json.get("status").and_then(|s| s.as_str()) == Some("success") {
+                                                            success = true;
+                                                            ms = start_ping.elapsed().as_millis();
+                                                            ip = json.get("query").and_then(|s| s.as_str()).unwrap_or("").to_string();
+                                                            country = json.get("country").and_then(|s| s.as_str()).unwrap_or("").to_string();
+                                                            tz = json.get("timezone").and_then(|s| s.as_str()).unwrap_or("").to_string();
+                                                        }
+                                                    }
+                                                }
+                                            } else {
+                                                use std::net::{TcpStream, ToSocketAddrs};
+                                                let parsed = crate::domain::key_parser::parse_vpn_key(&raw_url_bg).unwrap_or_else(|_| crate::domain::key_parser::ParsedKey {
+                                                    protocol: "".to_string(), name: "".to_string(), host: "127.0.0.1".to_string(), port: 0, uuid: "".to_string(), query_params: std::collections::HashMap::new(), raw_url: "".to_string()
+                                                });
+                                                
+                                                let timeout = std::time::Duration::from_secs(2);
+                                                let addr = format!("{}:{}", parsed.host, parsed.port);
+                                                if let Ok(mut addrs) = addr.to_socket_addrs() {
+                                                    if let Some(socket_addr) = addrs.next() {
+                                                        if let Ok(mut stream) = TcpStream::connect_timeout(&socket_addr, timeout) {
+                                                            success = true;
+                                                            ms = start_ping.elapsed().as_millis();
+                                                            let _ = stream.shutdown(std::net::Shutdown::Both);
                                                         }
                                                     }
                                                 }
                                             }
 
-                                            if success {
-                                                item_clone.set_is_loading(false);
-                                                item_clone.set_is_error(false);
-                                                
-                                                if let Some(page) = page_weak_ping.upgrade() {
-                                                    let connected_text = gettext("Подключено");
-                                                    let new_subtitle = format!("{} {}", item_clone.name(), connected_text);
-                                                    page.imp().window_title.set_subtitle(&new_subtitle);
-                                                }
-                                            } else {
-                                                item_clone.set_ping(gettext("timeout"));
-                                                if !item_clone.is_loading() {
-                                                    // Соединение было установлено, но пинг пропал
-                                                    item_clone.set_is_error(true);
-                                                    if let Some(page) = page_weak_ping.upgrade() {
-                                                        page.imp().window_title.set_subtitle(&gettext("Соединение нестабильно"));
-                                                    }
-                                                }
-                                            }
+                                            // Безопасно отправляем простые типы данных
+                                            let _ = sender.send_blocking((success, ms, ip, country, tz));
                                         });
                                     }
                                     break;
@@ -601,49 +579,49 @@ impl VrxxVpnPage {
             *self.imp().bytes_down.borrow_mut() = 0;
             *self.imp().bytes_up.borrow_mut() = 0;
             
-            self.imp().window_title.set_subtitle(&gettext("Подключение..."));
+            self.imp().window_title.set_subtitle(&gettext("Connecting..."));
 
             let app_settings = current_settings;
             
-            let config_json = if let Ok(parsed) = crate::key_parser::parse_vpn_key(&active_item.url()) {
+            let config_json = if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&active_item.url()) {
                 if app_settings.core == "sing-box" {
-                    crate::singbox_config::build_singbox_config(&parsed, &app_settings)
+                    crate::domain::singbox_config::build_singbox_config(&parsed, &app_settings)
                 } else {
-                    crate::xray_config::build_xray_config(&parsed, &app_settings)
+                    crate::domain::xray_config::build_xray_config(&parsed, &app_settings)
                 }
             } else {
-                crate::backend::log_app_event("error", "Не удалось распарсить ключ для генерации конфигурации");
+                tracing::error!("Failed to parse key for configuration generation");
                 active_item.set_is_loading(false);
                 active_item.set_is_error(true);
-                self.imp().window_title.set_subtitle(&gettext("Ошибка конфигурации"));
+                self.imp().window_title.set_subtitle(&gettext("Configuration error"));
                 return;
             };
 
             let backend = self.imp().backend.borrow();
-            crate::backend::log_app_event("info", &format!("Подключение к VPN ключу: {}", active_item.name()));
+            tracing::info!("{}", &format!("Connecting to VPN key: {}", active_item.name()));
             
             if let Err(e) = backend.start(&config_json) {
-                crate::backend::log_app_event("error", &format!("Не удалось запустить бэкенд: {e}"));
-                active_item.set_is_active(true); 
+                tracing::error!("{}", &format!("Failed to start backend: {e}"));
+                active_item.set_is_active(false); 
                 active_item.set_is_loading(false);
                 active_item.set_is_error(true);
                 
                 self.imp().start_time.replace(None);
-                self.imp().window_title.set_subtitle(&gettext("Ошибка запуска ядра"));
+                self.imp().window_title.set_subtitle(&gettext("Core startup error"));
                 
                 self.save_current_keys();
                 self.update_disconnect_action_state();
                 
                 let dialog = adw::AlertDialog::builder()
-                    .heading(gettext("Ошибка соединения"))
+                    .heading(gettext("Connection error"))
                     .body(e.to_string())
                     .build();
-                dialog.add_response("ok", &gettext("ОК"));
+                dialog.add_response("ok", &gettext("OK"));
                 if let Some(root) = self.root() {
                     dialog.present(Some(&root));
                 }
             } else {
-                crate::backend::log_app_event("info", "Бэкенд успешно запущен");
+                tracing::info!("Backend successfully started");
             }
         }
     }
@@ -683,21 +661,21 @@ impl VrxxVpnPage {
 
         let mut body = format!(
             "<b>{}</b>: {}\n<b>{}</b>: {}\n<b>{}</b>: {}\n<b>{}</b>: {}",
-            gettext("Адрес сервера"), display_ip,
-            gettext("Локация"), display_loc,
-            gettext("Часовой пояс"), display_tz,
-            gettext("Протокол"), key.protocol()
+            gettext("Server address"), display_ip,
+            gettext("Location"), display_loc,
+            gettext("Timezone"), display_tz,
+            gettext("Protocol"), key.protocol()
         );
 
-        if let Ok(parsed) = crate::key_parser::parse_vpn_key(&key.url()) {
+        if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&key.url()) {
             let display_port = if hide { "***".to_string() } else { parsed.port.to_string() };
-            body.push_str(&format!("\n<b>{}</b>: {}", gettext("Порт"), display_port));
+            body.push_str(&format!("\n<b>{}</b>: {}", gettext("Port"), display_port));
             
             if let Some(net) = parsed.query_params.get("type") {
-                body.push_str(&format!("\n<b>{}</b>: {}", gettext("Сеть"), net));
+                body.push_str(&format!("\n<b>{}</b>: {}", gettext("Network"), net));
             }
             if let Some(sec) = parsed.query_params.get("security") {
-                body.push_str(&format!("\n<b>{}</b>: {}", gettext("Безопасность"), sec));
+                body.push_str(&format!("\n<b>{}</b>: {}", gettext("Security"), sec));
             }
             if let Some(sni) = parsed.query_params.get("sni") {
                 let display_sni = if hide { "***".to_string() } else { sni.clone() };
@@ -708,7 +686,7 @@ impl VrxxVpnPage {
             }
             if let Some(pbk) = parsed.query_params.get("pbk") {
                 let display_pbk = if hide { "***".to_string() } else { pbk.clone() };
-                body.push_str(&format!("\n<b>{}</b>: {}", gettext("Публичный ключ"), display_pbk));
+                body.push_str(&format!("\n<b>{}</b>: {}", gettext("Public key"), display_pbk));
             }
             if let Some(flow) = parsed.query_params.get("flow") {
                 if !flow.is_empty() {
@@ -735,7 +713,7 @@ impl VrxxVpnPage {
             .extra_child(&clamp)
             .build();
         
-        dialog.add_response("close", &gettext("Закрыть"));
+        dialog.add_response("close", &gettext("Close"));
         dialog.set_close_response("close");
 
         if let Some(root) = self.root().and_downcast::<gtk::Window>() {
@@ -749,28 +727,28 @@ impl VrxxVpnPage {
         let key_obj_clone = key.clone();
         let key_url = key.url();
 
-        let parsed = match crate::key_parser::parse_vpn_key(&key_url) {
+        let parsed = match crate::domain::key_parser::parse_vpn_key(&key_url) {
             Ok(p) => p,
             Err(_) => return,
         };
 
         let dialog = adw::AlertDialog::builder()
-            .heading(gettext("Редактировать VPN ключ"))
+            .heading(gettext("Edit VPN key"))
             .build();
         
-        let name_row = adw::EntryRow::builder().title(gettext("Имя")).text(&parsed.name).build();
-        let protocol_row = adw::EntryRow::builder().title(gettext("Протокол")).text(&parsed.protocol).build();
-        let host_row = adw::EntryRow::builder().title(gettext("Адрес сервера")).text(&parsed.host).build();
-        let port_row = adw::EntryRow::builder().title(gettext("Порт")).text(parsed.port.to_string()).build();
-        let uuid_row = adw::EntryRow::builder().title(gettext("UUID / Пароль")).text(&parsed.uuid).build();
+        let name_row = adw::EntryRow::builder().title(gettext("Name")).text(&parsed.name).build();
+        let protocol_row = adw::EntryRow::builder().title(gettext("Protocol")).text(&parsed.protocol).build();
+        let host_row = adw::EntryRow::builder().title(gettext("Server address")).text(&parsed.host).build();
+        let port_row = adw::EntryRow::builder().title(gettext("Port")).text(parsed.port.to_string()).build();
+        let uuid_row = adw::EntryRow::builder().title(gettext("UUID / Password")).text(&parsed.uuid).build();
 
         let group_general = adw::PreferencesGroup::builder()
-            .title(gettext("Общие"))
+            .title(gettext("General"))
             .build();
         group_general.add(&name_row);
 
         let group_connection = adw::PreferencesGroup::builder()
-            .title(gettext("Соединение"))
+            .title(gettext("Connection"))
             .build();
         group_connection.add(&protocol_row);
         group_connection.add(&host_row);
@@ -796,8 +774,8 @@ impl VrxxVpnPage {
         clamp.set_margin_end(12);
 
         dialog.set_extra_child(Some(&clamp));
-        dialog.add_response("cancel", &gettext("Отмена"));
-        dialog.add_response("save", &gettext("Сохранить"));
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("save", &gettext("Save"));
         dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("save"));
         dialog.set_close_response("cancel");
@@ -819,7 +797,7 @@ impl VrxxVpnPage {
                     p.port = port_row_clone.text().parse().unwrap_or(p.port);
                     p.uuid = uuid_row_clone.text().to_string();
 
-                    let new_url = crate::key_parser::build_vpn_key(&p);
+                    let new_url = crate::domain::key_parser::build_vpn_key(&p);
                     key_obj_clone.set_name(p.name);
                     key_obj_clone.set_protocol(p.protocol);
                     key_obj_clone.set_url(new_url);
@@ -837,7 +815,7 @@ impl VrxxVpnPage {
     // Логика дублирования ключа
     fn handle_duplicate_key(&self, key: &VpnKeyObject) {
         if let Some(model) = self.imp().model.borrow().as_ref() {
-            let new_name = format!("{} (Копия)", key.name());
+            let new_name = format!("{} (Copy)", key.name());
             let new_protocol = key.protocol();
             let new_key = VpnKeyObject::new(&new_name, &new_protocol, false, &key.url());
 
@@ -852,12 +830,12 @@ impl VrxxVpnPage {
         let key_name = key.name();
         
         let dialog = adw::AlertDialog::builder()
-            .heading(gettext("Удалить VPN ключ"))
-            .body(format!("Вы уверены, что хотите удалить '{key_name}'?"))
+            .heading(gettext("Delete VPN key"))
+            .body(format!("Are you sure you want to delete '{key_name}'?"))
             .build();
             
-        dialog.add_response("cancel", &gettext("Отмена"));
-        dialog.add_response("delete", &gettext("Удалить"));
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("delete", &gettext("Delete"));
         dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
         
         let key_name_str = key_name.to_string();
@@ -918,7 +896,7 @@ impl VrxxVpnPage {
         let action_group = gio::SimpleActionGroup::new();
         self.imp().action_group.replace(Some(action_group.clone()));
 
-        // Действие: Добавить ключ
+        // Действие: Add ключ
         let add_action = gio::SimpleAction::new("add_key", Some(glib::VariantTy::STRING));
         let page_weak = self.downgrade();
         add_action.connect_activate(move |_, parameter| {
@@ -932,11 +910,11 @@ impl VrxxVpnPage {
                 .unwrap_or_else(|| "Key".to_string());
 
             let dialog = adw::AlertDialog::builder()
-                .heading(gettext("Добавить VPN ключ"))
+                .heading(gettext("Add VPN key"))
                 .build();
             
             let entry = gtk::Entry::builder()
-                .placeholder_text(gettext("VPN Ссылка"))
+                .placeholder_text(gettext("VPN Link"))
                 .activates_default(true)
                 .build();
 
@@ -960,8 +938,8 @@ impl VrxxVpnPage {
             clamp.set_margin_end(12);
 
             dialog.set_extra_child(Some(&clamp));
-            dialog.add_response("cancel", &gettext("Отмена"));
-            dialog.add_response("add", &gettext("Добавить"));
+            dialog.add_response("cancel", &gettext("Cancel"));
+            dialog.add_response("add", &gettext("Add"));
             dialog.set_response_appearance("add", adw::ResponseAppearance::Suggested);
             dialog.set_default_response(Some("add"));
             dialog.set_close_response("cancel");
@@ -972,7 +950,7 @@ impl VrxxVpnPage {
                 if response == "add" {
                     if let Some(page) = page_weak_dialog.upgrade() {
                         let url_str = entry_clone.text();
-                        match crate::key_parser::parse_vpn_key(&url_str) {
+                        match crate::domain::key_parser::parse_vpn_key(&url_str) {
                             Ok(parsed) => {
                                 if let Some(model) = page.imp().model.borrow().as_ref() {
                                     let new_key = VpnKeyObject::new(&parsed.name, &parsed.protocol, false, &parsed.raw_url);
@@ -981,7 +959,7 @@ impl VrxxVpnPage {
                                 }
                             }
                             Err(e) => {
-                                crate::backend::log_app_event("error", &format!("Ошибка парсинга ключа: {e}"));
+                                tracing::error!("{}", &format!("Key parsing error: {e}"));
                             }
                         }
                     }
@@ -1007,7 +985,7 @@ impl VrxxVpnPage {
                 clipboard.read_text_async(gio::Cancellable::NONE, move |res| {
                     if let Ok(Some(text)) = res {
                         if let Some(p) = p_weak.upgrade() {
-                            match crate::key_parser::parse_vpn_key(&text) {
+                            match crate::domain::key_parser::parse_vpn_key(&text) {
                                 Ok(parsed) => {
                                     if let Some(model) = p.imp().model.borrow().as_ref() {
                                         let new_key = VpnKeyObject::new(&parsed.name, &parsed.protocol, false, &parsed.raw_url);
@@ -1016,7 +994,7 @@ impl VrxxVpnPage {
                                     }
                                 }
                                 Err(e) => {
-                                    crate::backend::log_app_event("error", &format!("Ошибка парсинга ключа из буфера: {e}"));
+                                    tracing::error!("{}", &format!("Key parsing error from buffer: {e}"));
                                 }
                             }
                         }
@@ -1026,7 +1004,7 @@ impl VrxxVpnPage {
         });
         action_group.add_action(&import_clip_action);
 
-        // Действие: Отключить
+        // Действие: Disconnect
         let disconnect_action = gio::SimpleAction::new("disconnect", None);
         let page_weak = self.downgrade();
         disconnect_action.connect_activate(move |_, _| {
@@ -1035,11 +1013,11 @@ impl VrxxVpnPage {
                 None => return,
             };
 
-            crate::backend::log_app_event("info", "Отключение VPN");
+            tracing::info!("Disconnecting VPN");
             // Остановка бэкенда
             let backend = page.imp().backend.borrow();
             if let Err(e) = backend.stop() {
-                crate::backend::log_app_event("error", &format!("Ошибка остановки бэкенда: {e}"));
+                tracing::error!("{}", &format!("Error stopping backend: {e}"));
             }
 
             // Деактивация всех ключей
@@ -1052,7 +1030,7 @@ impl VrxxVpnPage {
                 }
             }
             
-            page.imp().window_title.set_subtitle(&gettext("Отключено"));
+            page.imp().window_title.set_subtitle(&gettext("Disconnected"));
             page.imp().start_time.replace(None);
 
             page.save_current_keys();

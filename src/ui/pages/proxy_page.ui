@@ -9,7 +9,7 @@
           <object class="AdwHeaderBar">
             <property name="title-widget">
                 <object class="AdwWindowTitle">
-                    <property name="title" translatable="yes">Локальный прокси</property>
+                    <property name="title" translatable="yes">Local proxy</property>
                 </object>
             </property>
              <child type="end">
@@ -25,15 +25,15 @@
         <property name="content">
           <object class="AdwPreferencesPage">
 
-            <!-- Группа: Системный прокси -->
+            <!-- Группа: System proxy -->
             <child>
               <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">Системный прокси</property>
-                <property name="description" translatable="yes">Автоматическая настройка прокси для всей системы (GNOME)</property>
+                <property name="title" translatable="yes">System proxy</property>
+                <property name="description" translatable="yes">Automatic proxy configuration for the whole system (GNOME)</property>
                 <child>
                   <object class="AdwSwitchRow" id="system_proxy_switch">
-                    <property name="title" translatable="yes">Устанавливать системный прокси</property>
-                    <property name="subtitle" translatable="yes">При активном подключении трафик приложений пойдет через прокси</property>
+                    <property name="title" translatable="yes">Set system proxy</property>
+                    <property name="subtitle" translatable="yes">When connected, application traffic will go through the proxy</property>
                   </object>
                 </child>
               </object>
@@ -42,12 +42,12 @@
             <!-- Группа: Входящие порты -->
             <child>
               <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">Входящие подключения (Inbounds)</property>
-                <property name="description" translatable="yes">Локальные порты, на которых работают прокси-серверы ядра</property>
+                <property name="title" translatable="yes">Inbound connections (Inbounds)</property>
+                <property name="description" translatable="yes">Local ports where the core proxy servers run</property>
 
                 <child>
                   <object class="AdwSpinRow" id="socks_port_row">
-                    <property name="title" translatable="yes">SOCKS5 Порт</property>
+                    <property name="title" translatable="yes">SOCKS5 Port</property>
                     <property name="adjustment">
                       <object class="GtkAdjustment">
                         <property name="lower">1024</property>
@@ -61,7 +61,7 @@
 
                 <child>
                   <object class="AdwSpinRow" id="http_port_row">
-                    <property name="title" translatable="yes">HTTP Порт</property>
+                    <property name="title" translatable="yes">HTTP Port</property>
                     <property name="adjustment">
                       <object class="GtkAdjustment">
                         <property name="lower">1024</property>
@@ -75,8 +75,8 @@
 
                 <child>
                   <object class="AdwSwitchRow" id="allow_lan_switch">
-                    <property name="title" translatable="yes">Разрешить подключения из LAN</property>
-                    <property name="subtitle" translatable="yes">Прокси будет доступен для других устройств в вашей локальной сети</property>
+                    <property name="title" translatable="yes">Allow connections from LAN</property>
+                    <property name="subtitle" translatable="yes">Proxy will be available for other devices in your local network</property>
                   </object>
                 </child>
 

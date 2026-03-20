@@ -16,9 +16,7 @@ mod ui;
 mod backend;
 mod settings;
 mod protocol;
-mod key_parser;
-mod xray_config;
-mod singbox_config;
+pub mod domain;
 
 use self::application::VrxxApplication;
 use config::{GETTEXT_PACKAGE, LOCALEDIR};
@@ -27,40 +25,49 @@ use gtk::{gio, glib};
 use gtk::prelude::*;
 
 fn main() -> glib::ExitCode {
-    // Override language if set in settings
+    // Устанавливаем язык ДО любой инициализации GTK и gettext
     let manager = settings::SettingsManager::new();
     let app_settings = manager.load();
     if app_settings.language != "system" {
-        let lang_to_set = if app_settings.language == "en" { "C.UTF-8" } else { &app_settings.language };
-        std::env::set_var("LANGUAGE", lang_to_set);
-        std::env::set_var("LANG", lang_to_set);
-        std::env::set_var("LC_ALL", lang_to_set);
+        let lang = if app_settings.language == "ru" { "ru_RU.UTF-8" } else { &app_settings.language };
+        std::env::set_var("LANGUAGE", lang);
+        std::env::set_var("LC_ALL", lang);
+        std::env::set_var("LANG", lang);
+        std::env::set_var("LC_MESSAGES", lang);
     }
     
-    crate::backend::log_app_event("info", "Vrxx Application Started");
+    let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
+    std::fs::create_dir_all(&log_dir).ok();
+    
+    // Пишем логи приложения в отдельный файл app.log
+    let log_file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_dir.join("app.log"))
+        .unwrap_or_else(|_| std::fs::File::create("app.log").unwrap());
 
-    // Set up gettext translations
+    // Fallback to tracing log printing to stdout during dev
+    tracing_subscriber::fmt()
+        .with_writer(log_file)
+        .with_ansi(false)
+        .init();
+
+    tracing::info!("Vrxx Application Started");
+
+    // Инициализируем Gettext
     setlocale(LocaleCategory::LcAll, "");
     bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR).expect("Unable to bind the text domain");
-    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8")
-        .expect("Unable to set the text domain encoding");
+    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8").expect("Unable to set the text domain encoding");
     textdomain(GETTEXT_PACKAGE).expect("Unable to switch to the text domain");
 
-    // Load resources compiled into the binary
+    // Загружаем ресурсы
     let res_data = include_bytes!(concat!(env!("OUT_DIR"), "/vrxx.gresource"));
     let res = gio::Resource::from_data(&glib::Bytes::from(res_data))
         .expect("Failed to load compiled resources");
     gio::resources_register(&res);
 
-    // Create a new GtkApplication. The application manages our main loop,
-    // application windows, integration with the window manager/compositor, and
-    // desktop features such as file opening and single-instance applications.
+    // Запускаем приложение
     let app = VrxxApplication::new("ru.mark.vrxx", &gio::ApplicationFlags::empty());
-
-    // Run the application. This function will block until the application
-    // exits. Upon return, we have our exit code to return to the shell. (This
-    // is the code you see when you do `echo $?` after running a command in a
-    // terminal.
     app.run()
 }
 

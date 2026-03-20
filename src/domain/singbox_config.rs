@@ -1,8 +1,13 @@
 use crate::settings::AppSettings;
-use crate::key_parser::ParsedKey;
+use crate::domain::key_parser::ParsedKey;
 use serde_json::json;
 
 pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> String {
+    let mut actual_http_port = settings.http_port;
+    if actual_http_port == settings.socks_port {
+        actual_http_port += 1;
+    }
+
     let mut inbounds = vec![
         json!({
             "type": "socks",
@@ -16,7 +21,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
             "type": "http",
             "tag": "http-in",
             "listen": if settings.allow_lan { "0.0.0.0" } else { "127.0.0.1" },
-            "listen_port": settings.http_port
+            "listen_port": actual_http_port
         })
     ];
 
@@ -107,6 +112,10 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         });
     }
 
+    if settings.disable_ipv6 {
+        proxy_outbound["domain_strategy"] = json!("ipv4_only");
+    }
+
     let mut rules = vec![];
     if settings.bypass_lan {
         rules.push(json!({
@@ -115,27 +124,50 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         }));
     }
 
-    if settings.enable_routing && !settings.whitelist.is_empty() {
-        let mut domains = vec![];
-        let mut domain_suffix = vec![];
-        for d in &settings.whitelist {
-            if let Some(stripped) = d.strip_prefix("*.") {
-                domain_suffix.push(stripped.to_string());
-            } else {
-                domains.push(d.to_string());
-            }
-        }
-        
-        let target_tag = if settings.routing_mode == "proxy" { "proxy" } else { "direct" };
-        let mut rule = json!({ "outbound": target_tag });
-        if !domains.is_empty() { rule["domain"] = json!(domains); }
-        if !domain_suffix.is_empty() { rule["domain_suffix"] = json!(domain_suffix); }
-        rules.push(rule);
-        
-        if settings.routing_mode == "proxy" {
-            rules.push(json!({
-                "outbound": "direct"
+    let mut rule_sets = vec![];
+
+    if settings.enable_routing {
+        let mut active_rule_sets = vec![];
+
+        let mut add_region = |tag: &str, url: &str| {
+            active_rule_sets.push(tag.to_string());
+            rule_sets.push(json!({
+                "tag": tag,
+                "type": "remote",
+                "format": "binary",
+                "url": url,
+                "download_detour": "direct"
             }));
+        };
+
+        if settings.route_ru {
+            add_region("geosite-ru", "https://raw.githubusercontent.com/SagerNet/sing-geosite/main/rule-set/geosite-ru.srs");
+            add_region("geoip-ru", "https://raw.githubusercontent.com/SagerNet/sing-geoip/main/rule-set/geoip-ru.srs");
+        }
+        if settings.route_cn {
+            add_region("geosite-cn", "https://raw.githubusercontent.com/SagerNet/sing-geosite/main/rule-set/geosite-cn.srs");
+            add_region("geoip-cn", "https://raw.githubusercontent.com/SagerNet/sing-geoip/main/rule-set/geoip-cn.srs");
+        }
+        if settings.route_ir {
+            add_region("geosite-ir", "https://raw.githubusercontent.com/SagerNet/sing-geosite/main/rule-set/geosite-ir.srs");
+            add_region("geoip-ir", "https://raw.githubusercontent.com/SagerNet/sing-geoip/main/rule-set/geoip-ir.srs");
+        }
+        if settings.route_antifilter {
+            add_region("geosite-antifilter", "https://raw.githubusercontent.com/SagerNet/sing-geosite/main/rule-set/geosite-antifilter.srs");
+        }
+
+        if !active_rule_sets.is_empty() {
+            let target_tag = if settings.routing_mode == "proxy" { "proxy" } else { "direct" };
+            rules.push(json!({
+                "rule_set": active_rule_sets,
+                "outbound": target_tag
+            }));
+            
+            if settings.routing_mode == "proxy" {
+                rules.push(json!({
+                    "outbound": "direct"
+                }));
+            }
         }
     }
 
@@ -143,7 +175,8 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         proxy_outbound,
         json!({
             "type": "direct",
-            "tag": "direct"
+            "tag": "direct",
+            "domain_strategy": if settings.disable_ipv6 { "ipv4_only" } else { "" }
         }),
         json!({
             "type": "block",
@@ -151,6 +184,15 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         })
     ];
     
+    let mut route_config = json!({
+        "rules": rules,
+        "auto_detect_interface": true
+    });
+
+    if !rule_sets.is_empty() {
+        route_config["rule_set"] = json!(rule_sets);
+    }
+
     let root = json!({
         "log": {
             "level": settings.log_level,
@@ -158,11 +200,39 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         },
         "inbounds": inbounds,
         "outbounds": outbounds,
-        "route": {
-            "rules": rules,
-            "auto_detect_interface": true
-        }
+        "route": route_config
     });
 
     serde_json::to_string_pretty(&root).unwrap_or_else(|_| "{}".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::settings::AppSettings;
+    use crate::domain::key_parser::ParsedKey;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_build_singbox_config_generates_valid_json() {
+        let key = ParsedKey {
+            protocol: "VLESS".to_string(),
+            name: "Test".to_string(),
+            host: "example.com".to_string(),
+            port: 443,
+            uuid: "uuid-123".to_string(),
+            query_params: HashMap::new(),
+            raw_url: "vless://...".to_string(),
+        };
+        let mut settings = AppSettings::new();
+        settings.socks_port = 1080;
+        
+        let json_str = build_singbox_config(&key, &settings);
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Should be valid JSON");
+        
+        let proxy_outbound = parsed["outbounds"].as_array().unwrap().get(0).unwrap();
+        assert_eq!(proxy_outbound["type"], "vless");
+        assert_eq!(proxy_outbound["server"], "example.com");
+        assert_eq!(proxy_outbound["uuid"], "uuid-123");
+    }
 }

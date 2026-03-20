@@ -81,6 +81,20 @@ pub struct AppSettings {
     pub enable_routing: bool,
     #[serde(default)]
     pub routing_mode: String, // "bypass" or "proxy"
+
+    // Region routing flags
+    #[serde(default)]
+    pub route_ru: bool,
+    #[serde(default)]
+    pub route_ir: bool,
+    #[serde(default)]
+    pub route_cn: bool,
+    #[serde(default)]
+    pub route_antifilter: bool,
+
+    // IPv6 option
+    #[serde(default)]
+    pub disable_ipv6: bool,
 }
 
 fn default_language() -> String { "system".to_string() }
@@ -124,6 +138,11 @@ impl AppSettings {
             whitelist: vec![],
             enable_routing: false,
             routing_mode: "bypass".to_string(),
+            route_ru: false,
+            route_ir: false,
+            route_cn: false,
+            route_antifilter: false,
+            disable_ipv6: false,
         }
     }
 }

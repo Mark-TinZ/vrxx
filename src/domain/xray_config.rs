@@ -1,5 +1,5 @@
 use crate::settings::AppSettings;
-use crate::key_parser::ParsedKey;
+use crate::domain::key_parser::ParsedKey;
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -52,6 +52,11 @@ pub struct XrayConfig {
 }
 
 pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> String {
+    let mut actual_http_port = settings.http_port;
+    if actual_http_port == settings.socks_port {
+        actual_http_port += 1;
+    }
+
     let mut inbounds = vec![
         json!({
             "tag": "socks-in",
@@ -73,7 +78,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         }),
         json!({
             "tag": "http-in",
-            "port": settings.http_port,
+            "port": actual_http_port,
             "listen": if settings.allow_lan { "0.0.0.0" } else { "127.0.0.1" },
             "protocol": "http"
         })
@@ -158,7 +163,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
             "multiMode": qp.get("mode").map(|m| m == "multi").unwrap_or(false)
         });
     } else if net == "tcp" {
-        // Настройки TCP
+        // Settings TCP
     }
 
     // Mux и фрагментация
@@ -282,44 +287,57 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
     }
 
     // Обработка правил белого/черного списка с поддержкой geosite/geoip
-    if settings.enable_routing && !settings.whitelist.is_empty() {
+    if settings.enable_routing {
         let mut domains = vec![];
         let mut ips = vec![];
-        for d in &settings.whitelist {
-            if d.starts_with("geosite:") || d.starts_with("domain:") || d.starts_with("full:") || d.starts_with("regexp:") || d.starts_with("keyword:") {
-                domains.push(d.clone());
-            } else if d.starts_with("geoip:") {
-                ips.push(d.clone());
-            } else if d.contains('*') {
-                let pattern = d.replace(".", "\\.").replace("*", ".*");
-                domains.push(format!("regexp:{pattern}$"));
-            } else {
-                domains.push(format!("domain:{d}"));
-            }
-        }
         
-        let target_tag = if settings.routing_mode == "proxy" { "proxy" } else { "direct" };
-        let mut rule = json!({
-            "type": "field",
-            "outboundTag": target_tag,
-        });
-        
-        if !domains.is_empty() {
-            rule["domain"] = json!(domains);
+        if settings.route_ru {
+            domains.push("ext:geosite_ru.dat:ru".to_string());
+            domains.push("geosite:ru".to_string());
+            ips.push("ext:geoip_ru.dat:ru".to_string());
+            ips.push("geoip:ru".to_string());
         }
-        if !ips.is_empty() {
-            rule["ip"] = json!(ips);
+        if settings.route_cn {
+            domains.push("ext:geosite_cn.dat:cn".to_string());
+            domains.push("geosite:cn".to_string());
+            ips.push("ext:geoip_cn.dat:cn".to_string());
+            ips.push("geoip:cn".to_string());
         }
-        rules.push(rule);
-        
-        // Если режим proxy (Включения), то ТОЛЬКО указанные домены/IP идут через proxy.
-        // Остальной трафик должен идти напрямую (direct).
-        if settings.routing_mode == "proxy" {
-            rules.push(json!({
+        if settings.route_ir {
+            domains.push("ext:geosite_ir.dat:ir".to_string());
+            domains.push("geosite:ir".to_string());
+            ips.push("ext:geoip_ir.dat:ir".to_string());
+            ips.push("geoip:ir".to_string());
+        }
+        if settings.route_antifilter {
+            domains.push("ext:geosite_antifilter.dat:antifilter".to_string());
+            domains.push("geosite:antifilter".to_string());
+        }
+
+        if !domains.is_empty() || !ips.is_empty() {
+            let target_tag = if settings.routing_mode == "proxy" { "proxy" } else { "direct" };
+            let mut rule = json!({
                 "type": "field",
-                "outboundTag": "direct",
-                "network": "tcp,udp"
-            }));
+                "outboundTag": target_tag,
+            });
+            
+            if !domains.is_empty() {
+                rule["domain"] = json!(domains);
+            }
+            if !ips.is_empty() {
+                rule["ip"] = json!(ips);
+            }
+            rules.push(rule);
+            
+            // Если режим proxy (Включения), то ТОЛЬКО указанные домены/IP идут через proxy.
+            // Остальной трафик должен идти напрямую (direct).
+            if settings.routing_mode == "proxy" {
+                rules.push(json!({
+                    "type": "field",
+                    "outboundTag": "direct",
+                    "network": "tcp,udp"
+                }));
+            }
         }
     }
 
@@ -339,7 +357,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         // Примечание: Полная реализация fakedns требует настройки fakedns inbound/sniffing.
     }
 
-    let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
+    let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
     let _ = std::fs::create_dir_all(&log_dir);
     let access_log = log_dir.join("access.log").to_string_lossy().to_string();
     let error_log = log_dir.join("error.log").to_string_lossy().to_string();
@@ -371,10 +389,39 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         inbounds,
         outbounds,
         routing: RoutingConfig {
-            domainStrategy: settings.domain_strategy.clone(),
+            domainStrategy: if settings.disable_ipv6 { "UseIPv4".to_string() } else { settings.domain_strategy.clone() },
             rules,
         },
     };
 
     serde_json::to_string_pretty(&root_config).unwrap_or_else(|_| "{}".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::settings::AppSettings;
+    use crate::domain::key_parser::ParsedKey;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_build_xray_config_generates_valid_json() {
+        let key = ParsedKey {
+            protocol: "VLESS".to_string(),
+            name: "TestXray".to_string(),
+            host: "example.com".to_string(),
+            port: 443,
+            uuid: "uuid-456".to_string(),
+            query_params: HashMap::new(),
+            raw_url: "vless://...".to_string(),
+        };
+        let mut settings = AppSettings::new();
+        settings.socks_port = 1080;
+        
+        let json_str = build_xray_config(&key, &settings);
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Should be valid JSON for Xray");
+        
+        let proxy_outbound = parsed["outbounds"].as_array().unwrap().get(0).unwrap();
+        assert_eq!(proxy_outbound["protocol"], "vless");
+    }
 }

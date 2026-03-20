@@ -1,5 +1,5 @@
 #[cfg(not(meson_build))]
-pub const VERSION: &str = "0.1.5";
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg(not(meson_build))]
 pub const GETTEXT_PACKAGE: &str = "vrxx";
 #[cfg(not(meson_build))]
