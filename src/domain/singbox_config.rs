@@ -121,6 +121,14 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
     }
 
     let mut rules = vec![];
+
+    if settings.disable_ipv6 {
+        rules.push(json!({
+            "ip_cidr": ["::/0"],
+            "outbound": "block"
+        }));
+    }
+
     if settings.bypass_lan {
         rules.push(json!({
             "ip_is_private": true,
@@ -194,6 +202,19 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
                     "ip_cidr": [rule.value],
                     "outbound": action_tag
                 }));
+            } else if rule.type_ == "srs_url" {
+                let srs_tag = format!("srs-{}", rule.name.replace(" ", "-").to_lowercase());
+                rule_sets.push(json!({
+                    "tag": srs_tag.clone(),
+                    "type": "remote",
+                    "format": "binary",
+                    "url": rule.value,
+                    "download_detour": "direct"
+                }));
+                rules.push(json!({
+                    "rule_set": [srs_tag],
+                    "outbound": action_tag
+                }));
             }
         }
     }
@@ -225,12 +246,13 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         "servers": [
             {
                 "tag": "remote-dns",
-                "address": "https://1.1.1.1/dns-query",
+                "type": "https",
+                "server": "1.1.1.1",
                 "detour": "proxy"
             },
             {
                 "tag": "local-dns",
-                "address": "local",
+                "type": "local",
                 "detour": "direct"
             }
         ],

@@ -85,32 +85,6 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         })
     ];
 
-    if settings.tun_mode {
-        inbounds.push(json!({
-            "tag": "tun-in",
-            "protocol": "tun",
-            "settings": {
-                "network": "tcp,udp",
-                "address": [
-                    "172.19.0.1/30",
-                    "fdfe:dcba:9876::1/126"
-                ],
-                "autoRoute": true,
-                "strictRoute": true,
-                "mtu": 9000
-            },
-            "sniffing": if settings.enable_sniffing {
-                json!({
-                    "enabled": true,
-                    "destOverride": ["http", "tls", "quic"],
-                    "routeOnly": true
-                })
-            } else {
-                json!({ "enabled": false })
-            }
-        }));
-    }
-
     inbounds.push(json!({
         "tag": "api",
         "listen": "127.0.0.1",
@@ -273,6 +247,14 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
     }
 
     let mut rules = vec![];
+
+    if settings.disable_ipv6 {
+        rules.push(json!({
+            "type": "field",
+            "ip": ["::/0"],
+            "outboundTag": "block"
+        }));
+    }
 
     if settings.bypass_lan {
         rules.push(json!({

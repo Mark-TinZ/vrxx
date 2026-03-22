@@ -17,50 +17,124 @@
             <property name="child">
               <object class="AdwToolbarView">
                 <property name="content">
-                  <object class="GtkScrolledWindow">
-                    <property name="hscrollbar-policy">never</property>
-                    <property name="child">
-                      <object class="GtkListBox" id="navigation_list">
-                        <property name="selection-mode">single</property>
-                        <property name="activate-on-single-click">True</property> <!-- Не работает -->
-                        <style><class name="navigation-sidebar"/></style>
-                        <property name="margin-top">12</property>
-                        <property name="margin-bottom">12</property>
+                  <object class="GtkBox">
+                    <property name="orientation">vertical</property>
+                    <child>
+                      <object class="GtkScrolledWindow">
+                        <property name="vexpand">True</property>
+                        <property name="hscrollbar-policy">never</property>
+                        <property name="child">
+                          <object class="GtkListBox" id="navigation_list">
+                            <property name="selection-mode">single</property>
+                            <property name="activate-on-single-click">True</property> <!-- Не работает -->
+                            <style><class name="navigation-sidebar"/></style>
+                            <property name="margin-top">12</property>
+                            <property name="margin-bottom">12</property>
+                            <property name="margin-start">12</property>
+                            <property name="margin-end">12</property>
+                            <style><class name="navigation-sidebar"/></style> <!-- не работает -->
+
+                            <child>
+                              <object class="AdwActionRow">
+                                <property name="title" translatable="yes">VPN Keys</property>
+                                <property name="icon-name">key5-symbolic</property>
+                                <property name="name">page_vpn</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Proxy</property>
+                                <property name="icon-name">preferences-system-network-proxy-symbolic</property>
+                                <property name="name">page_proxy</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Routing</property>
+                                <property name="icon-name">funnel-symbolic</property>
+                                <property name="name">page_whitelist</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="AdwActionRow">
+                                <property name="title" translatable="yes">Settings</property>
+                                <property name="icon-name">emblem-system-symbolic</property>
+                                <property name="name">page_settings</property>
+                              </object>
+                            </child>
+
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkMenuButton" id="active_connection_btn">
+                        <property name="visible">False</property>
+                        <property name="valign">end</property>
                         <property name="margin-start">12</property>
                         <property name="margin-end">12</property>
-                        <style><class name="navigation-sidebar"/></style> <!-- не работает -->
-
-                        <child>
-                          <object class="AdwActionRow">
-                            <property name="title" translatable="yes">VPN Keys</property>
-                            <property name="icon-name">key5-symbolic</property>
-                            <property name="name">page_vpn</property>
+                        <property name="margin-bottom">12</property>
+                        <style><class name="flat"/></style>
+                        <property name="child">
+                          <object class="GtkBox">
+                            <property name="orientation">horizontal</property>
+                            <property name="spacing">12</property>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="icon-name">network-transmit-receive-symbolic</property>
+                                <property name="pixel-size">24</property>
+                                <style><class name="success"/></style>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkBox">
+                                <property name="orientation">vertical</property>
+                                <property name="valign">center</property>
+                                <child>
+                                  <object class="GtkLabel" id="active_server_name">
+                                    <property name="label">Server Name</property>
+                                    <property name="halign">start</property>
+                                    <style><class name="heading"/></style>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="label" translatable="yes">Connected</property>
+                                    <property name="halign">start</property>
+                                    <style><class name="dim-label"/></style>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
                           </object>
-                        </child>
-                        <child>
-                          <object class="AdwActionRow">
-                            <property name="title" translatable="yes">Proxy</property>
-                            <property name="icon-name">preferences-system-network-proxy-symbolic</property>
-                            <property name="name">page_proxy</property>
+                        </property>
+                        <property name="popover">
+                          <object class="GtkPopover">
+                            <property name="child">
+                              <object class="GtkBox">
+                                <property name="orientation">vertical</property>
+                                <property name="spacing">6</property>
+                                <property name="margin-top">12</property>
+                                <property name="margin-bottom">12</property>
+                                <property name="margin-start">12</property>
+                                <property name="margin-end">12</property>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="label" translatable="yes">Active Connection Details</property>
+                                    <style><class name="heading"/></style>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel" id="active_server_details">
+                                    <property name="label">Protocol: Unknown</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </property>
                           </object>
-                        </child>
-                        <child>
-                          <object class="AdwActionRow">
-                            <property name="title" translatable="yes">Routing</property>
-                            <property name="icon-name">funnel-symbolic</property>
-                            <property name="name">page_whitelist</property>
-                          </object>
-                        </child>
-                        <child>
-                          <object class="AdwActionRow">
-                            <property name="title" translatable="yes">Settings</property>
-                            <property name="icon-name">emblem-system-symbolic</property>
-                            <property name="name">page_settings</property>
-                          </object>
-                        </child>
-
+                        </property>
                       </object>
-                    </property>
+                    </child>
                   </object>
                 </property>
               </object>

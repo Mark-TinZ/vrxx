@@ -17,6 +17,7 @@ mod backend;
 mod settings;
 mod protocol;
 pub mod domain;
+pub mod services;
 
 use self::application::VrxxApplication;
 use config::{GETTEXT_PACKAGE, LOCALEDIR};
@@ -43,6 +44,8 @@ impl std::io::Write for MultiWriter {
 }
 
 fn main() -> glib::ExitCode {
+    crate::services::geo_updater::spawn_background_updater();
+
     // Устанавливаем язык ДО любой инициализации GTK и gettext
     let manager = settings::SettingsManager::new();
     let app_settings = manager.load();

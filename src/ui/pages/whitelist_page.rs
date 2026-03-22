@@ -154,7 +154,7 @@ impl VrxxWhitelistPage {
     fn show_add_rule_dialog(&self) {
         let window = self.root().and_downcast::<gtk::Window>().unwrap();
         
-        let dialog = adw::MessageDialog::builder()
+        let dialog = adw::AlertDialog::builder()
             .heading("Add Routing Rule")
             .body("Create a new custom routing rule")
             .build();
@@ -171,10 +171,10 @@ impl VrxxWhitelistPage {
             
         let entry_name = gtk::Entry::builder().placeholder_text("Rule Name (e.g. Work)").build();
         
-        let combo_type = gtk::DropDown::from_strings(&["domain", "ip"]);
+        let combo_type = gtk::DropDown::from_strings(&["domain", "ip", "srs_url"]);
         let combo_action = gtk::DropDown::from_strings(&["proxy", "direct", "block"]);
         
-        let entry_val = gtk::Entry::builder().placeholder_text("Value (e.g. google.com)").build();
+        let entry_val = gtk::Entry::builder().placeholder_text("Value (e.g. google.com or .srs URL)").build();
         
         vbox.append(&gtk::Label::builder().label("Name:").xalign(0.0).build());
         vbox.append(&entry_name);
@@ -187,34 +187,30 @@ impl VrxxWhitelistPage {
         
         dialog.set_extra_child(Some(&vbox));
         
-        dialog.connect_response(
-            None,
-            glib::clone!(
-                #[weak(rename_to = page)] self,
-                move |dlg: &adw::MessageDialog, response: &str| {
-                    if response == "add" {
-                        let name = entry_name.text().to_string();
-                        let val = entry_val.text().to_string();
-                        if name.is_empty() || val.is_empty() { return; }
-                        
-                        let r_type = if combo_type.selected() == 0 { "domain" } else { "ip" };
-                        let act = match combo_action.selected() {
-                            1 => "direct",
-                            2 => "block",
-                            _ => "proxy",
-                        };
-                        
-                        let obj = RoutingRuleObject::new(&name, r_type, &val, act);
-                        page.imp().model.borrow().clone().unwrap().append(&obj);
-                        page.mark_changed();
-                    }
-                    dlg.close();
-                }
-            )
-        );
-        
-        dialog.set_transient_for(Some(&window));
-        dialog.present();
+        let page = self.clone();
+        gtk::glib::MainContext::default().spawn_local(async move {
+            let response = dialog.choose_future(Some(&window)).await;
+            if response == "add" {
+                let name = entry_name.text().to_string();
+                let val = entry_val.text().to_string();
+                if name.is_empty() || val.is_empty() { return; }
+                
+                let r_type = match combo_type.selected() {
+                    1 => "ip",
+                    2 => "srs_url",
+                    _ => "domain",
+                };
+                let act = match combo_action.selected() {
+                    1 => "direct",
+                    2 => "block",
+                    _ => "proxy",
+                };
+                
+                let obj = RoutingRuleObject::new(&name, r_type, &val, act);
+                page.imp().model.borrow().clone().unwrap().append(&obj);
+                page.mark_changed();
+            }
+        });
     }
 
     fn setup_settings(&self) {

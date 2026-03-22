@@ -122,7 +122,7 @@ impl VrxxSettingsPage {
 
         if lang_changed {
             let window = self.root().and_downcast::<gtk::Window>().unwrap();
-            let dialog = adw::MessageDialog::builder()
+            let dialog = adw::AlertDialog::builder()
                 .heading("Restart Required")
                 .body("You have changed the language. The application needs to restart to apply the new language. Restart now?")
                 .build();
@@ -131,18 +131,15 @@ impl VrxxSettingsPage {
             dialog.add_response("restart", "Restart");
             dialog.set_response_appearance("restart", adw::ResponseAppearance::Destructive);
             
-            dialog.connect_response(None, move |dlg: &adw::MessageDialog, response: &str| {
+            gtk::glib::MainContext::default().spawn_local(async move {
+                let response = dialog.choose_future(Some(&window)).await;
                 if response == "restart" {
                     if let Ok(exe) = std::env::current_exe() {
                         let _ = std::process::Command::new(exe).spawn();
                         std::process::exit(0);
                     }
                 }
-                dlg.close();
             });
-            
-            dialog.set_transient_for(Some(&window));
-            dialog.present();
         } else {
             self.show_restart_core_toast();
         }

@@ -174,13 +174,12 @@ msgid "HTTP Port"
 msgstr "Порт"
 
 #: src/ui/pages/proxy_page.ui:87
-#, fuzzy
 msgid "Allow connections from LAN"
-msgstr "Добавить подключение"
+msgstr "Разрешить подключения из локальной сети"
 
 #: src/ui/pages/proxy_page.ui:88
 msgid "Proxy will be available for other devices in your local network"
-msgstr ""
+msgstr "Прокси будет доступен для других устройств в вашей локальной сети"
 
 #: src/ui/pages/settings_page.rs:194
 msgid "Application restart required to apply language"

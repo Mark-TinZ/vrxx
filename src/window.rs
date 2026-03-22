@@ -14,6 +14,13 @@ mod imp {
         pub navigation_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub view_stack: TemplateChild<gtk::Stack>,
+        
+        #[template_child]
+        pub active_connection_btn: TemplateChild<gtk::MenuButton>,
+        #[template_child]
+        pub active_server_name: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub active_server_details: TemplateChild<gtk::Label>,
     }
 
     #[glib::object_subclass]
@@ -41,6 +48,7 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
             obj.setup_callbacks();
+            obj.start_status_polling();
 
             if let Some(row) = self.navigation_list.row_at_index(0) {
                  self.navigation_list.select_row(Some(&row));
@@ -99,14 +107,34 @@ impl VrxxWindow {
                     let imp = window.imp();
 
                     if let Some(page_name) = window.get_page_name_from_row(row) {
-                        // tracing::info!("{}", &format!("DEBUG: Switching to page '{}'", page_name));
                         imp.view_stack.set_visible_child_name(page_name);
-                    } else {
-                        // tracing::warn!("DEBUG: Could not determine page name for row");
                     }
                 }
             },
         );
+    }
+
+    fn start_status_polling(&self) {
+        let obj = self.clone();
+        glib::timeout_add_local(std::time::Duration::from_millis(1000), move || {
+            obj.update_active_connection_widget();
+            glib::ControlFlow::Continue
+        });
+    }
+
+    fn update_active_connection_widget(&self) {
+        use crate::settings::SettingsManager;
+        let settings = SettingsManager::new().load();
+        
+        let imp = self.imp();
+        
+        if let Some(active_key) = settings.keys.iter().find(|k| k.is_active) {
+            imp.active_connection_btn.set_visible(true);
+            imp.active_server_name.set_label(&active_key.name);
+            imp.active_server_details.set_label(&format!("Protocol: {}\nIP: {}", active_key.protocol.to_uppercase(), active_key.location));
+        } else {
+            imp.active_connection_btn.set_visible(false);
+        }
     }
 }
 

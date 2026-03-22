@@ -2,7 +2,6 @@ use std::process::{Command, Child, Stdio};
 use std::sync::{Arc, Mutex};
 use std::io::{BufRead, BufReader, Write};
 use crate::settings::SettingsManager;
-use tempfile::NamedTempFile;
 use anyhow::{Result, Context, anyhow};
 use std::path::Path;
 
@@ -27,8 +26,8 @@ pub trait VpnCore: Send + Sync + std::fmt::Debug {
 pub struct CoreBackend {
     /// Защищенный мьютексом процесс ядра
     process: Arc<Mutex<Option<Child>>>,
-    /// Защищенный мьютексом временный файл конфигурации
-    config_file: Arc<Mutex<Option<NamedTempFile>>>,
+    /// Защищенный мьютексом процесс tun2socks (для Xray в режиме TUN)
+    tun2socks_process: Arc<Mutex<Option<Child>>>,
 }
 
 impl Default for CoreBackend {
@@ -41,7 +40,7 @@ impl CoreBackend {
     pub fn new() -> Self {
         Self {
             process: Arc::new(Mutex::new(None)),
-            config_file: Arc::new(Mutex::new(None)),
+            tun2socks_process: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -51,21 +50,6 @@ impl VpnCore for CoreBackend {
     fn start(&self, config_json: &str) -> Result<()> {
         // Останавливаем предыдущий процесс
         let _ = self.stop();
-
-        // Сохраняем конфиг во временный файл безопасно
-        let mut named_temp_file = tempfile::Builder::new()
-            .prefix("vrxx_config_")
-            .suffix(".json")
-            .tempfile()
-            .context("Failed to create temporary file")?;
-            
-        named_temp_file.write_all(config_json.as_bytes())
-            .context("Failed to write configuration")?;
-        let temp_path = named_temp_file.path().to_path_buf();
-        
-        let mut config_file_guard = self.config_file.lock()
-            .map_err(|e| anyhow!("Mutex lock failed: {e}"))?;
-        *config_file_guard = Some(named_temp_file);
 
         // Получаем настройки для выбора ядра
         let settings = SettingsManager::new().load();
@@ -89,25 +73,29 @@ Please install it (e.g., via your package manager) or select another core in Set
         }
 
         if settings.tun_mode {
+            let core_to_check = if bin_name == "xray" { "tun2socks" } else { bin_name };
+
             if bin_name == "xray" {
-                return Err(anyhow!("Xray core does not natively support TUN mode in VRXX. Please switch to Sing-box in Settings or disable TUN mode."));
+                let check_tun2socks = Command::new("which").arg("tun2socks").output();
+                if check_tun2socks.is_err() || !check_tun2socks.unwrap().status.success() {
+                    return Err(anyhow!("Xray requires 'tun2socks' for TUN mode. Please install 'tun2socks' or switch to Sing-box."));
+                }
             }
 
-            let version_check = Command::new(bin_name).arg("version").output();
+            let version_check = Command::new(core_to_check).arg(if core_to_check == "tun2socks" { "-version" } else { "version" }).output();
             if let Ok(out) = version_check {
                 let v_out = String::from_utf8_lossy(&out.stdout).to_lowercase();
-                if bin_name == "sing-box" {
-                    // sing-box uses Tags to show compilation features
+                if core_to_check == "sing-box" {
                     if !v_out.contains("with_tun") && !v_out.contains("with_gvisor") && v_out.contains("tags:") {
                         tracing::warn!("Sing-box might be compiled without TUN support.");
                     }
                 }
             }
 
-            let which_core = Command::new("which").arg(bin_name).output();
+            let which_core = Command::new("which").arg(core_to_check).output();
             let core_path = match which_core {
                 Ok(out) => String::from_utf8_lossy(&out.stdout).trim().to_string(),
-                Err(_) => bin_name.to_string(),
+                Err(_) => core_to_check.to_string(),
             };
 
             // Проверяем права cap_net_admin для TUN режима
@@ -118,7 +106,7 @@ Please install it (e.g., via your package manager) or select another core in Set
             };
             
             if !has_caps {
-                return Err(anyhow!("TUN mode is enabled, but the core {bin_name} lacks necessary permissions (cap_net_admin).
+                return Err(anyhow!("TUN mode is enabled, but the executable {core_to_check} lacks necessary permissions (cap_net_admin).
 
 Run in terminal:
 sudo setcap cap_net_admin=ep {core_path}"));
@@ -137,15 +125,29 @@ sudo setcap cap_net_admin=ep {core_path}"));
 
         let mut cmd = Command::new(bin_name);
 
-        cmd.arg("run").arg("-c").arg(&temp_path);
+        let config_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
+        cmd.env("XRAY_LOCATION_ASSET", &config_dir);
+
+        if bin_name == "xray" {
+            cmd.arg("run").arg("-config").arg("stdin:");
+        } else {
+            cmd.arg("run").arg("-c").arg("/dev/stdin");
+        }
 
         tracing::info!("Starting core {bin_name}...");
 
         let mut child = cmd
+            .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
             .context(format!("Failed to start {bin_name}"))?;
+
+        if let Some(mut stdin) = child.stdin.take() {
+            if let Err(e) = stdin.write_all(config_json.as_bytes()) {
+                tracing::error!("Failed to write config to core stdin: {}", e);
+            }
+        }
 
         let stdout = child.stdout.take().context("Failed to capture stdout")?;
         let stderr = child.stderr.take().context("Failed to capture stderr")?;
@@ -218,11 +220,52 @@ sudo setcap cap_net_admin=ep {core_path}"));
 
         let mut process_guard = self.process.lock().map_err(|e| anyhow!("Mutex lock failed: {e}"))?;
         *process_guard = Some(child);
+
+        if settings.tun_mode && bin_name == "xray" {
+            tracing::info!("Starting tun2socks for Xray TUN mode...");
+            std::thread::sleep(std::time::Duration::from_millis(500));
+
+            let mut tun_cmd = Command::new("tun2socks");
+            tun_cmd.arg("-device").arg("tun0")
+                   .arg("-proxy").arg(format!("socks5://127.0.0.1:{}", settings.socks_port))
+                   .arg("-loglevel").arg("info");
+
+            let mut tun_child = tun_cmd
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .context("Failed to start tun2socks")?;
+
+            if let Some(tun_stdout) = tun_child.stdout.take() {
+                let tun_log_path = log_path.clone();
+                std::thread::spawn(move || {
+                    if let Ok(mut log_file) = std::fs::OpenOptions::new().create(true).append(true).open(&tun_log_path) {
+                        let mut reader = BufReader::new(tun_stdout);
+                        let mut line = String::new();
+                        while reader.read_line(&mut line).unwrap_or(0) > 0 {
+                            let _ = log_file.write_all(format!("[tun2socks] {}", line).as_bytes());
+                            line.clear();
+                        }
+                    }
+                });
+            }
+
+            let mut tun_guard = self.tun2socks_process.lock().map_err(|e| anyhow!("Mutex lock failed: {e}"))?;
+            *tun_guard = Some(tun_child);
+        }
+
         Ok(())
     }
 
     /// Останавливает ядро, ожидая завершения процесса
     fn stop(&self) -> Result<()> {
+        let mut tun_guard = self.tun2socks_process.lock().map_err(|e| anyhow!("Mutex lock failed: {e}"))?;
+        if let Some(mut tun_child) = tun_guard.take() {
+            tracing::info!("Stopping tun2socks process...");
+            let _ = tun_child.kill();
+            let _ = tun_child.wait();
+        }
+
         let mut process_guard = self.process.lock().map_err(|e| anyhow!("Mutex lock failed: {e}"))?;
         if let Some(mut child) = process_guard.take() {
             tracing::info!("Stopping core process...");
@@ -247,9 +290,6 @@ sudo setcap cap_net_admin=ep {core_path}"));
             
             tracing::info!("Core process terminated.");
         }
-        
-        let mut config_guard = self.config_file.lock().map_err(|e| anyhow!("Mutex lock failed: {e}"))?;
-        *config_guard = None;
         
         Ok(())
     }
