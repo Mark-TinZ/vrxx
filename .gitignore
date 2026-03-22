@@ -5,3 +5,4 @@ vrxx_core_config.json
 src/vrxx.gresource
 .env
 output.md
+.reports/

@@ -180,10 +180,6 @@
         </item>
       </submenu>
       <item>
-        <attribute name="label" translatable="yes">_Duplicate</attribute>
-        <attribute name="action">row.key_duplicate</attribute>
-      </item>
-      <item>
         <attribute name="label" translatable="yes">_Delete</attribute>
         <attribute name="action">row.delete</attribute>
       </item>

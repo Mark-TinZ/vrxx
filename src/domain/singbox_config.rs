@@ -30,9 +30,13 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
             "type": "tun",
             "tag": "tun-in",
             "interface_name": "tun0",
-            "inet4_address": "172.19.0.1/30",
+            "address": [
+                "172.19.0.1/30",
+                "fdfe:dcba:9876::1/126"
+            ],
             "auto_route": true,
             "strict_route": true,
+            "stack": "gvisor",
             "sniff": settings.enable_sniffing,
             "sniff_override_destination": settings.enable_sniffing
         }));
@@ -125,9 +129,9 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
     }
 
     let mut rule_sets = vec![];
+    let mut active_rule_sets = vec![];
 
     if settings.enable_routing {
-        let mut active_rule_sets = vec![];
 
         let mut add_region = |tag: &str, url: &str| {
             active_rule_sets.push(tag.to_string());
@@ -169,6 +173,29 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
                 }));
             }
         }
+
+        // Add custom rules
+        for rule in &settings.routing_rules {
+            let action_tag = if rule.action == "direct" {
+                "direct"
+            } else if rule.action == "block" {
+                "block"
+            } else {
+                "proxy"
+            };
+
+            if rule.type_ == "domain" {
+                rules.push(json!({
+                    "domain": [rule.value],
+                    "outbound": action_tag
+                }));
+            } else if rule.type_ == "ip" {
+                rules.push(json!({
+                    "ip_cidr": [rule.value],
+                    "outbound": action_tag
+                }));
+            }
+        }
     }
 
     let outbounds = vec![
@@ -186,22 +213,60 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
     
     let mut route_config = json!({
         "rules": rules,
-        "auto_detect_interface": true
+        "auto_detect_interface": true,
+        "final": "proxy"
     });
 
     if !rule_sets.is_empty() {
         route_config["rule_set"] = json!(rule_sets);
     }
 
-    let root = json!({
+    let dns_config = json!({
+        "servers": [
+            {
+                "tag": "remote-dns",
+                "address": "https://1.1.1.1/dns-query",
+                "detour": "proxy"
+            },
+            {
+                "tag": "local-dns",
+                "address": "local",
+                "detour": "direct"
+            }
+        ],
+        "rules": [
+            {
+                "outbound": "any",
+                "server": "local-dns"
+            },
+            {
+                "rule_set": active_rule_sets.clone(),
+                "server": "local-dns"
+            }
+        ],
+        "final": "remote-dns",
+        "independent_cache": true
+    });
+
+    let mut root = json!({
         "log": {
             "level": settings.log_level,
             "timestamp": true
         },
+        "dns": dns_config,
         "inbounds": inbounds,
         "outbounds": outbounds,
         "route": route_config
     });
+
+    if active_rule_sets.is_empty() {
+        root["dns"]["rules"] = json!([
+            {
+                "outbound": "any",
+                "server": "local-dns"
+            }
+        ]);
+    }
 
     serde_json::to_string_pretty(&root).unwrap_or_else(|_| "{}".to_string())
 }
@@ -230,7 +295,7 @@ mod tests {
         let json_str = build_singbox_config(&key, &settings);
         let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Should be valid JSON");
         
-        let proxy_outbound = parsed["outbounds"].as_array().unwrap().get(0).unwrap();
+        let proxy_outbound = parsed["outbounds"].as_array().unwrap().first().unwrap();
         assert_eq!(proxy_outbound["type"], "vless");
         assert_eq!(proxy_outbound["server"], "example.com");
         assert_eq!(proxy_outbound["uuid"], "uuid-123");

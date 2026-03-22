@@ -11,6 +11,8 @@ mod imp {
     #[template(resource = "/ru/mark/vrxx/ui/pages/proxy_page.ui")]
     pub struct VrxxProxyPage {
         #[template_child]
+        pub btn_apply: TemplateChild<gtk::Button>,
+        #[template_child]
         pub primary_menu_btn: TemplateChild<gtk::MenuButton>,
 
         #[template_child]
@@ -72,6 +74,15 @@ impl VrxxProxyPage {
         let imp = self.imp();
         let manager = SettingsManager::new();
         let settings = manager.load();
+
+        imp.btn_apply.connect_clicked(move |_| {
+            let _ = crate::settings::core_restart_channel().0.send_blocking(());
+            if let Some(app) = gtk::gio::Application::default().and_downcast::<gtk::Application>() {
+                let notification = gtk::gio::Notification::new(&gettextrs::gettext("Settings applied"));
+                notification.set_body(Some(&gettextrs::gettext("Core was restarted to apply new settings.")));
+                app.send_notification(Some("settings_applied"), &notification);
+            }
+        });
 
         // Load values
         imp.system_proxy_switch.set_active(settings.set_system_proxy);

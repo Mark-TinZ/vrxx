@@ -12,6 +12,15 @@
                     <property name="title" translatable="yes">Local proxy</property>
                 </object>
             </property>
+            <child type="start">
+              <object class="GtkButton" id="btn_apply">
+                <property name="icon-name">document-save-symbolic</property>
+                <property name="tooltip-text" translatable="yes">Apply and Restart Core</property>
+                <style>
+                  <class name="suggested-action"/>
+                </style>
+              </object>
+            </child>
              <child type="end">
               <object class="GtkMenuButton" id="primary_menu_btn">
                 <property name="icon-name">open-menu-symbolic</property>

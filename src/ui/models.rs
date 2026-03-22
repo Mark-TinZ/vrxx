@@ -71,6 +71,34 @@ mod imp_domain {
     impl ObjectImpl for DomainObject {}
 }
 
+// === ROUTING RULE OBJECT ===
+mod imp_routing {
+    use super::*;
+    use std::cell::RefCell;
+
+    #[derive(Debug, Default, glib::Properties)]
+    #[properties(wrapper_type = super::RoutingRuleObject)]
+    pub struct RoutingRuleObject {
+        #[property(get, set)]
+        pub name: RefCell<String>,
+        #[property(get, set)]
+        pub rule_type: RefCell<String>,
+        #[property(get, set)]
+        pub value: RefCell<String>,
+        #[property(get, set)]
+        pub action: RefCell<String>,
+    }
+
+    #[glib::object_subclass]
+    impl ObjectSubclass for RoutingRuleObject {
+        const NAME: &'static str = "RoutingRuleObject";
+        type Type = super::RoutingRuleObject;
+    }
+
+    #[glib::derived_properties]
+    impl ObjectImpl for RoutingRuleObject {}
+}
+
 // === WRAPPERS ===
 
 glib::wrapper! {
@@ -102,10 +130,25 @@ glib::wrapper! {
     pub struct DomainObject(ObjectSubclass<imp_domain::DomainObject>);
 }
 
+glib::wrapper! {
+    pub struct RoutingRuleObject(ObjectSubclass<imp_routing::RoutingRuleObject>);
+}
+
 impl DomainObject {
     pub fn new(domain: &str) -> Self {
         glib::Object::builder()
             .property("domain", domain)
+            .build()
+    }
+}
+
+impl RoutingRuleObject {
+    pub fn new(name: &str, rule_type: &str, value: &str, action: &str) -> Self {
+        glib::Object::builder()
+            .property("name", name)
+            .property("rule-type", rule_type)
+            .property("value", value)
+            .property("action", action)
             .build()
     }
 }

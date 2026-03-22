@@ -51,7 +51,6 @@ mod imp {
                 vec![
                     glib::subclass::Signal::builder("request-edit").build(),
                     glib::subclass::Signal::builder("request-info").build(),
-                    glib::subclass::Signal::builder("request-duplicate").build(),
                     glib::subclass::Signal::builder("request-delete").build(),
                     glib::subclass::Signal::builder("request-copy-link").build(),
                     glib::subclass::Signal::builder("request-copy-json").build(),
@@ -191,16 +190,6 @@ impl VrxxVpnKeyRow {
             }
         });
         action_group.add_action(&edit_action);
-
-        // Action: Duplicate
-        let dup_action = gio::SimpleAction::new("key_duplicate", None);
-        let row_weak = self.downgrade();
-        dup_action.connect_activate(move |_, _| {
-            if let Some(row) = row_weak.upgrade() {
-                row.emit_by_name::<()>("request-duplicate", &[]);
-            }
-        });
-        action_group.add_action(&dup_action);
 
         // Action: Copy Link
         let copy_link_action = gio::SimpleAction::new("key_copy_link", None);

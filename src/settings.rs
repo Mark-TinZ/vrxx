@@ -1,6 +1,21 @@
 use std::fs;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
+use async_channel::{Sender, Receiver};
+
+pub fn core_restart_channel() -> (Sender<()>, Receiver<()>) {
+    static CHANNEL: OnceLock<(Sender<()>, Receiver<()>)> = OnceLock::new();
+    CHANNEL.get_or_init(async_channel::unbounded).clone()
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RoutingRule {
+    pub name: String,
+    pub type_: String,
+    pub value: String,
+    pub action: String,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VpnKeyData {
@@ -95,6 +110,8 @@ pub struct AppSettings {
     // IPv6 option
     #[serde(default)]
     pub disable_ipv6: bool,
+    #[serde(default)]
+    pub routing_rules: Vec<RoutingRule>,
 }
 
 fn default_language() -> String { "system".to_string() }
@@ -109,6 +126,12 @@ fn default_streamer_mode() -> bool { false }
 fn default_log_level() -> String { "info".to_string() }
 fn default_domain_strategy() -> String { "AsIs".to_string() }
 fn default_mux_concurrency() -> i32 { 8 }
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl AppSettings {
     pub fn new() -> Self {
@@ -143,6 +166,7 @@ impl AppSettings {
             route_cn: false,
             route_antifilter: false,
             disable_ipv6: false,
+            routing_rules: vec![],
         }
     }
 }

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-03 00:12+0600\n"
+"POT-Creation-Date: 2026-03-21 00:01+0600\n"
 "PO-Revision-Date: 2026-03-03 00:12+0600\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,159 +17,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/ui/pages/whitelist_page.rs:107 src/ui/pages/vpn_page.rs:793
-msgid "Delete"
-msgstr "Delete"
-
-#: src/ui/pages/whitelist_page.rs:227
-msgid "Clear Whitelist"
-msgstr "Clear Whitelist"
-
-#: src/ui/pages/whitelist_page.rs:228
-msgid "Are you sure you want to remove all domains from the whitelist?"
-msgstr "Are you sure you want to remove all domains from the whitelist?"
-
-#: src/ui/pages/whitelist_page.rs:230 src/ui/pages/whitelist_page.rs:354
-#: src/ui/pages/vpn_page.rs:728 src/ui/pages/vpn_page.rs:792
-#: src/ui/pages/vpn_page.rs:902
-msgid "Cancel"
-msgstr "Cancel"
-
-#: src/ui/pages/whitelist_page.rs:231
-msgid "Clear"
-msgstr "Clear"
-
-#: src/ui/pages/whitelist_page.rs:259
-msgid "Import Whitelist"
-msgstr "Import Whitelist"
-
-#: src/ui/pages/whitelist_page.rs:294
-msgid "Export Whitelist"
-msgstr "Export Whitelist"
-
-#: src/ui/pages/whitelist_page.rs:328
-msgid "Edit Domain"
-msgstr "Edit Domain"
-
-#: src/ui/pages/whitelist_page.rs:328
-msgid "New Domain"
-msgstr "New Domain"
-
-#: src/ui/pages/whitelist_page.rs:329 src/ui/pages/vpn_page.rs:729
-msgid "Save"
-msgstr "Save"
-
-#: src/ui/pages/whitelist_page.rs:329 src/ui/pages/vpn_page.rs:903
-msgid "Add"
-msgstr "Add"
-
-#: src/ui/pages/whitelist_page.rs:334
-msgid "Domain"
-msgstr "Domain"
-
-#: src/ui/pages/whitelist_page.rs:350
-msgid "Enter the domain address or rule (e.g. google.com, domain:vk.com, *.ru)"
-msgstr ""
-"Enter the domain address or rule (e.g. google.com, domain:vk.com, *.ru)"
-
-#: src/ui/pages/vpn_page.rs:202
-msgid "pinging..."
-msgstr "pinging..."
-
-#: src/ui/pages/vpn_page.rs:259 src/ui/pages/vpn_page.rs:509
-msgid "timeout"
-msgstr "timeout"
-
-#: src/ui/pages/vpn_page.rs:281
-msgid "Connected"
-msgstr "Connected"
-
-#: src/ui/pages/vpn_page.rs:340 src/ui/pages/vpn_page.rs:605
-msgid "Connection Error"
-msgstr "Connection Error"
-
-#: src/ui/pages/vpn_page.rs:354 src/ui/pages/vpn_page.rs:524
-#: src/ui/pages/vpn_page.rs:527
-msgid "Connection Failed"
-msgstr "Connection Failed"
-
-#: src/ui/pages/vpn_page.rs:357 src/ui/pages/vpn_page.rs:608
-msgid "OK"
-msgstr "OK"
-
-#: src/ui/pages/vpn_page.rs:528
-msgid "Unable to connect to the selected VPN key."
-msgstr "Unable to connect to the selected VPN key."
-
-#: src/ui/pages/vpn_page.rs:538
-msgid "Connection Unstable"
-msgstr "Connection Unstable"
-
-#: src/ui/pages/vpn_page.rs:539
-msgid "The VPN connection seems to be timing out."
-msgstr "The VPN connection seems to be timing out."
-
-#: src/ui/pages/vpn_page.rs:652 src/ui/pages/vpn_page.rs:701
-msgid "Server Address"
-msgstr "Server Address"
-
-#: src/ui/pages/vpn_page.rs:653
-msgid "Location"
-msgstr "Location"
-
-#: src/ui/pages/vpn_page.rs:654
-msgid "Timezone"
-msgstr "Timezone"
-
-#: src/ui/pages/vpn_page.rs:655 src/ui/pages/vpn_page.rs:700
-msgid "Protocol"
-msgstr "Protocol"
-
-#: src/ui/pages/vpn_page.rs:676
-msgid "Close"
-msgstr "Close"
-
-#: src/ui/pages/vpn_page.rs:696
-msgid "Edit VPN Key"
-msgstr "Edit VPN Key"
-
-#: src/ui/pages/vpn_page.rs:699
-msgid "Name"
-msgstr "Name"
-
-#: src/ui/pages/vpn_page.rs:702
-msgid "Port"
-msgstr "Port"
-
-#: src/ui/pages/vpn_page.rs:703
-msgid "UUID / Password"
-msgstr "UUID / Password"
-
-#: src/ui/pages/vpn_page.rs:788
-msgid "Delete VPN Key"
-msgstr "Delete VPN Key"
-
-#: src/ui/pages/vpn_page.rs:870
-msgid "Paste your VPN link below:"
-msgstr "Paste your VPN link below:"
-
-#: src/ui/pages/vpn_page.rs:877
-msgid "Add VPN Key"
-msgstr "Add VPN Key"
-
-#: src/ui/pages/vpn_page.rs:881
-msgid "VPN Link"
-msgstr "VPN Link"
-
-#: src/ui/pages/vpn_page.rs:996
-msgid "Disconnected"
-msgstr "Disconnected"
-
-#: src/application.rs:245
+#: src/application.rs:262
 msgid "translator-credits"
 msgstr "translator-credits"
 
-#: src/application.rs:250
+#: src/application.rs:267
 msgid ""
 "A graphical interface for Xray-core designed to simplify VPN and proxy "
 "configuration on Linux systems."
@@ -191,289 +43,33 @@ msgctxt "shortcut window"
 msgid "Quit"
 msgstr "Quit"
 
-#: src/ui/pages/settings_page.ui:12 src/window.ui:56
-msgid "Настройки"
-msgstr "Настройки"
-
-#: src/ui/pages/settings_page.ui:19
-msgid "Меню"
-msgstr "Меню"
-
-#: src/ui/pages/settings_page.ui:32
-msgid "Общие"
-msgstr "Общие"
-
-#: src/ui/pages/settings_page.ui:36
-msgid "Язык (Language)"
-msgstr "Язык (Language)"
-
-#: src/ui/pages/settings_page.ui:37
-msgid "Требуется перезапуск приложения (Requires restart)"
-msgstr "Требуется перезапуск приложения (Requires restart)"
-
-#: src/ui/pages/settings_page.ui:41
-msgid "Системный (System)"
-msgstr "Системный (System)"
-
-#: src/ui/pages/settings_page.ui:42
-msgid "English"
-msgstr "English"
-
-#: src/ui/pages/settings_page.ui:43
-msgid "Русский"
-msgstr "Русский"
-
-#: src/ui/pages/settings_page.ui:52
-msgid "Запускать при старте системы"
-msgstr "Запускать при старте системы"
-
-#: src/ui/pages/settings_page.ui:53
-msgid "Автоматически запускать приложение в фоновом режиме"
-msgstr "Автоматически запускать приложение в фоновом режиме"
-
-#: src/ui/pages/settings_page.ui:60
-msgid "Подключаться при запуске"
-msgstr "Подключаться при запуске"
-
-#: src/ui/pages/settings_page.ui:61
-msgid "Восстанавливать последнее активное подключение"
-msgstr "Восстанавливать последнее активное подключение"
-
-#: src/ui/pages/settings_page.ui:68
-msgid "Уведомления"
-msgstr "Уведомления"
-
-#: src/ui/pages/settings_page.ui:69
-msgid "Показывать уведомления при смене статуса подключения"
-msgstr "Показывать уведомления при смене статуса подключения"
-
-#: src/ui/pages/settings_page.ui:76
-msgid "Режим стримера"
-msgstr "Режим стримера"
-
-#: src/ui/pages/settings_page.ui:77
-msgid "Скрывать IP-адреса и конфиденциальную информацию в интерфейсе"
-msgstr "Скрывать IP-адреса и конфиденциальную информацию в интерфейсе"
-
-#: src/ui/pages/settings_page.ui:87
-msgid "Ядро (Core)"
-msgstr "Ядро (Core)"
-
-#: src/ui/pages/settings_page.ui:88
-msgid "Выберите движок маршрутизации, используемый для подключения"
-msgstr "Выберите движок маршрутизации, используемый для подключения"
-
-#: src/ui/pages/settings_page.ui:92
-msgid "Используемое ядро"
-msgstr "Используемое ядро"
-
-#: src/ui/pages/settings_page.ui:93
-msgid "Выбор ядра временно отключен (Sing-box в разработке)"
-msgstr "Выбор ядра временно отключен (Sing-box в разработке)"
-
-#: src/ui/pages/settings_page.ui:98
-msgid "Xray-core"
-msgstr "Xray-core"
-
-#: src/ui/pages/settings_page.ui:99
-msgid "Sing-box"
-msgstr "Sing-box"
-
-#: src/ui/pages/settings_page.ui:109
-msgid "Настройки TUN"
-msgstr "Настройки TUN"
-
-#: src/ui/pages/settings_page.ui:110
-msgid ""
-"Перенаправлять весь системный трафик через виртуальный интерфейс (Требуется "
-"Root)"
+#: src/ui/components/log_window.rs:171
+msgid "All logs"
 msgstr ""
-"Перенаправлять весь системный трафик через виртуальный интерфейс (Требуется "
-"Root)"
 
-#: src/ui/pages/settings_page.ui:141
-msgid "Резервное копирование"
-msgstr "Резервное копирование"
+#: src/ui/components/log_window.rs:172
+msgid "Core logs"
+msgstr ""
 
-#: src/ui/pages/settings_page.ui:144
-msgid "Импорт настроек"
-msgstr "Импорт настроек"
+#: src/ui/components/log_window.rs:173
+msgid "Application logs"
+msgstr ""
 
-#: src/ui/pages/settings_page.ui:145
-msgid "Загрузить профили и настройки из файла"
-msgstr "Загрузить профили и настройки из файла"
+#: src/ui/components/log_window.rs:174
+msgid "Access logs"
+msgstr ""
 
-#: src/ui/pages/settings_page.ui:158
-msgid "Экспорт настроек"
-msgstr "Экспорт настроек"
+#: src/ui/components/theme_switcher.ui:16
+msgid "System"
+msgstr "System"
 
-#: src/ui/pages/settings_page.ui:159
-msgid "Сохранить текущую конфигурацию в файл"
-msgstr "Сохранить текущую конфигурацию в файл"
+#: src/ui/components/theme_switcher.ui:27
+msgid "Light"
+msgstr "Light"
 
-#: src/ui/pages/settings_page.ui:176
-msgid "Диагностика"
-msgstr "Диагностика"
-
-#: src/ui/pages/settings_page.ui:180
-msgid "Уровень логирования"
-msgstr "Уровень логирования"
-
-#: src/ui/pages/settings_page.ui:184
-msgid "Error"
-msgstr "Error"
-
-#: src/ui/pages/settings_page.ui:185
-msgid "Warning"
-msgstr "Warning"
-
-#: src/ui/pages/settings_page.ui:186
-msgid "Info"
-msgstr "Info"
-
-#: src/ui/pages/settings_page.ui:187
-msgid "Debug"
-msgstr "Debug"
-
-#: src/ui/pages/settings_page.ui:197
-msgid "Просмотр логов"
-msgstr "Просмотр логов"
-
-#: src/ui/pages/settings_page.ui:198
-msgid "Открыть консоль с логами в реальном времени"
-msgstr "Открыть консоль с логами в реальном времени"
-
-#: src/ui/pages/settings_page.ui:212
-msgid "Открыть папку логов"
-msgstr "Открыть папку логов"
-
-#: src/ui/pages/settings_page.ui:213
-msgid "Открыть системную папку с файлами журналов"
-msgstr "Открыть системную папку с файлами журналов"
-
-#: src/ui/pages/settings_page.ui:231
-msgid "Сбросить настройки"
-msgstr "Сбросить настройки"
-
-#: src/ui/pages/whitelist_page.ui:12 src/window.ui:49
-msgid "Белый список"
-msgstr "Белый список"
-
-#: src/ui/pages/whitelist_page.ui:20
-msgid "Добавить домен"
-msgstr "Добавить домен"
-
-#: src/ui/pages/whitelist_page.ui:28
-msgid "Очистить список"
-msgstr "Очистить список"
-
-#: src/ui/pages/whitelist_page.ui:42
-msgid "Экспорт / Импорт"
-msgstr "Экспорт / Импорт"
-
-#: src/ui/pages/whitelist_page.ui:59
-msgid "Поиск домена или правила (e.g. domain:vk.com, *.org)..."
-msgstr "Поиск домена или правила (e.g. domain:vk.com, *.org)..."
-
-#: src/ui/pages/whitelist_page.ui:72
-msgid "Режим"
-msgstr "Режим"
-
-#: src/ui/pages/whitelist_page.ui:76
-msgid "Исключения (обход VPN)"
-msgstr "Исключения (обход VPN)"
-
-#: src/ui/pages/whitelist_page.ui:77
-msgid "Включения (только VPN)"
-msgstr "Включения (только VPN)"
-
-#: src/ui/pages/whitelist_page.ui:90
-msgid "Домены и IP адреса"
-msgstr "Домены и IP адреса"
-
-#: src/ui/pages/whitelist_page.ui:114
-msgid "Импорт из файла..."
-msgstr "Импорт из файла..."
-
-#: src/ui/pages/whitelist_page.ui:118
-msgid "Экспорт в файл..."
-msgstr "Экспорт в файл..."
-
-#: src/ui/pages/vpn_page.ui:13 src/window.ui:35
-msgid "Ключи VPN"
-msgstr "Ключи VPN"
-
-#: src/ui/pages/vpn_page.ui:14
-msgid "Mark-Vless Подключено"
-msgstr "Mark-Vless Подключено"
-
-#: src/ui/pages/vpn_page.ui:23
-msgid "Добавить подключение"
-msgstr "Добавить подключение"
-
-#: src/ui/pages/vpn_page.ui:36
-msgid "Отключить"
-msgstr "Отключить"
-
-#: src/ui/pages/vpn_page.ui:52
-msgid "Список подключений"
-msgstr "Список подключений"
-
-#: src/ui/pages/vpn_page.ui:77
-msgid "Xray / Sing-box"
-msgstr "Xray / Sing-box"
-
-#: src/ui/pages/vpn_page.ui:100
-msgid "Tunnels"
-msgstr "Tunnels"
-
-#: src/ui/pages/vpn_page.ui:108
-msgid "Proxies"
-msgstr "Proxies"
-
-#: src/ui/pages/proxy_page.ui:12
-msgid "Локальный прокси"
-msgstr "Локальный прокси"
-
-#: src/ui/pages/proxy_page.ui:31
-msgid "Системный прокси"
-msgstr "Системный прокси"
-
-#: src/ui/pages/proxy_page.ui:32
-msgid "Автоматическая настройка прокси для всей системы (GNOME)"
-msgstr "Автоматическая настройка прокси для всей системы (GNOME)"
-
-#: src/ui/pages/proxy_page.ui:35
-msgid "Устанавливать системный прокси"
-msgstr "Устанавливать системный прокси"
-
-#: src/ui/pages/proxy_page.ui:36
-msgid "При активном подключении трафик приложений пойдет через прокси"
-msgstr "При активном подключении трафик приложений пойдет через прокси"
-
-#: src/ui/pages/proxy_page.ui:45
-msgid "Входящие подключения (Inbounds)"
-msgstr "Входящие подключения (Inbounds)"
-
-#: src/ui/pages/proxy_page.ui:46
-msgid "Локальные порты, на которых работают прокси-серверы ядра"
-msgstr "Локальные порты, на которых работают прокси-серверы ядра"
-
-#: src/ui/pages/proxy_page.ui:50
-msgid "SOCKS5 Порт"
-msgstr "SOCKS5 Порт"
-
-#: src/ui/pages/proxy_page.ui:64
-msgid "HTTP Порт"
-msgstr "HTTP Порт"
-
-#: src/ui/pages/proxy_page.ui:78
-msgid "Разрешить подключения из LAN"
-msgstr "Разрешить подключения из LAN"
-
-#: src/ui/pages/proxy_page.ui:79
-msgid "Прокси будет доступен для других устройств в вашей локальной сети"
-msgstr "Прокси будет доступен для других устройств в вашей локальной сети"
+#: src/ui/components/theme_switcher.ui:39
+msgid "Dark"
+msgstr "Dark"
 
 #: src/ui/components/vpn_key_row.ui:144
 msgid "Refresh Ping"
@@ -488,32 +84,22 @@ msgid "_Edit"
 msgstr "_Edit"
 
 #: src/ui/components/vpn_key_row.ui:172
-msgid "Copy _Link"
+msgid "_Copy"
+msgstr ""
+
+#: src/ui/components/vpn_key_row.ui:174
+#, fuzzy
+msgid "_Link"
 msgstr "Copy _Link"
 
-#: src/ui/components/vpn_key_row.ui:176
-msgid "Copy _JSON"
+#: src/ui/components/vpn_key_row.ui:178
+#, fuzzy
+msgid "_JSON"
 msgstr "Copy _JSON"
 
-#: src/ui/components/vpn_key_row.ui:180
-msgid "_Duplicate"
-msgstr "_Duplicate"
-
-#: src/ui/components/vpn_key_row.ui:184
+#: src/ui/components/vpn_key_row.ui:183
 msgid "_Delete"
 msgstr "_Delete"
-
-#: src/ui/components/theme_switcher.ui:19
-msgid "System"
-msgstr "System"
-
-#: src/ui/components/theme_switcher.ui:27
-msgid "Light"
-msgstr "Light"
-
-#: src/ui/components/theme_switcher.ui:36
-msgid "Dark"
-msgstr "Dark"
 
 #: src/ui/menus.ui:12
 msgid "_Preferences"
@@ -531,18 +117,799 @@ msgstr "_About Vrxx"
 msgid "_Quit"
 msgstr "_Quit"
 
+#: src/ui/pages/proxy_page.rs:81 src/ui/pages/settings_page.rs:358
+#: src/ui/pages/whitelist_page.rs:94
+msgid "Settings applied"
+msgstr ""
+
+#: src/ui/pages/proxy_page.rs:82 src/ui/pages/settings_page.rs:359
+#: src/ui/pages/whitelist_page.rs:95
+msgid "Core was restarted to apply new settings."
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:12
+msgid "Local proxy"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:18 src/ui/pages/settings_page.ui:18
+#: src/ui/pages/whitelist_page.ui:18
+msgid "Apply and Restart Core"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:40
+#, fuzzy
+msgid "System proxy"
+msgstr "System"
+
+#: src/ui/pages/proxy_page.ui:41
+msgid "Automatic proxy configuration for the whole system (GNOME)"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:44
+msgid "Set system proxy"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:45
+msgid "When connected, application traffic will go through the proxy"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:54
+msgid "Inbound connections (Inbounds)"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:55
+msgid "Local ports where the core proxy servers run"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:59
+msgid "SOCKS5 Port"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:73
+#, fuzzy
+msgid "HTTP Port"
+msgstr "Port"
+
+#: src/ui/pages/proxy_page.ui:87
+msgid "Allow connections from LAN"
+msgstr ""
+
+#: src/ui/pages/proxy_page.ui:88
+msgid "Proxy will be available for other devices in your local network"
+msgstr ""
+
+#: src/ui/pages/settings_page.rs:194
+msgid "Application restart required to apply language"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:12 src/window.ui:56
+msgid "Settings"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:28 src/window.ui:16
+msgid "Menu"
+msgstr "Menu"
+
+#: src/ui/pages/settings_page.ui:41 src/ui/pages/vpn_page.rs:770
+msgid "General"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:45
+msgid "Language"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:46
+msgid "Application restart required"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:50
+#, fuzzy
+msgid "System default"
+msgstr "System"
+
+#: src/ui/pages/settings_page.ui:51
+msgid "English"
+msgstr "English"
+
+#: src/ui/pages/settings_page.ui:52
+msgid "Russian"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:61
+msgid "Run at startup"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:62
+msgid "Automatically start application in the background"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:69
+#, fuzzy
+msgid "Connect on startup"
+msgstr "Connection Unstable"
+
+#: src/ui/pages/settings_page.ui:70
+msgid "Restore last active connection"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:77
+#, fuzzy
+msgid "Notifications"
+msgstr "Location"
+
+#: src/ui/pages/settings_page.ui:78
+msgid "Show notifications on connection status change"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:85
+msgid "Streamer mode"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:86
+msgid "Hide IP addresses and sensitive information in the interface"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:96
+msgid "Core"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:97
+msgid "Select the routing engine used for connection"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:101
+msgid "Used core"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:102
+#, fuzzy
+msgid "Xray-core or Sing-box"
+msgstr "Xray / Sing-box"
+
+#: src/ui/pages/settings_page.ui:107
+msgid "Xray-core"
+msgstr "Xray-core"
+
+#: src/ui/pages/settings_page.ui:108
+msgid "Sing-box"
+msgstr "Sing-box"
+
+#: src/ui/pages/settings_page.ui:117
+msgid "Core version"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:118
+msgid "Unknown"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:125
+msgid "TUN mode"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:126
+msgid "Redirect all system traffic through a virtual interface (Requires Root)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:136
+msgid "Network and Routing"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:140
+msgid "Sniffing (Packet analysis)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:141
+msgid "Determine domain from traffic (required for routing)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:147
+msgid "Domain Strategy"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:151
+msgid "AsIs"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:152
+msgid "IPIfNonMatch"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:153
+msgid "IPOnDemand"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:162
+msgid "Bypass LAN"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:163
+msgid "Do not route local traffic through VPN"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:169
+msgid "Fake DNS"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:170
+msgid "Return fake IPs (improves speed but breaks some apps)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:176
+msgid "Multiplexing (Mux)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:177
+msgid "Speeds up connections but may cause instability"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:197
+msgid "Fragmentation (Fragment)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:198
+msgid "Split packets to bypass DPI (TCP/TLS only)"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:208
+msgid "Backup"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:211
+#, fuzzy
+msgid "Import settings"
+msgstr "Import Whitelist"
+
+#: src/ui/pages/settings_page.ui:212
+msgid "Load profiles and settings from file"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:225
+#, fuzzy
+msgid "Export settings"
+msgstr "Export Whitelist"
+
+#: src/ui/pages/settings_page.ui:226
+msgid "Save current configuration to file"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:243
+msgid "Diagnostics"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:247
+msgid "Logging level"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:251
+msgid "Error"
+msgstr "Error"
+
+#: src/ui/pages/settings_page.ui:252
+msgid "Warning"
+msgstr "Warning"
+
+#: src/ui/pages/settings_page.ui:253
+msgid "Info"
+msgstr "Info"
+
+#: src/ui/pages/settings_page.ui:254
+msgid "Debug"
+msgstr "Debug"
+
+#: src/ui/pages/settings_page.ui:264
+msgid "View logs"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:265
+msgid "Open console with real-time logs"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:279
+msgid "Open logs folder"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:280
+msgid "Open system folder with log files"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:298
+msgid "Reset settings"
+msgstr ""
+
+#: src/ui/pages/settings_page.ui:299
+msgid "Delete all saved data (danger zone)"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:210
+msgid "pinging..."
+msgstr "pinging..."
+
+#: src/ui/pages/vpn_page.rs:232 src/ui/pages/vpn_page.rs:508
+msgid "timeout"
+msgstr "timeout"
+
+#: src/ui/pages/vpn_page.rs:355 src/ui/pages/vpn_page.rs:640
+#, fuzzy
+msgid "Connection error"
+msgstr "Connection Error"
+
+#: src/ui/pages/vpn_page.rs:369 src/ui/pages/vpn_page.rs:467
+#: src/ui/pages/vpn_page.rs:472
+#, fuzzy
+msgid "Connection failure"
+msgstr "Connection Failed"
+
+#: src/ui/pages/vpn_page.rs:372 src/ui/pages/vpn_page.rs:643
+msgid "OK"
+msgstr "OK"
+
+#: src/ui/pages/vpn_page.rs:473
+#, fuzzy
+msgid "Failed to connect to the selected VPN key."
+msgstr "Unable to connect to the selected VPN key."
+
+#: src/ui/pages/vpn_page.rs:504
+msgid "Connected"
+msgstr "Connected"
+
+#: src/ui/pages/vpn_page.rs:513
+#, fuzzy
+msgid "Connection timeout"
+msgstr "Connection Failed"
+
+#: src/ui/pages/vpn_page.rs:606
+#, fuzzy
+msgid "Connecting..."
+msgstr "Connected"
+
+#: src/ui/pages/vpn_page.rs:620
+#, fuzzy
+msgid "Configuration error"
+msgstr "Connection Error"
+
+#: src/ui/pages/vpn_page.rs:634
+msgid "Core startup error"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:688 src/ui/pages/vpn_page.rs:765
+#, fuzzy
+msgid "Server address"
+msgstr "Server Address"
+
+#: src/ui/pages/vpn_page.rs:689
+msgid "Location"
+msgstr "Location"
+
+#: src/ui/pages/vpn_page.rs:690
+msgid "Timezone"
+msgstr "Timezone"
+
+#: src/ui/pages/vpn_page.rs:691 src/ui/pages/vpn_page.rs:764
+msgid "Protocol"
+msgstr "Protocol"
+
+#: src/ui/pages/vpn_page.rs:696 src/ui/pages/vpn_page.rs:766
+msgid "Port"
+msgstr "Port"
+
+#: src/ui/pages/vpn_page.rs:699
+msgid "Network"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:702
+msgid "Security"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:706
+msgid "SNI"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:709
+msgid "Fingerprint"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:713
+msgid "Public key"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:717
+msgid "Flow"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:740
+msgid "Close"
+msgstr "Close"
+
+#: src/ui/pages/vpn_page.rs:760
+#, fuzzy
+msgid "Edit VPN key"
+msgstr "Edit VPN Key"
+
+#: src/ui/pages/vpn_page.rs:763
+msgid "Name"
+msgstr "Name"
+
+#: src/ui/pages/vpn_page.rs:767
+msgid "UUID / Password"
+msgstr "UUID / Password"
+
+#: src/ui/pages/vpn_page.rs:775
+#, fuzzy
+msgid "Connection"
+msgstr "Connection Error"
+
+#: src/ui/pages/vpn_page.rs:801 src/ui/pages/vpn_page.rs:849
+#: src/ui/pages/vpn_page.rs:953
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/ui/pages/vpn_page.rs:802
+msgid "Save"
+msgstr "Save"
+
+#: src/ui/pages/vpn_page.rs:845
+#, fuzzy
+msgid "Delete VPN key"
+msgstr "Delete VPN Key"
+
+#: src/ui/pages/vpn_page.rs:850
+msgid "Delete"
+msgstr "Delete"
+
+#: src/ui/pages/vpn_page.rs:925
+#, fuzzy
+msgid "Add VPN key"
+msgstr "Add VPN Key"
+
+#: src/ui/pages/vpn_page.rs:929
+msgid "VPN Link"
+msgstr "VPN Link"
+
+#: src/ui/pages/vpn_page.rs:954
+msgid "Add"
+msgstr "Add"
+
+#: src/ui/pages/vpn_page.rs:1045
+msgid "Disconnected"
+msgstr "Disconnected"
+
+#: src/ui/pages/vpn_page.ui:13 src/window.ui:35
+#, fuzzy
+msgid "VPN Keys"
+msgstr "Add VPN Key"
+
+#: src/ui/pages/vpn_page.ui:14
+#, fuzzy
+msgid "Mark-Vless Connected"
+msgstr "Connected"
+
+#: src/ui/pages/vpn_page.ui:23
+#, fuzzy
+msgid "Add connection"
+msgstr "Connection Error"
+
+#: src/ui/pages/vpn_page.ui:36
+#, fuzzy
+msgid "Disconnect"
+msgstr "Disconnected"
+
+#: src/ui/pages/vpn_page.ui:52
+#, fuzzy
+msgid "Connection list"
+msgstr "Connection Unstable"
+
+#: src/ui/pages/vpn_page.ui:77
+msgid "Xray / Sing-box"
+msgstr "Xray / Sing-box"
+
+#: src/ui/pages/vpn_page.ui:100
+msgid "Tunnels"
+msgstr "Tunnels"
+
+#: src/ui/pages/vpn_page.ui:108
+msgid "Proxies"
+msgstr "Proxies"
+
+#: src/ui/pages/whitelist_page.ui:12 src/window.ui:49
+msgid "Routing"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:41
+msgid "Enable custom routing"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:42
+msgid "Use rules below to route traffic"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:54
+msgid "Mode"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:58
+msgid "Exceptions (bypass VPN)"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:59
+msgid "Inclusions (VPN only)"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:72
+msgid "Geosite Rules"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:76
+msgid "Route Russia (RU)"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:77
+msgid "Apply rule for Russian domains and IPs"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:82
+msgid "Route China (CN)"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:83
+msgid "Apply rule for Chinese domains and IPs"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:88
+msgid "Route Iran (IR)"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:89
+msgid "Apply rule for Iranian domains and IPs"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:94
+msgid "Route Antifilter"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:95
+msgid "Apply rule for blocked domains (Antifilter)"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:103
+msgid "Network Settings"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:106
+msgid "Disable IPv6"
+msgstr ""
+
+#: src/ui/pages/whitelist_page.ui:107
+msgid "Force VPN core to use IPv4 only"
+msgstr ""
+
 #: src/window.ui:7
 msgid "Vrxx"
 msgstr "Vrxx"
 
-#: src/window.ui:16
-msgid "Menu"
-msgstr "Menu"
-
 #: src/window.ui:42
-msgid "Прокси"
-msgstr "Прокси"
+#, fuzzy
+msgid "Proxy"
+msgstr "Proxies"
 
 #: src/window.ui:73
 msgid "Content"
 msgstr "Content"
+
+#~ msgid "Clear Whitelist"
+#~ msgstr "Clear Whitelist"
+
+#~ msgid "Are you sure you want to remove all domains from the whitelist?"
+#~ msgstr "Are you sure you want to remove all domains from the whitelist?"
+
+#~ msgid "Clear"
+#~ msgstr "Clear"
+
+#~ msgid "Edit Domain"
+#~ msgstr "Edit Domain"
+
+#~ msgid "New Domain"
+#~ msgstr "New Domain"
+
+#~ msgid "Domain"
+#~ msgstr "Domain"
+
+#~ msgid ""
+#~ "Enter the domain address or rule (e.g. google.com, domain:vk.com, *.ru)"
+#~ msgstr ""
+#~ "Enter the domain address or rule (e.g. google.com, domain:vk.com, *.ru)"
+
+#~ msgid "The VPN connection seems to be timing out."
+#~ msgstr "The VPN connection seems to be timing out."
+
+#~ msgid "Paste your VPN link below:"
+#~ msgstr "Paste your VPN link below:"
+
+#~ msgid "Настройки"
+#~ msgstr "Настройки"
+
+#~ msgid "Меню"
+#~ msgstr "Меню"
+
+#~ msgid "Общие"
+#~ msgstr "Общие"
+
+#~ msgid "Язык (Language)"
+#~ msgstr "Язык (Language)"
+
+#~ msgid "Требуется перезапуск приложения (Requires restart)"
+#~ msgstr "Требуется перезапуск приложения (Requires restart)"
+
+#~ msgid "Системный (System)"
+#~ msgstr "Системный (System)"
+
+#~ msgid "Русский"
+#~ msgstr "Русский"
+
+#~ msgid "Запускать при старте системы"
+#~ msgstr "Запускать при старте системы"
+
+#~ msgid "Автоматически запускать приложение в фоновом режиме"
+#~ msgstr "Автоматически запускать приложение в фоновом режиме"
+
+#~ msgid "Подключаться при запуске"
+#~ msgstr "Подключаться при запуске"
+
+#~ msgid "Восстанавливать последнее активное подключение"
+#~ msgstr "Восстанавливать последнее активное подключение"
+
+#~ msgid "Уведомления"
+#~ msgstr "Уведомления"
+
+#~ msgid "Показывать уведомления при смене статуса подключения"
+#~ msgstr "Показывать уведомления при смене статуса подключения"
+
+#~ msgid "Режим стримера"
+#~ msgstr "Режим стримера"
+
+#~ msgid "Скрывать IP-адреса и конфиденциальную информацию в интерфейсе"
+#~ msgstr "Скрывать IP-адреса и конфиденциальную информацию в интерфейсе"
+
+#~ msgid "Ядро (Core)"
+#~ msgstr "Ядро (Core)"
+
+#~ msgid "Выберите движок маршрутизации, используемый для подключения"
+#~ msgstr "Выберите движок маршрутизации, используемый для подключения"
+
+#~ msgid "Используемое ядро"
+#~ msgstr "Используемое ядро"
+
+#~ msgid "Выбор ядра временно отключен (Sing-box в разработке)"
+#~ msgstr "Выбор ядра временно отключен (Sing-box в разработке)"
+
+#~ msgid "Настройки TUN"
+#~ msgstr "Настройки TUN"
+
+#~ msgid ""
+#~ "Перенаправлять весь системный трафик через виртуальный интерфейс "
+#~ "(Требуется Root)"
+#~ msgstr ""
+#~ "Перенаправлять весь системный трафик через виртуальный интерфейс "
+#~ "(Требуется Root)"
+
+#~ msgid "Резервное копирование"
+#~ msgstr "Резервное копирование"
+
+#~ msgid "Импорт настроек"
+#~ msgstr "Импорт настроек"
+
+#~ msgid "Загрузить профили и настройки из файла"
+#~ msgstr "Загрузить профили и настройки из файла"
+
+#~ msgid "Экспорт настроек"
+#~ msgstr "Экспорт настроек"
+
+#~ msgid "Сохранить текущую конфигурацию в файл"
+#~ msgstr "Сохранить текущую конфигурацию в файл"
+
+#~ msgid "Диагностика"
+#~ msgstr "Диагностика"
+
+#~ msgid "Уровень логирования"
+#~ msgstr "Уровень логирования"
+
+#~ msgid "Просмотр логов"
+#~ msgstr "Просмотр логов"
+
+#~ msgid "Открыть консоль с логами в реальном времени"
+#~ msgstr "Открыть консоль с логами в реальном времени"
+
+#~ msgid "Открыть папку логов"
+#~ msgstr "Открыть папку логов"
+
+#~ msgid "Открыть системную папку с файлами журналов"
+#~ msgstr "Открыть системную папку с файлами журналов"
+
+#~ msgid "Сбросить настройки"
+#~ msgstr "Сбросить настройки"
+
+#~ msgid "Белый список"
+#~ msgstr "Белый список"
+
+#~ msgid "Добавить домен"
+#~ msgstr "Добавить домен"
+
+#~ msgid "Очистить список"
+#~ msgstr "Очистить список"
+
+#~ msgid "Экспорт / Импорт"
+#~ msgstr "Экспорт / Импорт"
+
+#~ msgid "Поиск домена или правила (e.g. domain:vk.com, *.org)..."
+#~ msgstr "Поиск домена или правила (e.g. domain:vk.com, *.org)..."
+
+#~ msgid "Режим"
+#~ msgstr "Режим"
+
+#~ msgid "Исключения (обход VPN)"
+#~ msgstr "Исключения (обход VPN)"
+
+#~ msgid "Включения (только VPN)"
+#~ msgstr "Включения (только VPN)"
+
+#~ msgid "Домены и IP адреса"
+#~ msgstr "Домены и IP адреса"
+
+#~ msgid "Импорт из файла..."
+#~ msgstr "Импорт из файла..."
+
+#~ msgid "Экспорт в файл..."
+#~ msgstr "Экспорт в файл..."
+
+#~ msgid "Ключи VPN"
+#~ msgstr "Ключи VPN"
+
+#~ msgid "Mark-Vless Подключено"
+#~ msgstr "Mark-Vless Подключено"
+
+#~ msgid "Добавить подключение"
+#~ msgstr "Добавить подключение"
+
+#~ msgid "Отключить"
+#~ msgstr "Отключить"
+
+#~ msgid "Список подключений"
+#~ msgstr "Список подключений"
+
+#~ msgid "Локальный прокси"
+#~ msgstr "Локальный прокси"
+
+#~ msgid "Системный прокси"
+#~ msgstr "Системный прокси"
+
+#~ msgid "Автоматическая настройка прокси для всей системы (GNOME)"
+#~ msgstr "Автоматическая настройка прокси для всей системы (GNOME)"
+
+#~ msgid "Устанавливать системный прокси"
+#~ msgstr "Устанавливать системный прокси"
+
+#~ msgid "При активном подключении трафик приложений пойдет через прокси"
+#~ msgstr "При активном подключении трафик приложений пойдет через прокси"
+
+#~ msgid "Входящие подключения (Inbounds)"
+#~ msgstr "Входящие подключения (Inbounds)"
+
+#~ msgid "Локальные порты, на которых работают прокси-серверы ядра"
+#~ msgstr "Локальные порты, на которых работают прокси-серверы ядра"
+
+#~ msgid "SOCKS5 Порт"
+#~ msgstr "SOCKS5 Порт"
+
+#~ msgid "HTTP Порт"
+#~ msgstr "HTTP Порт"
+
+#~ msgid "Разрешить подключения из LAN"
+#~ msgstr "Разрешить подключения из LAN"
+
+#~ msgid "Прокси будет доступен для других устройств в вашей локальной сети"
+#~ msgstr "Прокси будет доступен для других устройств в вашей локальной сети"
+
+#~ msgid "_Duplicate"
+#~ msgstr "_Duplicate"
+
+#~ msgid "Прокси"
+#~ msgstr "Прокси"

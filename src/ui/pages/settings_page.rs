@@ -1,9 +1,10 @@
 use adw::subclass::prelude::*;
 use adw::prelude::*;
-use gtk::{glib, CompositeTemplate};
+use gtk::{glib, gio, CompositeTemplate};
 use gettextrs::gettext;
 use crate::ui::setup_primary_menu;
 use crate::settings::SettingsManager;
+use std::cell::RefCell;
 
 mod imp {
     use super::*;
@@ -11,6 +12,8 @@ mod imp {
     #[derive(Debug, Default, CompositeTemplate)]
     #[template(resource = "/ru/mark/vrxx/ui/pages/settings_page.ui")]
     pub struct VrxxSettingsPage {
+        #[template_child]
+        pub btn_apply: TemplateChild<gtk::Button>,
         #[template_child]
         pub primary_menu_btn: TemplateChild<gtk::MenuButton>,
         #[template_child]
@@ -45,6 +48,9 @@ mod imp {
         pub mux_concurrency_row: TemplateChild<adw::SpinRow>,
         #[template_child]
         pub fragment_row: TemplateChild<adw::SwitchRow>,
+
+        pub has_changes: RefCell<bool>,
+        pub has_lang_changed: RefCell<bool>,
     }
 
     #[glib::object_subclass]
@@ -69,10 +75,7 @@ mod imp {
     impl ObjectImpl for VrxxSettingsPage {
         fn constructed(&self) {
             self.parent_constructed();
-
-            // Connect the shared menu with theme switcher
             setup_primary_menu(&self.primary_menu_btn.get());
-
             self.obj().setup_settings();
         }
     }
@@ -97,19 +100,74 @@ impl VrxxSettingsPage {
         glib::Object::builder().build()
     }
 
+    fn mark_changed(&self, is_lang: bool) {
+        let imp = self.imp();
+        *imp.has_changes.borrow_mut() = true;
+        if is_lang {
+            *imp.has_lang_changed.borrow_mut() = true;
+        }
+        imp.btn_apply.set_visible(true);
+    }
+
+    fn apply_changes(&self) {
+        let imp = self.imp();
+        let lang_changed = *imp.has_lang_changed.borrow();
+
+        // Save all settings here if we want, but currently they save on every toggle anyway.
+        // The apply button is just to confirm and maybe restart.
+        
+        *imp.has_changes.borrow_mut() = false;
+        *imp.has_lang_changed.borrow_mut() = false;
+        imp.btn_apply.set_visible(false);
+
+        if lang_changed {
+            let window = self.root().and_downcast::<gtk::Window>().unwrap();
+            let dialog = adw::MessageDialog::builder()
+                .heading("Restart Required")
+                .body("You have changed the language. The application needs to restart to apply the new language. Restart now?")
+                .build();
+                
+            dialog.add_response("cancel", "Cancel");
+            dialog.add_response("restart", "Restart");
+            dialog.set_response_appearance("restart", adw::ResponseAppearance::Destructive);
+            
+            dialog.connect_response(None, move |dlg: &adw::MessageDialog, response: &str| {
+                if response == "restart" {
+                    if let Ok(exe) = std::env::current_exe() {
+                        let _ = std::process::Command::new(exe).spawn();
+                        std::process::exit(0);
+                    }
+                }
+                dlg.close();
+            });
+            
+            dialog.set_transient_for(Some(&window));
+            dialog.present();
+        } else {
+            self.show_restart_core_toast();
+        }
+    }
+
     fn setup_settings(&self) {
         let imp = self.imp();
         let manager = SettingsManager::new();
         let settings = manager.load();
 
-        // Load core
+        imp.btn_apply.set_visible(false);
+
+        imp.btn_apply.connect_clicked(glib::clone!(
+            #[weak(rename_to = page)] self,
+            move |_| {
+                page.apply_changes();
+            }
+        ));
+
         let selected_idx = match settings.core.as_str() {
             "sing-box" => 1,
             _ => 0, // xray default
         };
         imp.core_selector.set_selected(selected_idx);
 
-        // Load language
         let lang_idx = match settings.language.as_str() {
             "en" => 1,
             "ru" => 2,
@@ -117,7 +175,6 @@ impl VrxxSettingsPage {
         };
         imp.language_row.set_selected(lang_idx);
 
-        // Load switches
         imp.autostart_row.set_active(settings.autostart);
         imp.connect_startup_row.set_active(settings.connect_on_startup);
         imp.notifications_row.set_active(settings.notifications);
@@ -138,7 +195,6 @@ impl VrxxSettingsPage {
         };
         imp.domain_strategy_row.set_selected(strategy_idx);
 
-        // Load log level
         let log_idx = match settings.log_level.as_str() {
             "error" => 0,
             "warning" => 1,
@@ -147,191 +203,205 @@ impl VrxxSettingsPage {
         };
         imp.log_level_row.set_selected(log_idx);
 
-        // Bind signals
-        let self_weak = self.downgrade();
-        imp.core_selector.connect_selected_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            let old_core = s.core.clone();
-            s.core = if row.selected() == 1 { "sing-box".to_string() } else { "xray".to_string() };
-            if old_core != s.core {
-                tracing::debug!("{}", &format!("Core changed from {} to {}", old_core, s.core));
-            }
-            manager.save(&s);
-            if let Some(page) = self_weak.upgrade() {
-                page.update_core_info();
-            }
-        });
-
         self.update_core_info();
 
-        let lang_row_clone = imp.language_row.clone();
-        imp.language_row.connect_selected_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            let old_lang = s.language.clone();
-            s.language = match row.selected() {
-                1 => "en".to_string(),
-                2 => "ru".to_string(),
-                _ => "system".to_string(),
-            };
-            if old_lang != s.language {
-                tracing::debug!("{}", &format!("Language changed from {} to {}", old_lang, s.language));
+        // Connect signals
+        imp.core_selector.connect_selected_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.core = if row.selected() == 1 { "sing-box".to_string() } else { "xray".to_string() };
+                manager.save(&s);
+                page.update_core_info();
+                page.mark_changed(false);
             }
-            manager.save(&s);
-            
-            // Show toast for restart
-            if let Some(window) = lang_row_clone.root().and_then(|r| r.downcast::<adw::Window>().ok()) {
-                let toast = adw::Toast::new(&gettext("Application restart required to apply language"));
-                if let Some(toast_overlay) = window.child().and_then(|c| c.downcast::<adw::ToastOverlay>().ok()) {
-                    toast_overlay.add_toast(toast);
-                }
-            }
-        });
+        ));
 
-        imp.autostart_row.connect_active_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            s.autostart = row.is_active();
-            tracing::debug!("{}", &format!("Autostart toggled to {}", s.autostart));
-            manager.save(&s);
-
-            let autostart_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("autostart");
-            std::fs::create_dir_all(&autostart_dir).ok();
-            let desktop_file_path = autostart_dir.join("ru.mark.vrxx.desktop");
-
-            if s.autostart {
-                let exe_path = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("vrxx"));
-                let exec_cmd = if std::env::var("FLATPAK_ID").is_ok() {
-                    "flatpak run ru.mark.vrxx --hidden".to_string()
-                } else {
-                    format!("{} --hidden", exe_path.display())
+        imp.language_row.connect_selected_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.language = match row.selected() {
+                    1 => "en".to_string(),
+                    2 => "ru".to_string(),
+                    _ => "system".to_string(),
                 };
-
-                let desktop_content = format!("[Desktop Entry]\nType=Application\nName=Vrxx\nExec={}\nIcon=ru.mark.vrxx\nComment=VPN Client\nTerminal=false\nCategories=Network;\n", exec_cmd);
-                let _ = std::fs::write(&desktop_file_path, desktop_content);
-            } else {
-                let _ = std::fs::remove_file(&desktop_file_path);
+                manager.save(&s);
+                page.mark_changed(true);
             }
-        });
+        ));
 
-        imp.connect_startup_row.connect_active_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            s.connect_on_startup = row.is_active();
-            tracing::debug!("{}", &format!("Connect on startup toggled to {}", s.connect_on_startup));
-            manager.save(&s);
-        });
+        imp.autostart_row.connect_active_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.autostart = row.is_active();
+                manager.save(&s);
+                
+                let autostart_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("autostart");
+                std::fs::create_dir_all(&autostart_dir).ok();
+                let desktop_file_path = autostart_dir.join("ru.mark.vrxx.desktop");
 
-        imp.notifications_row.connect_active_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            s.notifications = row.is_active();
-            tracing::debug!("{}", &format!("Notifications toggled to {}", s.notifications));
-            manager.save(&s);
-        });
+                if s.autostart {
+                    let exe_path = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("vrxx"));
+                    let exec_cmd = if std::env::var("FLATPAK_ID").is_ok() {
+                        "flatpak run ru.mark.vrxx --hidden".to_string()
+                    } else {
+                        format!("{} --hidden", exe_path.display())
+                    };
 
-        imp.streamer_mode_row.connect_active_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            s.streamer_mode = row.is_active();
-            tracing::debug!("{}", &format!("Streamer mode toggled to {}", s.streamer_mode));
-            manager.save(&s);
-        });
-
-        imp.tun_mode_row.connect_active_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            s.tun_mode = row.is_active();
-            tracing::debug!("{}", &format!("TUN mode toggled to {}", s.tun_mode));
-            manager.save(&s);
-        });
-
-        imp.sniffing_row.connect_active_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            s.enable_sniffing = row.is_active();
-            tracing::debug!("{}", &format!("Sniffing toggled to {}", s.enable_sniffing));
-            manager.save(&s);
-        });
-
-        imp.bypass_lan_row.connect_active_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            s.bypass_lan = row.is_active();
-            tracing::debug!("{}", &format!("Bypass LAN toggled to {}", s.bypass_lan));
-            manager.save(&s);
-        });
-
-        imp.fake_dns_row.connect_active_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            s.enable_fake_dns = row.is_active();
-            tracing::debug!("{}", &format!("Fake DNS toggled to {}", s.enable_fake_dns));
-            manager.save(&s);
-        });
-
-        imp.fragment_row.connect_active_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            s.enable_fragment = row.is_active();
-            tracing::debug!("{}", &format!("Fragment toggled to {}", s.enable_fragment));
-            manager.save(&s);
-        });
-
-        imp.mux_row.connect_enable_expansion_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            s.enable_mux = row.enables_expansion();
-            tracing::debug!("{}", &format!("MUX toggled to {}", s.enable_mux));
-            manager.save(&s);
-        });
-
-        imp.mux_concurrency_row.connect_value_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            s.mux_concurrency = row.value() as i32;
-            tracing::debug!("{}", &format!("MUX concurrency set to {}", s.mux_concurrency));
-            manager.save(&s);
-        });
-
-        imp.domain_strategy_row.connect_selected_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            let old_strategy = s.domain_strategy.clone();
-            s.domain_strategy = match row.selected() {
-                1 => "IPIfNonMatch".to_string(),
-                2 => "IPOnDemand".to_string(),
-                _ => "AsIs".to_string(),
-            };
-            if old_strategy != s.domain_strategy {
-                tracing::debug!("{}", &format!("Domain strategy changed from {} to {}", old_strategy, s.domain_strategy));
+                    let desktop_content = format!("[Desktop Entry]\nType=Application\nName=Vrxx\nExec={exec_cmd}\nIcon=ru.mark.vrxx\nComment=VPN Client\nTerminal=false\nCategories=Network;\n");
+                    let _ = std::fs::write(&desktop_file_path, desktop_content);
+                } else {
+                    let _ = std::fs::remove_file(&desktop_file_path);
+                }
+                page.mark_changed(false);
             }
-            manager.save(&s);
-        });
+        ));
 
-        imp.log_level_row.connect_selected_notify(move |row| {
-            let manager = SettingsManager::new();
-            let mut s = manager.load();
-            let old_level = s.log_level.clone();
-            s.log_level = match row.selected() {
-                0 => "error".to_string(),
-                1 => "warning".to_string(),
-                3 => "debug".to_string(),
-                _ => "info".to_string(),
-            };
-            if old_level != s.log_level {
-                tracing::debug!("{}", &format!("Log level changed from {} to {}", old_level, s.log_level));
+        imp.connect_startup_row.connect_active_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.connect_on_startup = row.is_active();
+                manager.save(&s);
+                page.mark_changed(false);
             }
-            manager.save(&s);
-        });
+        ));
+
+        imp.notifications_row.connect_active_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.notifications = row.is_active();
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.streamer_mode_row.connect_active_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.streamer_mode = row.is_active();
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.tun_mode_row.connect_active_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.tun_mode = row.is_active();
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.sniffing_row.connect_active_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.enable_sniffing = row.is_active();
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.bypass_lan_row.connect_active_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.bypass_lan = row.is_active();
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.fake_dns_row.connect_active_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.enable_fake_dns = row.is_active();
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.fragment_row.connect_active_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.enable_fragment = row.is_active();
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.mux_row.connect_enable_expansion_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.enable_mux = row.enables_expansion();
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.mux_concurrency_row.connect_value_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.mux_concurrency = row.value() as i32;
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.domain_strategy_row.connect_selected_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.domain_strategy = match row.selected() {
+                    1 => "IPIfNonMatch".to_string(),
+                    2 => "IPOnDemand".to_string(),
+                    _ => "AsIs".to_string(),
+                };
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.log_level_row.connect_selected_notify(glib::clone!(
+            #[weak(rename_to = page)] self, move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.log_level = match row.selected() {
+                    0 => "error".to_string(),
+                    1 => "warning".to_string(),
+                    3 => "debug".to_string(),
+                    _ => "info".to_string(),
+                };
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+    }
+
+    fn show_restart_core_toast(&self) {
+        let _ = crate::settings::core_restart_channel().0.send_blocking(());
+        if let Some(app) = gtk::gio::Application::default().and_downcast::<gtk::Application>() {
+            let notification = gtk::gio::Notification::new(&gettextrs::gettext("Settings applied"));
+            notification.set_body(Some(&gettextrs::gettext("Core was restarted to apply new settings.")));
+            app.send_notification(Some("settings_applied"), &notification);
+        }
     }
 
     fn update_core_info(&self) {
         let settings = SettingsManager::new().load();
         let bin_name = if settings.core == "sing-box" { "sing-box" } else { "xray" };
         
-        // Execute version command
         let output = std::process::Command::new(bin_name)
             .arg("version")
             .output();
@@ -339,7 +409,6 @@ impl VrxxSettingsPage {
         let version_str = match output {
             Ok(out) => {
                 let s = String::from_utf8_lossy(&out.stdout);
-                // Extract version from first line
                 s.lines().next().unwrap_or("Unknown Version").to_string()
             }
             Err(_) => format!("{bin_name} not found"),

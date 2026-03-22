@@ -83,13 +83,11 @@ mod imp {
                             <child>
                               <object class='GtkButton' id='btn_copy'>
                                 <property name='label' translatable='yes'>Copy logs</property>
-                                <property name='icon-name'>edit-copy-symbolic</property>
                               </object>
                             </child>
                             <child>
                               <object class='GtkButton' id='btn_clear'>
                                 <property name='label' translatable='yes'>Clear logs</property>
-                                <property name='icon-name'>edit-clear-all-symbolic</property>
                                 <style>
                                   <class name='destructive-action'/>
                                 </style>
@@ -170,6 +168,7 @@ mod imp {
             let obj = self.obj();
 
             let strings = gtk::StringList::new(&[
+                gettextrs::gettext("All logs").as_str(),
                 gettextrs::gettext("Core logs").as_str(),
                 gettextrs::gettext("Application logs").as_str(),
                 gettextrs::gettext("Access logs").as_str(),
@@ -229,9 +228,10 @@ impl VrxxLogWindow {
                 let log_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx").join("logs");
                 let filter_index = window.imp().dropdown_filter.selected();
                 let file_name = match filter_index {
-                    1 => "app.log",
-                    2 => "access.log",
-                    _ => "core.log",
+                    1 => "core.log",
+                    2 => "app.log",
+                    3 => "access.log",
+                    _ => "all.log",
                 };
                 let log_path = log_dir.join(file_name);
                 let _ = std::fs::write(log_path, ""); // Очищаем файл
@@ -247,11 +247,17 @@ impl VrxxLogWindow {
                 *imp.font_size.borrow_mut() += 2;
                 let size = *imp.font_size.borrow();
                 let percent = (size as f32 / 12.0 * 100.0) as i32;
-                imp.lbl_zoom_percent.set_label(&format!("{}%", percent));
+                imp.lbl_zoom_percent.set_label(&format!("{percent}%"));
                 
                 let provider = gtk::CssProvider::new();
-                provider.load_from_string(&format!("textview {{ font-size: {}pt; }}", size));
-                imp.text_view.style_context().add_provider(&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
+                provider.load_from_string(&format!("textview {{ font-size: {size}pt; }}"));
+                if let Some(display) = gdk::Display::default() {
+                    gtk::style_context_add_provider_for_display(
+                        &display,
+                        &provider,
+                        gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+                    );
+                }
             }
         });
 
@@ -264,11 +270,17 @@ impl VrxxLogWindow {
                     size -= 2;
                     *imp.font_size.borrow_mut() = size;
                     let percent = (size as f32 / 12.0 * 100.0) as i32;
-                    imp.lbl_zoom_percent.set_label(&format!("{}%", percent));
+                    imp.lbl_zoom_percent.set_label(&format!("{percent}%"));
                     
                     let provider = gtk::CssProvider::new();
-                    provider.load_from_string(&format!("textview {{ font-size: {}pt; }}", size));
-                    imp.text_view.style_context().add_provider(&provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
+                    provider.load_from_string(&format!("textview {{ font-size: {size}pt; }}"));
+                    if let Some(display) = gdk::Display::default() {
+                        gtk::style_context_add_provider_for_display(
+                            &display,
+                            &provider,
+                            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+                        );
+                    }
                 }
             }
         });
@@ -306,9 +318,10 @@ impl VrxxLogWindow {
                 let filter_index = imp.dropdown_filter.selected();
                 
                 let file_name = match filter_index {
-                    1 => "app.log",
-                    2 => "access.log",
-                    _ => "core.log",
+                    1 => "core.log",
+                    2 => "app.log",
+                    3 => "access.log",
+                    _ => "all.log",
                 };
                 
                 let log_path = log_dir.join(file_name);

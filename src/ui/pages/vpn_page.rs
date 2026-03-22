@@ -7,6 +7,7 @@ use crate::ui::models::VpnKeyObject;
 use crate::ui::components::vpn_key_row::VrxxVpnKeyRow;
 use crate::ui::setup_primary_menu;
 use crate::settings::{SettingsManager, VpnKeyData};
+use crate::backend::VpnCore;
 
 mod imp {
     use super::*;
@@ -24,7 +25,7 @@ mod imp {
         pub primary_menu_btn: TemplateChild<gtk::MenuButton>,
 
         pub model: RefCell<Option<gio::ListStore>>,
-        pub backend: RefCell<crate::backend::XrayBackend>,
+        pub backend: RefCell<crate::backend::CoreBackend>,
         pub action_group: RefCell<Option<gio::SimpleActionGroup>>,
         
         pub start_time: RefCell<Option<std::time::Instant>>,
@@ -55,7 +56,7 @@ mod imp {
             self.parent_constructed();
             
             // Инициализация бэкенда
-            self.backend.replace(crate::backend::XrayBackend::new());
+            self.backend.replace(crate::backend::CoreBackend::new());
 
             self.obj().setup_model();
             self.obj().setup_actions();
@@ -166,16 +167,6 @@ impl VrxxVpnPage {
                 None
             });
 
-            // Дублировать
-            let page_weak_dup = page_weak.clone();
-            let key_obj_dup = key_obj.clone();
-            row.connect_local("request-duplicate", false, move |_| {
-                if let Some(page) = page_weak_dup.upgrade() {
-                    page.handle_duplicate_key(&key_obj_dup);
-                }
-                None
-            });
-
             // Скопировать ссылку
             let page_weak_cl = page_weak.clone();
             let key_obj_cl = key_obj.clone();
@@ -254,10 +245,10 @@ impl VrxxVpnPage {
                     let timeout = Duration::from_secs(2);
 
                     // Разрешаем доменное имя в IP, если это не IP
-                    let addr = format!("{}:{}", target_host, target_port);
+                    let addr = format!("{target_host}:{target_port}");
                     if let Ok(mut addrs) = addr.to_socket_addrs() {
                         if let Some(socket_addr) = addrs.next() {
-                            if let Ok(mut stream) = TcpStream::connect_timeout(&socket_addr, timeout) {
+                            if let Ok(stream) = TcpStream::connect_timeout(&socket_addr, timeout) {
                                 success = true;
                                 let _ = stream.shutdown(std::net::Shutdown::Both);
                             }
@@ -285,6 +276,27 @@ impl VrxxVpnPage {
             if let Ok(key_row) = row.clone().downcast::<VrxxVpnKeyRow>() {
                 if let Some(selected_item) = key_row.item() {
                     page.set_active_key(&selected_item);
+                }
+            }
+        });
+
+        // Listen for core restart requests
+        let page_weak_restart = self.downgrade();
+        glib::spawn_future_local(async move {
+            let (_, receiver) = crate::settings::core_restart_channel();
+            while let Ok(_) = receiver.recv().await {
+                if let Some(page) = page_weak_restart.upgrade() {
+                    // Find active key and reconnect
+                    if let Some(model) = page.imp().model.borrow().as_ref() {
+                        for i in 0..model.n_items() {
+                            if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                                if item.is_active() {
+                                    page.set_active_key(&item);
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -411,8 +423,21 @@ impl VrxxVpnPage {
                                                             }
                                                         }
                                                         if total_down > 0 || total_up > 0 {
-                                                            item_clone_stats.set_traffic_down(format!("{:.1} MB", total_down as f64 / 1_048_576.0));
-                                                            item_clone_stats.set_traffic_up(format!("{:.1} MB", total_up as f64 / 1_048_576.0));
+                                                            let format_bytes = |b: u64| -> String {
+                                                                let tb = 1_099_511_627_776_f64;
+                                                                let gb = 1_073_741_824_f64;
+                                                                let mb = 1_048_576_f64;
+                                                                let kb = 1_024_f64;
+                                                                let bf = b as f64;
+                                                                
+                                                                if bf >= tb { format!("{:.2} TB", bf / tb) }
+                                                                else if bf >= gb { format!("{:.2} GB", bf / gb) }
+                                                                else if bf >= mb { format!("{:.1} MB", bf / mb) }
+                                                                else if bf >= kb { format!("{:.0} KB", bf / kb) }
+                                                                else { format!("{b} B") }
+                                                            };
+                                                            item_clone_stats.set_traffic_down(format_bytes(total_down));
+                                                            item_clone_stats.set_traffic_up(format_bytes(total_up));
                                                         }
                                                     }
                                                 }
@@ -504,7 +529,7 @@ impl VrxxVpnPage {
                                             let mut tz = String::new();
 
                                             if is_currently_loading {
-                                                let proxy_url = format!("socks5://127.0.0.1:{}", socks_port);
+                                                let proxy_url = format!("socks5://127.0.0.1:{socks_port}");
                                                 let agent = match ureq::Proxy::new(&proxy_url) {
                                                     Ok(proxy) => ureq::builder().proxy(proxy).timeout(std::time::Duration::from_secs(4)).build(),
                                                     Err(_) => return,
@@ -530,7 +555,7 @@ impl VrxxVpnPage {
                                                 let addr = format!("{}:{}", parsed.host, parsed.port);
                                                 if let Ok(mut addrs) = addr.to_socket_addrs() {
                                                     if let Some(socket_addr) = addrs.next() {
-                                                        if let Ok(mut stream) = TcpStream::connect_timeout(&socket_addr, timeout) {
+                                                        if let Ok(stream) = TcpStream::connect_timeout(&socket_addr, timeout) {
                                                             success = true;
                                                             ms = start_ping.elapsed().as_millis();
                                                             let _ = stream.shutdown(std::net::Shutdown::Both);
@@ -809,18 +834,6 @@ impl VrxxVpnPage {
         if let Some(root) = self.root() {
             dialog.present(Some(&root));
             name_row.grab_focus();
-        }
-    }
-
-    // Логика дублирования ключа
-    fn handle_duplicate_key(&self, key: &VpnKeyObject) {
-        if let Some(model) = self.imp().model.borrow().as_ref() {
-            let new_name = format!("{} (Copy)", key.name());
-            let new_protocol = key.protocol();
-            let new_key = VpnKeyObject::new(&new_name, &new_protocol, false, &key.url());
-
-            model.append(&new_key);
-            self.save_current_keys();
         }
     }
 

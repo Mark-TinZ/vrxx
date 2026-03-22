@@ -20,6 +20,7 @@ pub struct ApiConfig {
 #[allow(non_snake_case)]
 pub struct PolicyConfig {
     pub system: SystemPolicy,
+    pub levels: Value,
 }
 
 #[derive(Serialize)]
@@ -339,6 +340,30 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
                 }));
             }
         }
+
+        for rule in &settings.routing_rules {
+            let action_tag = if rule.action == "direct" {
+                "direct"
+            } else if rule.action == "block" {
+                "block"
+            } else {
+                "proxy"
+            };
+
+            if rule.type_ == "domain" {
+                rules.push(json!({
+                    "type": "field",
+                    "domain": [rule.value],
+                    "outboundTag": action_tag
+                }));
+            } else if rule.type_ == "ip" {
+                rules.push(json!({
+                    "type": "field",
+                    "ip": [rule.value],
+                    "outboundTag": action_tag
+                }));
+            }
+        }
     }
 
     rules.push(json!({
@@ -383,7 +408,13 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
                 statsInboundDownlink: true,
                 statsOutboundUplink: true,
                 statsOutboundDownlink: true,
-            }
+            },
+            levels: json!({
+                "0": {
+                    "statsUserUplink": true,
+                    "statsUserDownlink": true
+                }
+            }),
         },
         dns: dns_config,
         inbounds,
@@ -421,7 +452,7 @@ mod tests {
         let json_str = build_xray_config(&key, &settings);
         let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Should be valid JSON for Xray");
         
-        let proxy_outbound = parsed["outbounds"].as_array().unwrap().get(0).unwrap();
+        let proxy_outbound = parsed["outbounds"].as_array().unwrap().first().unwrap();
         assert_eq!(proxy_outbound["protocol"], "vless");
     }
 }

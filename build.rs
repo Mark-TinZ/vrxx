@@ -30,6 +30,28 @@ fn main() {
         println!("cargo:rerun-if-changed=src/ui/menus.ui");
     }
 
+    // Compile PO files for cargo run
+    let po_dir = PathBuf::from("po");
+    if po_dir.exists() {
+        for entry in fs::read_dir(&po_dir).unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if path.extension().is_some_and(|ext| ext == "po") {
+                if let Some(lang) = path.file_stem().and_then(|s| s.to_str()) {
+                    let locale_dir = PathBuf::from(format!("locale/{lang}/LC_MESSAGES"));
+                    let _ = fs::create_dir_all(&locale_dir);
+                    let mo_path = locale_dir.join("vrxx.mo");
+                    let _ = Command::new("msgfmt")
+                        .arg("-o")
+                        .arg(&mo_path)
+                        .arg(&path)
+                        .status();
+                    println!("cargo:rerun-if-changed={}", path.display());
+                }
+            }
+        }
+    }
+
     let fallback_path = out_dir.join("config_fallback.rs");
 
     if let Ok(config_path) = env::var("VRXX_CONFIG_RS_PATH") {

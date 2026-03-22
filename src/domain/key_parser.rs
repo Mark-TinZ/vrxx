@@ -58,8 +58,8 @@ fn parse_vmess(url_str: &str) -> Result<ParsedKey, String> {
     let base64_str = url_str.trim_start_matches("vmess://");
     use base64::{Engine as _, engine::general_purpose};
     
-    let decoded = general_purpose::STANDARD.decode(base64_str).map_err(|e| format!("Base64 decode error: {}", e))?;
-    let json_str = String::from_utf8(decoded).map_err(|e| format!("Invalid UTF-8 sequence: {}", e))?;
+    let decoded = general_purpose::STANDARD.decode(base64_str).map_err(|e| format!("Base64 decode error: {e}"))?;
+    let json_str = String::from_utf8(decoded).map_err(|e| format!("Invalid UTF-8 sequence: {e}"))?;
     
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&json_str) {
         let name = json.get("ps").and_then(|v| v.as_str()).unwrap_or("VMess Key").to_string();

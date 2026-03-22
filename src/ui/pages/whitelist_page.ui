@@ -12,6 +12,15 @@
                     <property name="title" translatable="yes">Routing</property>
                 </object>
             </property>
+            <child type="start">
+              <object class="GtkButton" id="btn_apply">
+                <property name="icon-name">document-save-symbolic</property>
+                <property name="tooltip-text" translatable="yes">Apply and Restart Core</property>
+                <style>
+                  <class name="suggested-action"/>
+                </style>
+              </object>
+            </child>
             <child type="end">
               <object class="GtkMenuButton" id="primary_menu_btn">
                 <property name="icon-name">open-menu-symbolic</property>
@@ -42,12 +51,13 @@
                 <property name="sensitive" bind-source="enable_routing_row" bind-property="active" bind-flags="sync-create"/>
                 <child>
                   <object class="AdwComboRow" id="mode_row">
-                    <property name="title" translatable="yes">Mode</property>
+                    <property name="title" translatable="yes">Global Routing Mode</property>
+                    <property name="subtitle" translatable="yes">Default action for specified rules</property>
                     <property name="model">
                       <object class="GtkStringList">
                         <items>
-                          <item translatable="yes">Exceptions (bypass VPN)</item>
-                          <item translatable="yes">Inclusions (VPN only)</item>
+                          <item translatable="yes">Bypass (direct)</item>
+                          <item translatable="yes">Proxy (VPN)</item>
                         </items>
                       </object>
                     </property>
@@ -57,33 +67,55 @@
               </object>
             </child>
 
-            <!-- Region Rules -->
+            <!-- Custom Rules -->
             <child>
-              <object class="AdwPreferencesGroup" id="routing_regions_group">
-                <property name="title" translatable="yes">Geosite Rules</property>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Routing Rules</property>
+                <property name="description" translatable="yes">Manage specific rules for domains and IP addresses</property>
+                <property name="sensitive" bind-source="enable_routing_row" bind-property="active" bind-flags="sync-create"/>
+                <property name="header-suffix">
+                  <object class="GtkButton" id="btn_add_rule">
+                    <property name="icon-name">list-add-symbolic</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </property>
+                <child>
+                  <object class="GtkListBox" id="rules_list">
+                    <property name="selection-mode">none</property>
+                    <style>
+                      <class name="boxed-list"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- Region Rules (Classic) -->
+            <child>
+              <object class="AdwExpanderRow" id="classic_rules_expander">
+                <property name="title" translatable="yes">Predefined Regional Rules</property>
+                <property name="subtitle" translatable="yes">Quick toggles for RU, CN, IR</property>
                 <property name="sensitive" bind-source="enable_routing_row" bind-property="active" bind-flags="sync-create"/>
                 <child>
                   <object class="AdwSwitchRow" id="route_ru_row">
-                    <property name="title" translatable="yes">Route Russia (RU)</property>
-                    <property name="subtitle" translatable="yes">Apply rule for Russian domains and IPs</property>
+                    <property name="title" translatable="yes">Russia (RU)</property>
                   </object>
                 </child>
                 <child>
                   <object class="AdwSwitchRow" id="route_cn_row">
-                    <property name="title" translatable="yes">Route China (CN)</property>
-                    <property name="subtitle" translatable="yes">Apply rule for Chinese domains and IPs</property>
+                    <property name="title" translatable="yes">China (CN)</property>
                   </object>
                 </child>
                 <child>
                   <object class="AdwSwitchRow" id="route_ir_row">
-                    <property name="title" translatable="yes">Route Iran (IR)</property>
-                    <property name="subtitle" translatable="yes">Apply rule for Iranian domains and IPs</property>
+                    <property name="title" translatable="yes">Iran (IR)</property>
                   </object>
                 </child>
                 <child>
                   <object class="AdwSwitchRow" id="route_antifilter_row">
-                    <property name="title" translatable="yes">Route Antifilter</property>
-                    <property name="subtitle" translatable="yes">Apply rule for blocked domains (Antifilter)</property>
+                    <property name="title" translatable="yes">Antifilter (blocked domains)</property>
                   </object>
                 </child>
               </object>
