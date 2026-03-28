@@ -1,6 +1,26 @@
 use crate::settings::AppSettings;
 use crate::domain::key_parser::ParsedKey;
 use serde_json::json;
+use std::str::FromStr;
+
+fn get_singbox_version() -> (u32, u32, u32) {
+    if let Ok(output) = std::process::Command::new("sing-box").arg("version").output() {
+        if let Ok(ver_str) = String::from_utf8(output.stdout) {
+            if let Some(version_line) = ver_str.lines().next() {
+                if let Some(v_str) = version_line.strip_prefix("sing-box version ") {
+                    let parts: Vec<&str> = v_str.trim().split('.').collect();
+                    if parts.len() >= 2 {
+                        let major = parts[0].parse().unwrap_or(1);
+                        let minor = parts[1].parse().unwrap_or(8);
+                        let patch = parts.get(2).and_then(|p| p.split('-').next()).and_then(|p| p.parse().ok()).unwrap_or(0);
+                        return (major, minor, patch);
+                    }
+                }
+            }
+        }
+    }
+    (1, 8, 0)
+}
 
 pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> String {
     let mut actual_http_port = settings.http_port;
@@ -8,15 +28,24 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         actual_http_port += 1;
     }
 
+    let sb_version = get_singbox_version();
+    let is_1_11_or_newer = sb_version.0 > 1 || (sb_version.0 == 1 && sb_version.1 >= 11);
+    let is_1_12_or_newer = sb_version.0 > 1 || (sb_version.0 == 1 && sb_version.1 >= 12);
+
+    let mut socks_inbound = json!({
+        "type": "socks",
+        "tag": "socks-in",
+        "listen": if settings.allow_lan { "0.0.0.0" } else { "127.0.0.1" },
+        "listen_port": settings.socks_port,
+    });
+    
+    if !is_1_11_or_newer {
+        socks_inbound["sniff"] = json!(settings.enable_sniffing);
+        socks_inbound["sniff_override_destination"] = json!(settings.enable_sniffing);
+    }
+
     let mut inbounds = vec![
-        json!({
-            "type": "socks",
-            "tag": "socks-in",
-            "listen": if settings.allow_lan { "0.0.0.0" } else { "127.0.0.1" },
-            "listen_port": settings.socks_port,
-            "sniff": settings.enable_sniffing,
-            "sniff_override_destination": settings.enable_sniffing
-        }),
+        socks_inbound,
         json!({
             "type": "http",
             "tag": "http-in",
@@ -26,7 +55,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
     ];
 
     if settings.tun_mode {
-        inbounds.push(json!({
+        let mut tun_inbound = json!({
             "type": "tun",
             "tag": "tun-in",
             "interface_name": "tun0",
@@ -37,9 +66,14 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
             "auto_route": true,
             "strict_route": true,
             "stack": "gvisor",
-            "sniff": settings.enable_sniffing,
-            "sniff_override_destination": settings.enable_sniffing
-        }));
+        });
+        
+        if !is_1_11_or_newer {
+            tun_inbound["sniff"] = json!(settings.enable_sniffing);
+            tun_inbound["sniff_override_destination"] = json!(settings.enable_sniffing);
+        }
+        
+        inbounds.push(tun_inbound);
     }
 
     let qp = &parsed_key.query_params;
@@ -52,6 +86,11 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         "server": parsed_key.host,
         "server_port": parsed_key.port,
     });
+    
+    // Add domain_resolver for domain servers in sing-box 1.12+
+    if is_1_12_or_newer && std::net::IpAddr::from_str(&parsed_key.host).is_err() {
+        proxy_outbound["domain_resolver"] = json!("remote-dns");
+    }
 
     if parsed_key.protocol.to_lowercase() == "vless" || parsed_key.protocol.to_lowercase() == "vmess" {
         proxy_outbound["uuid"] = json!(parsed_key.uuid);
@@ -116,11 +155,17 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         });
     }
 
-    if settings.disable_ipv6 {
+    if !is_1_12_or_newer && settings.disable_ipv6 {
         proxy_outbound["domain_strategy"] = json!("ipv4_only");
     }
 
     let mut rules = vec![];
+    
+    if is_1_11_or_newer && settings.enable_sniffing {
+        rules.push(json!({
+            "action": "sniff"
+        }));
+    }
 
     if settings.disable_ipv6 {
         rules.push(json!({
@@ -194,12 +239,12 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
 
             if rule.type_ == "domain" {
                 rules.push(json!({
-                    "domain": [rule.value],
+                    "domain": [rule.value.clone()],
                     "outbound": action_tag
                 }));
             } else if rule.type_ == "ip" {
                 rules.push(json!({
-                    "ip_cidr": [rule.value],
+                    "ip_cidr": [rule.value.clone()],
                     "outbound": action_tag
                 }));
             } else if rule.type_ == "srs_url" {
@@ -208,7 +253,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
                     "tag": srs_tag.clone(),
                     "type": "remote",
                     "format": "binary",
-                    "url": rule.value,
+                    "url": rule.value.clone(),
                     "download_detour": "direct"
                 }));
                 rules.push(json!({
@@ -219,13 +264,17 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         }
     }
 
+    let mut direct_outbound = json!({
+        "type": "direct",
+        "tag": "direct"
+    });
+    if !is_1_12_or_newer && settings.disable_ipv6 {
+        direct_outbound["domain_strategy"] = json!("ipv4_only");
+    }
+
     let outbounds = vec![
         proxy_outbound,
-        json!({
-            "type": "direct",
-            "tag": "direct",
-            "domain_strategy": if settings.disable_ipv6 { "ipv4_only" } else { "" }
-        }),
+        direct_outbound,
         json!({
             "type": "block",
             "tag": "block"
@@ -237,40 +286,68 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         "auto_detect_interface": true,
         "final": "proxy"
     });
+    
+    if is_1_12_or_newer {
+        route_config["default_domain_resolver"] = json!("remote-dns");
+    }
 
     if !rule_sets.is_empty() {
         route_config["rule_set"] = json!(rule_sets);
     }
 
+    let mut remote_dns = json!({
+        "tag": "remote-dns",
+        "type": "https",
+        "server": "1.1.1.1",
+        "detour": "proxy"
+    });
+    
+    let mut local_dns = json!({
+        "tag": "local-dns",
+        "type": "local",
+        "detour": "direct"
+    });
+
+    if is_1_12_or_newer && settings.disable_ipv6 {
+        remote_dns["strategy"] = json!("ipv4_only");
+        local_dns["strategy"] = json!("ipv4_only");
+    }
+
+    let mut dns_rules = vec![];
+
+    if is_1_12_or_newer && settings.disable_ipv6 {
+        dns_rules.push(json!({
+            "ip_version": 6,
+            "action": "reject",
+            "method": "drop"
+        }));
+    }
+
+    if !active_rule_sets.is_empty() {
+        dns_rules.push(json!({
+            "rule_set": active_rule_sets.clone(),
+            "server": "local-dns"
+        }));
+    }
+    
+    if !is_1_12_or_newer && active_rule_sets.is_empty() {
+        dns_rules.push(json!({
+            "outbound": "any",
+            "server": "local-dns"
+        }));
+    }
+
     let dns_config = json!({
         "servers": [
-            {
-                "tag": "remote-dns",
-                "type": "https",
-                "server": "1.1.1.1",
-                "detour": "proxy"
-            },
-            {
-                "tag": "local-dns",
-                "type": "local",
-                "detour": "direct"
-            }
+            remote_dns,
+            local_dns
         ],
-        "rules": [
-            {
-                "outbound": "any",
-                "server": "local-dns"
-            },
-            {
-                "rule_set": active_rule_sets.clone(),
-                "server": "local-dns"
-            }
-        ],
+        "rules": dns_rules,
         "final": "remote-dns",
         "independent_cache": true
     });
 
-    let mut root = json!({
+    let root = json!({
         "log": {
             "level": settings.log_level,
             "timestamp": true
@@ -280,15 +357,6 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         "outbounds": outbounds,
         "route": route_config
     });
-
-    if active_rule_sets.is_empty() {
-        root["dns"]["rules"] = json!([
-            {
-                "outbound": "any",
-                "server": "local-dns"
-            }
-        ]);
-    }
 
     serde_json::to_string_pretty(&root).unwrap_or_else(|_| "{}".to_string())
 }

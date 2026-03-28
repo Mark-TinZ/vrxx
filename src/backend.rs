@@ -100,16 +100,31 @@ Please install it (e.g., via your package manager) or select another core in Set
 
             // Проверяем права cap_net_admin для TUN режима
             let cap_check = Command::new("getcap").arg(&core_path).output();
-            let has_caps = match cap_check {
+            let mut has_caps = match cap_check {
                 Ok(out) => String::from_utf8_lossy(&out.stdout).contains("cap_net_admin"),
                 Err(_) => false,
             };
             
             if !has_caps {
-                return Err(anyhow!("TUN mode is enabled, but the executable {core_to_check} lacks necessary permissions (cap_net_admin).
+                tracing::info!("TUN mode lacks cap_net_admin. Attempting to set capabilities via pkexec...");
+                let pkexec_res = Command::new("pkexec")
+                    .arg("setcap")
+                    .arg("cap_net_admin=ep")
+                    .arg(&core_path)
+                    .output();
+                
+                if let Ok(out) = pkexec_res {
+                    if out.status.success() {
+                        has_caps = true;
+                        tracing::info!("Successfully set capabilities via pkexec for {}", core_path);
+                    } else {
+                        tracing::warn!("pkexec failed: {}", String::from_utf8_lossy(&out.stderr));
+                    }
+                }
 
-Run in terminal:
-sudo setcap cap_net_admin=ep {core_path}"));
+                if !has_caps {
+                    return Err(anyhow!("TUN mode is enabled, but the executable {core_to_check} lacks necessary permissions (cap_net_admin).\n\nRun in terminal:\nsudo setcap cap_net_admin=ep {core_path}"));
+                }
             }
         }
 
