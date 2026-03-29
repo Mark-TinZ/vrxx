@@ -913,3 +913,28 @@ msgstr "Content"
 
 #~ msgid "Прокси"
 #~ msgstr "Прокси"
+
+#: src/ui/pages/whitelist_page.ui:100
+msgid "Predefined Regional Rules"
+msgstr "Predefined Regional Rules"
+
+#: src/ui/pages/whitelist_page.ui:101
+msgid "Quick toggles for RU, CN, IR"
+msgstr "Quick toggles for RU, CN, IR"
+
+#: src/ui/pages/whitelist_page.ui:104
+msgid "Russia (RU)"
+msgstr "Russia (RU)"
+
+#: src/ui/pages/whitelist_page.ui:109
+msgid "China (CN)"
+msgstr "China (CN)"
+
+#: src/ui/pages/whitelist_page.ui:114
+msgid "Iran (IR)"
+msgstr "Iran (IR)"
+
+#: src/ui/pages/whitelist_page.ui:119
+msgid "Antifilter (blocked domains)"
+msgstr "Antifilter (blocked domains)"
+

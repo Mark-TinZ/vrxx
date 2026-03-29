@@ -172,30 +172,36 @@
                 </child>
 
                 <child>
-                  <object class="AdwExpanderRow" id="mux_row">
-                    <property name="title" translatable="yes">Multiplexing (Mux)</property>
-                    <property name="subtitle" translatable="yes">Speeds up connections but may cause instability</property>
-                    <property name="show-enable-switch">True</property>
+                  <object class="AdwExpanderRow" id="advanced_network_expander">
+                    <property name="title" translatable="yes">Advanced Settings</property>
+                    
                     <child>
-                        <object class="AdwSpinRow" id="mux_concurrency_row">
-                            <property name="title">Concurrency</property>
-                            <property name="adjustment">
-                                <object class="GtkAdjustment">
-                                    <property name="lower">-1</property>
-                                    <property name="upper">1024</property>
-                                    <property name="value">8</property>
-                                    <property name="step-increment">1</property>
-                                </object>
-                            </property>
-                        </object>
+                      <object class="AdwExpanderRow" id="mux_row">
+                        <property name="title" translatable="yes">Multiplexing (Mux)</property>
+                        <property name="subtitle" translatable="yes">Speeds up connections but may cause instability</property>
+                        <property name="show-enable-switch">True</property>
+                        <child>
+                            <object class="AdwSpinRow" id="mux_concurrency_row">
+                                <property name="title">Concurrency</property>
+                                <property name="adjustment">
+                                    <object class="GtkAdjustment">
+                                        <property name="lower">-1</property>
+                                        <property name="upper">1024</property>
+                                        <property name="value">8</property>
+                                        <property name="step-increment">1</property>
+                                    </object>
+                                </property>
+                            </object>
+                        </child>
+                      </object>
                     </child>
-                  </object>
-                </child>
 
-                <child>
-                  <object class="AdwSwitchRow" id="fragment_row">
-                    <property name="title" translatable="yes">Fragmentation (Fragment)</property>
-                    <property name="subtitle" translatable="yes">Split packets to bypass DPI (TCP/TLS only)</property>
+                    <child>
+                      <object class="AdwSwitchRow" id="fragment_row">
+                        <property name="title" translatable="yes">Fragmentation (Fragment)</property>
+                        <property name="subtitle" translatable="yes">Split packets to bypass DPI (TCP/TLS only)</property>
+                      </object>
+                    </child>
                   </object>
                 </child>
 

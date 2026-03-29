@@ -61,17 +61,29 @@ fn main() -> glib::ExitCode {
     std::fs::create_dir_all(&log_dir).ok();
     
     // Пишем логи приложения в отдельный файл app.log и all.log
-    let app_log_file = std::fs::OpenOptions::new()
+    let app_log_file = match std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(log_dir.join("app.log"))
-        .unwrap_or_else(|_| std::fs::File::create("app.log").unwrap());
+    {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("Warning: Failed to open app.log: {}. Using /dev/null", e);
+            std::fs::OpenOptions::new().write(true).open("/dev/null").unwrap_or_else(|_| std::process::exit(1))
+        }
+    };
 
-    let all_log_file = std::fs::OpenOptions::new()
+    let all_log_file = match std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(log_dir.join("all.log"))
-        .unwrap_or_else(|_| std::fs::File::create("all.log").unwrap());
+    {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("Warning: Failed to open all.log: {}. Using /dev/null", e);
+            std::fs::OpenOptions::new().write(true).open("/dev/null").unwrap_or_else(|_| std::process::exit(1))
+        }
+    };
 
     let multi_writer = MultiWriter {
         app_log: app_log_file,
@@ -89,15 +101,23 @@ fn main() -> glib::ExitCode {
 
     // Инициализируем Gettext
     setlocale(LocaleCategory::LcAll, "");
-    bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR).expect("Unable to bind the text domain");
-    bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8").expect("Unable to set the text domain encoding");
-    textdomain(GETTEXT_PACKAGE).expect("Unable to switch to the text domain");
+    if let Err(e) = bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR) {
+        eprintln!("Unable to bind the text domain: {}", e);
+    }
+    if let Err(e) = bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8") {
+        eprintln!("Unable to set the text domain encoding: {}", e);
+    }
+    if let Err(e) = textdomain(GETTEXT_PACKAGE) {
+        eprintln!("Unable to switch to the text domain: {}", e);
+    }
 
     // Загружаем ресурсы
     let res_data = include_bytes!(concat!(env!("OUT_DIR"), "/vrxx.gresource"));
-    let res = gio::Resource::from_data(&glib::Bytes::from(res_data))
-        .expect("Failed to load compiled resources");
-    gio::resources_register(&res);
+    if let Ok(res) = gio::Resource::from_data(&glib::Bytes::from(res_data)) {
+        gio::resources_register(&res);
+    } else {
+        eprintln!("Failed to load compiled resources");
+    }
 
     // Устанавливаем перехватчик логов GLib/GTK
     glib::log_set_writer_func(move |log_level, log_fields| {

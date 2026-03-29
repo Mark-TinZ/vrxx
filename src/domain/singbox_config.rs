@@ -309,8 +309,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
     });
 
     if is_1_12_or_newer && settings.disable_ipv6 {
-        remote_dns["strategy"] = json!("ipv4_only");
-        local_dns["strategy"] = json!("ipv4_only");
+        // dns rules reject ipv6
     }
 
     let mut dns_rules = vec![];
@@ -355,7 +354,12 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         "dns": dns_config,
         "inbounds": inbounds,
         "outbounds": outbounds,
-        "route": route_config
+        "route": route_config,
+        "experimental": {
+            "clash_api": {
+                "external_controller": "127.0.0.1:9090"
+            }
+        }
     });
 
     serde_json::to_string_pretty(&root).unwrap_or_else(|_| "{}".to_string())
@@ -389,5 +393,67 @@ mod tests {
         assert_eq!(proxy_outbound["type"], "vless");
         assert_eq!(proxy_outbound["server"], "example.com");
         assert_eq!(proxy_outbound["uuid"], "uuid-123");
+    }
+
+    #[test]
+    fn test_singbox_config_validity_permutations() {
+        use std::process::Command;
+        use std::fs::File;
+        use std::io::Write;
+
+        // Skip test if sing-box is not installed or lacks v2ray_api
+        let version_out = Command::new("sing-box").arg("version").output();
+        if version_out.is_err() {
+            println!("sing-box not installed, skipping test");
+            return;
+        }
+        let v_out = String::from_utf8_lossy(&version_out.unwrap().stdout).to_lowercase();
+        if !v_out.contains("with_v2ray_api") && v_out.contains("tags:") {
+            println!("sing-box lacks with_v2ray_api, skipping test");
+            return;
+        }
+
+        let key = ParsedKey {
+            protocol: "VLESS".to_string(),
+            name: "Test".to_string(),
+            host: "example.com".to_string(),
+            port: 443,
+            uuid: "uuid-123".to_string(),
+            query_params: HashMap::new(),
+            raw_url: "vless://...".to_string(),
+        };
+
+        let toggles = [false, true];
+        for &ipv6 in &toggles {
+            for &ru in &toggles {
+                for &cn in &toggles {
+                    for &ir in &toggles {
+                        let mut settings = AppSettings::new();
+                        settings.socks_port = 1080;
+                        settings.disable_ipv6 = ipv6;
+                        settings.route_ru = ru;
+                        settings.route_cn = cn;
+                        settings.route_ir = ir;
+                        settings.enable_routing = ru || cn || ir;
+                        
+                        let json_str = build_singbox_config(&key, &settings);
+                        
+                        let temp_file_path = format!("/tmp/vrxx_singbox_test_{}_{}_{}_{}.json", ipv6, ru, cn, ir);
+                        let mut file = File::create(&temp_file_path).unwrap();
+                        file.write_all(json_str.as_bytes()).unwrap();
+                        
+                        let output = Command::new("sing-box")
+                            .args(["check", "-c", &temp_file_path])
+                            .output()
+                            .expect("Failed to execute sing-box check");
+                        
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        assert!(output.status.success(), "Sing-box check failed for toggles (IPv6: {}, RU: {}, CN: {}, IR: {}):\n{}", ipv6, ru, cn, ir, stderr);
+                        
+                        std::fs::remove_file(temp_file_path).unwrap();
+                    }
+                }
+            }
+        }
     }
 }

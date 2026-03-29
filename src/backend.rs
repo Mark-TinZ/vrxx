@@ -77,8 +77,9 @@ Please install it (e.g., via your package manager) or select another core in Set
 
             if bin_name == "xray" {
                 let check_tun2socks = Command::new("which").arg("tun2socks").output();
-                if check_tun2socks.is_err() || !check_tun2socks.unwrap().status.success() {
-                    return Err(anyhow!("Xray requires 'tun2socks' for TUN mode. Please install 'tun2socks' or switch to Sing-box."));
+                match check_tun2socks {
+                    Ok(out) if out.status.success() => {},
+                    _ => return Err(anyhow!("Xray requires 'tun2socks' for TUN mode. Please install 'tun2socks' or switch to Sing-box.")),
                 }
             }
 

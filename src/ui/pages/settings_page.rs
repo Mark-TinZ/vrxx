@@ -121,25 +121,26 @@ impl VrxxSettingsPage {
         imp.btn_apply.set_visible(false);
 
         if lang_changed {
-            let window = self.root().and_downcast::<gtk::Window>().unwrap();
-            let dialog = adw::AlertDialog::builder()
-                .heading("Restart Required")
-                .body("You have changed the language. The application needs to restart to apply the new language. Restart now?")
-                .build();
+            if let Some(window) = self.root().and_downcast::<gtk::Window>() {
+                let dialog = adw::AlertDialog::builder()
+                    .heading("Restart Required")
+                    .body("You have changed the language. The application needs to restart to apply the new language. Restart now?")
+                    .build();
+                    
+                dialog.add_response("cancel", "Cancel");
+                dialog.add_response("restart", "Restart");
+                dialog.set_response_appearance("restart", adw::ResponseAppearance::Destructive);
                 
-            dialog.add_response("cancel", "Cancel");
-            dialog.add_response("restart", "Restart");
-            dialog.set_response_appearance("restart", adw::ResponseAppearance::Destructive);
-            
-            gtk::glib::MainContext::default().spawn_local(async move {
-                let response = dialog.choose_future(Some(&window)).await;
-                if response == "restart" {
-                    if let Ok(exe) = std::env::current_exe() {
-                        let _ = std::process::Command::new(exe).spawn();
-                        std::process::exit(0);
+                gtk::glib::MainContext::default().spawn_local(async move {
+                    let response = dialog.choose_future(Some(&window)).await;
+                    if response == "restart" {
+                        if let Ok(exe) = std::env::current_exe() {
+                            let _ = std::process::Command::new(exe).spawn();
+                            std::process::exit(0);
+                        }
                     }
-                }
-            });
+                });
+            }
         } else {
             self.show_restart_core_toast();
         }
@@ -207,9 +208,11 @@ impl VrxxSettingsPage {
             #[weak(rename_to = page)] self, move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
-                s.core = if row.selected() == 1 { "sing-box".to_string() } else { "xray".to_string() };
+                let is_singbox = row.selected() == 1;
+                s.core = if is_singbox { "sing-box".to_string() } else { "xray".to_string() };
                 manager.save(&s);
                 page.update_core_info();
+                page.imp().fragment_row.set_visible(!is_singbox);
                 page.mark_changed(false);
             }
         ));

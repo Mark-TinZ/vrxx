@@ -94,11 +94,13 @@
                                   <object class="GtkLabel" id="active_server_name">
                                     <property name="label">Server Name</property>
                                     <property name="halign">start</property>
+                                    <property name="ellipsize">end</property>
+                                    <property name="max-width-chars">15</property>
                                     <style><class name="heading"/></style>
                                   </object>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel">
+                                  <object class="GtkLabel" id="active_connection_timer">
                                     <property name="label" translatable="yes">Connected</property>
                                     <property name="halign">start</property>
                                     <style><class name="dim-label"/></style>
@@ -127,6 +129,11 @@
                                 <child>
                                   <object class="GtkLabel" id="active_server_details">
                                     <property name="label">Protocol: Unknown</property>
+                                  </object>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel" id="active_server_traffic">
+                                    <property name="label">↓ 0 B | ↑ 0 B</property>
                                   </object>
                                 </child>
                               </object>

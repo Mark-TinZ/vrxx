@@ -195,7 +195,10 @@ impl SettingsManager {
 
     pub fn save(&self, settings: &AppSettings) {
         if let Ok(content) = serde_json::to_string_pretty(settings) {
-            fs::write(&self.config_path, content).ok();
+            let path = self.config_path.clone();
+            std::thread::spawn(move || {
+                std::fs::write(&path, content).ok();
+            });
         }
     }
 

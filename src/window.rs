@@ -21,6 +21,10 @@ mod imp {
         pub active_server_name: TemplateChild<gtk::Label>,
         #[template_child]
         pub active_server_details: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub active_connection_timer: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub active_server_traffic: TemplateChild<gtk::Label>,
     }
 
     #[glib::object_subclass]
@@ -136,5 +140,10 @@ impl VrxxWindow {
             imp.active_connection_btn.set_visible(false);
         }
     }
-}
 
+    pub fn update_stats(&self, time: &str, down: &str, up: &str) {
+        let imp = self.imp();
+        imp.active_connection_timer.set_label(time);
+        imp.active_server_traffic.set_label(&format!("↓ {} | ↑ {}", down, up));
+    }
+}

@@ -1057,3 +1057,28 @@ msgstr "Контент"
 #~ "\n"
 #~ "Выполните в терминале:\n"
 #~ "sudo setcap cap_net_admin=ep {core_path}"
+
+#: src/ui/pages/whitelist_page.ui:100
+msgid "Predefined Regional Rules"
+msgstr "Региональные правила"
+
+#: src/ui/pages/whitelist_page.ui:101
+msgid "Quick toggles for RU, CN, IR"
+msgstr "Быстрые переключатели для RU, CN, IR"
+
+#: src/ui/pages/whitelist_page.ui:104
+msgid "Russia (RU)"
+msgstr "Россия (RU)"
+
+#: src/ui/pages/whitelist_page.ui:109
+msgid "China (CN)"
+msgstr "Китай (CN)"
+
+#: src/ui/pages/whitelist_page.ui:114
+msgid "Iran (IR)"
+msgstr "Иран (IR)"
+
+#: src/ui/pages/whitelist_page.ui:119
+msgid "Antifilter (blocked domains)"
+msgstr "Антизапрет (заблокированные домены)"
+

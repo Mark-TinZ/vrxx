@@ -121,12 +121,15 @@ impl VrxxVpnPage {
                 model.append(&key_obj);
                 
                 if auto_connect && k.is_active {
-                    // Задержка перед подключением, чтобы UI успел загрузиться
                     let key_clone = key_obj.clone();
                     let page_weak = self.downgrade();
-                    glib::timeout_add_local_once(std::time::Duration::from_millis(800), move || {
+                    
+                    self.connect_map(move |_| {
                         if let Some(page) = page_weak.upgrade() {
-                            page.set_active_key(&key_clone);
+                            // Run only once by checking if we are already connected
+                            if !page.imp().backend.borrow().is_running() {
+                                page.set_active_key(&key_clone);
+                            }
                         }
                     });
                 } else if !auto_connect && k.is_active {
@@ -390,38 +393,52 @@ impl VrxxVpnPage {
                                     let bin_name = if core_bin == "sing-box" { "sing-box" } else { "xray" };
                                     
                                     let should_stats = elapsed % 3 == 0;
-                                    
-                                    if bin_name == "xray" && should_stats && imp.backend.borrow().is_running() {
+                                    let page_clone = page.clone();
+
+                                    if should_stats && imp.backend.borrow().is_running() {
                                         glib::spawn_future_local(async move {
-                                            let args = [
-                                                std::ffi::OsStr::new("xray"), 
-                                                std::ffi::OsStr::new("api"), 
-                                                std::ffi::OsStr::new("statsquery"), 
-                                                std::ffi::OsStr::new("-server=127.0.0.1:10085")
-                                            ];
+                                            let mut args: Vec<&std::ffi::OsStr> = Vec::new();
+                                            if bin_name == "xray" {
+                                                args.push(std::ffi::OsStr::new("xray"));
+                                                args.push(std::ffi::OsStr::new("api"));
+                                                args.push(std::ffi::OsStr::new("statsquery"));
+                                                args.push(std::ffi::OsStr::new("-server=127.0.0.1:10085"));
+                                            } else {
+                                                args.push(std::ffi::OsStr::new("curl"));
+                                                args.push(std::ffi::OsStr::new("-s"));
+                                                args.push(std::ffi::OsStr::new("http://127.0.0.1:9090/connections"));
+                                            }
+                                            
                                             if let Ok(subprocess) = gio::Subprocess::newv(&args, gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE) {
                                                 if let Ok((Some(stdout_bytes), _)) = subprocess.communicate_future(None).await {
                                                     let stdout_str = String::from_utf8_lossy(&stdout_bytes);
                                                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&stdout_str) {
                                                         let mut total_down: u64 = 0;
                                                         let mut total_up: u64 = 0;
-                                                        if let Some(stats) = json.get("stat").and_then(|s| s.as_array()) {
-                                                            for stat in stats {
-                                                                if let (Some(name), Some(value)) = (stat.get("name").and_then(|n| n.as_str()), stat.get("value").and_then(|v| {
-                                                                    if v.is_string() { Some(v.as_str().unwrap_or("0").to_string()) }
-                                                                    else if v.is_number() { Some(v.to_string()) }
-                                                                    else { None }
-                                                                })) {
-                                                                    if let Ok(val) = value.parse::<u64>() {
-                                                                        if name.ends_with("downlink") {
-                                                                            total_down += val;
-                                                                        } else if name.ends_with("uplink") {
-                                                                            total_up += val;
+                                                        
+                                                        if bin_name == "xray" {
+                                                            if let Some(stats) = json.get("stat").and_then(|s| s.as_array()) {
+                                                                for stat in stats {
+                                                                    if let (Some(name), Some(value)) = (stat.get("name").and_then(|n| n.as_str()), stat.get("value").and_then(|v| {
+                                                                        if v.is_string() { Some(v.as_str().unwrap_or("0").to_string()) }
+                                                                        else if v.is_number() { Some(v.to_string()) }
+                                                                        else { None }
+                                                                    })) {
+                                                                        if let Ok(val) = value.parse::<u64>() {
+                                                                            if name.ends_with("downlink") {
+                                                                                total_down += val;
+                                                                            } else if name.ends_with("uplink") {
+                                                                                total_up += val;
+                                                                            }
                                                                         }
                                                                     }
                                                                 }
                                                             }
+                                                        } else {
+                                                            total_down = json.get("downloadTotal").and_then(|v| v.as_u64()).unwrap_or(0);
+                                                            total_up = json.get("uploadTotal").and_then(|v| v.as_u64()).unwrap_or(0);
                                                         }
+                                                        
                                                         if total_down > 0 || total_up > 0 {
                                                             let format_bytes = |b: u64| -> String {
                                                                 let tb = 1_099_511_627_776_f64;
@@ -436,8 +453,18 @@ impl VrxxVpnPage {
                                                                 else if bf >= kb { format!("{:.0} KB", bf / kb) }
                                                                 else { format!("{b} B") }
                                                             };
-                                                            item_clone_stats.set_traffic_down(format_bytes(total_down));
-                                                            item_clone_stats.set_traffic_up(format_bytes(total_up));
+                                                            let down_str = format_bytes(total_down);
+                                                            let up_str = format_bytes(total_up);
+                                                            item_clone_stats.set_traffic_down(down_str.clone());
+                                                            item_clone_stats.set_traffic_up(up_str.clone());
+                                                            
+                                                            if let Some(w) = page_clone.root().and_downcast::<crate::window::VrxxWindow>() {
+                                                                w.update_stats(
+                                                                    &item_clone_stats.time_connected(),
+                                                                    &down_str,
+                                                                    &up_str
+                                                                );
+                                                            }
                                                         }
                                                     }
                                                 }
