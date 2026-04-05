@@ -4,34 +4,24 @@ plan: 03
 type: execute
 wave: 2
 depends_on: [01, 02]
-files_modified: [src/ui/pages/proxy_page.rs, src/ui/pages/proxy_page.ui, src/backend.rs, src/application.rs]
+files_modified: [src/ui/pages/proxy_page.rs, src/ui/pages/proxy_page.ui, src/backend.rs, src/ui/pages/vpn_page.rs, src/ui/proxy_tests.rs]
 autonomous: false
 requirements: [NET-01, NET-02]
 
 must_haves:
   truths:
-    - "User can toggle 'TUN Mode' in the UI"
-    - "Toggling 'System Proxy' updates GNOME system settings"
-    - "Enabling TUN mode correctly communicates with the daemon via D-Bus"
+    - "User can toggle 'TUN Mode' in the UI and it persists"
+    - "System Proxy toggle updates GSettings 'org.gnome.system.proxy' mode"
+    - "Starting proxy with TUN mode sends 'tun_mode: true' via D-Bus"
   artifacts:
     - path: "src/ui/pages/proxy_page.rs"
-      provides: "UI for networking controls"
-    - path: "src/backend.rs"
-      provides: "GSettings and D-Bus integration logic"
-  key_links:
-    - from: "src/ui/pages/proxy_page.rs"
-      to: "src/backend.rs"
-      via: "method calls"
-    - from: "src/backend.rs"
-      to: "org.gnome.system.proxy GSettings"
-      via: "gio crate"
+      provides: "UI integration for networking"
+    - path: "src/ui/proxy_tests.rs"
+      provides: "Integration tests for GSettings"
 ---
 
 <objective>
-Implement the UI switches for TUN mode and system proxy. Configure GNOME system-wide proxy settings using GSettings.
-
-Purpose: Provide user control over the networking modes.
-Output: Integrated UI for networking settings, functioning GSettings proxy toggle.
+Implement the UI networking switches, wire them to the daemon IPC, and implement GSettings proxy configuration.
 </objective>
 
 <execution_context>
@@ -42,6 +32,7 @@ Output: Integrated UI for networking settings, functioning GSettings proxy toggl
 <context>
 @.planning/ROADMAP.md
 @.planning/phases/03-networking-routing/03-RESEARCH.md
+@.planning/phases/03-networking-routing/03-networking-routing-VALIDATION.md
 @src/ui/pages/proxy_page.rs
 @src/ui/pages/proxy_page.ui
 @src/backend.rs
@@ -51,50 +42,42 @@ Output: Integrated UI for networking settings, functioning GSettings proxy toggl
 <tasks>
 
 <task type="auto">
-  <name>Task 1: Add TUN mode switch to the UI</name>
-  <files>src/ui/pages/proxy_page.ui, src/ui/pages/proxy_page.rs</files>
+  <name>Task 1: Update UI and wire switches to logic</name>
+  <files>src/ui/pages/proxy_page.ui, src/ui/pages/proxy_page.rs, src/ui/proxy_tests.rs</files>
   <action>
-    - Add a new `adw::SwitchRow` for "TUN Mode" to `proxy_page.ui` above "System Proxy".
-    - Update `src/ui/pages/proxy_page.rs` to bind the new switch.
-    - Set its state based on `settings.tun_mode`.
-    - Connect signals to save the new setting and mark changes.
+    - Add `adw::SwitchRow` for "TUN Mode" to `proxy_page.ui`.
+    - Update `src/ui/pages/proxy_page.rs` to handle switch toggles and save to `settings.tun_mode`.
+    - Ensure the "System Proxy" switch calls `CoreBackend::update_system_proxy`.
+    - Create `src/ui/proxy_tests.rs` with `test_proxy_toggle` to verify GSettings interaction.
   </action>
   <verify>
     <automated>cargo check</automated>
   </verify>
-  <done>TUN mode switch is present and functional in the UI.</done>
+  <done>UI controls are integrated and functional.</done>
 </task>
 
 <task type="auto">
-  <name>Task 2: Implement GNOME system proxy via GSettings</name>
-  <files>src/backend.rs</files>
+  <name>Task 2: Implement GSettings proxy and wire TUN Mode to IPC</name>
+  <files>src/backend.rs, src/ui/pages/vpn_page.rs</files>
   <action>
-    - Update `src/backend.rs` to implement `update_system_proxy(enabled: bool, host: &str, http_port: u16, socks_port: u16)`.
-    - Use the `gio` crate to access `org.gnome.system.proxy` GSettings schema.
-    - If `enabled`:
-      - Set `mode` to "manual".
-      - Set `org.gnome.system.proxy.http` (host, port).
-      - Set `org.gnome.system.proxy.https` (host, port).
-      - Set `org.gnome.system.proxy.socks` (host, port).
-    - If `!enabled`:
-      - Set `mode` to "none".
+    - Update `src/backend.rs` to implement `update_system_proxy` using `gio` to set "org.gnome.system.proxy" mode.
+    - Update the `start_proxy` call in `src/ui/pages/vpn_page.rs` (and any other place) to include the `tun_mode` parameter from settings.
   </action>
   <verify>
     <automated>cargo check</automated>
   </verify>
-  <done>GNOME system proxy configuration is implemented.</done>
+  <done>System proxy logic and IPC wiring are complete.</done>
 </task>
 
 <task type="checkpoint:human-verify">
-  <name>Task 3: Integration verification</name>
-  <what-built>Full networking and routing integration</what-built>
+  <name>Task 3: Full networking verification</name>
+  <what-built>Full end-to-end networking stack</what-built>
   <how-to-verify>
-    1. Run the application (`ninja -C builddir && builddir/src/vrxx`).
-    2. Go to the Proxy page.
-    3. Toggle "System Proxy" ON and check GNOME Settings -> Network -> Proxy.
-    4. Toggle "TUN Mode" ON and connect.
-    5. Verify a "vrxx-tun" interface exists: `ip addr show vrxx-tun`.
-    6. Verify system traffic routes through proxy (e.g., `curl -v https://google.com`).
+    1. Build and run: `ninja -C builddir && builddir/src/vrxx`.
+    2. Toggle "System Proxy" and check `gsettings get org.gnome.system.proxy mode`.
+    3. Toggle "TUN Mode" and connect.
+    4. Run `ip addr show vrxx-tun` to confirm interface exists.
+    5. Confirm DNS is routed: `resolvectl dns vrxx-tun` should show 172.19.0.1.
   </how-to-verify>
   <resume-signal>approved</resume-signal>
 </task>
@@ -102,14 +85,14 @@ Output: Integrated UI for networking settings, functioning GSettings proxy toggl
 </tasks>
 
 <verification>
-Automated: `cargo check`.
-Manual: UI interaction and system status check.
+Automated: `cargo check` and `cargo test src/ui/proxy_tests.rs`.
+Manual: UI and system check.
 </verification>
 
 <success_criteria>
-1. User can toggle TUN and System Proxy in the UI.
-2. System proxy correctly updates GNOME settings.
-3. TUN mode creates a functional network interface.
+1. UI reflects networking settings accurately.
+2. GSettings are updated correctly by the unprivileged client.
+3. Proxy connects with TUN mode, creating a functional interface and DNS setup.
 </success_criteria>
 
 <output>

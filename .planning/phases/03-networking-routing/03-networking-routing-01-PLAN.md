@@ -4,34 +4,27 @@ plan: 01
 type: execute
 wave: 1
 depends_on: []
-files_modified: [src/daemon/network.rs, src/daemon/dns.rs, src/daemon/mod.rs, src/ipc.rs, Cargo.toml]
+files_modified: [src/daemon/network.rs, src/daemon/dns.rs, src/daemon/mod.rs, src/ipc.rs, src/daemon/tests.rs, Cargo.toml]
 autonomous: true
 requirements: [NET-01]
 
 must_haves:
   truths:
-    - "Daemon can create a named TUN interface (e.g., vrxx-tun)"
-    - "Daemon can set IP and bring interface UP using rtnetlink"
-    - "Daemon can configure DNS via systemd-resolved D-Bus"
+    - "Daemon can create a named TUN interface (vrxx-tun)"
+    - "Daemon can set IP 172.19.0.1 and bring interface UP using rtnetlink"
+    - "Daemon can configure routing tables and IP rules for vrxx-tun (to capture system traffic)"
+    - "Daemon can configure DNS via systemd-resolved D-Bus, pointing to 172.19.0.1"
   artifacts:
     - path: "src/daemon/network.rs"
-      provides: "TUN device management"
+      provides: "TUN device and routing management"
     - path: "src/daemon/dns.rs"
       provides: "systemd-resolved integration"
-  key_links:
-    - from: "src/daemon/mod.rs"
-      to: "src/daemon/network.rs"
-      via: "module integration"
-    - from: "src/daemon/mod.rs"
-      to: "src/daemon/dns.rs"
-      via: "module integration"
+    - path: "src/daemon/tests.rs"
+      provides: "Integration tests for networking"
 ---
 
 <objective>
-Implement the privileged networking foundation in the daemon. This includes TUN device management and system DNS protection via systemd-resolved.
-
-Purpose: Provide the necessary privileges and low-level networking capabilities for transparent proxying.
-Output: New network and DNS modules in the daemon, extended D-Bus interface.
+Implement the privileged networking foundation in the daemon, including TUN device management, system routing/rules, and system DNS protection.
 </objective>
 
 <execution_context>
@@ -42,6 +35,7 @@ Output: New network and DNS modules in the daemon, extended D-Bus interface.
 <context>
 @.planning/ROADMAP.md
 @.planning/phases/03-networking-routing/03-RESEARCH.md
+@.planning/phases/03-networking-routing/03-networking-routing-VALIDATION.md
 @src/daemon/mod.rs
 @src/ipc.rs
 </context>
@@ -49,33 +43,33 @@ Output: New network and DNS modules in the daemon, extended D-Bus interface.
 <tasks>
 
 <task type="auto">
-  <name>Task 1: Add networking dependencies and create TUN manager</name>
-  <files>Cargo.toml, src/daemon/network.rs</files>
+  <name>Task 1: Add networking dependencies and implement TunManager</name>
+  <files>Cargo.toml, src/daemon/network.rs, src/daemon/tests.rs</files>
   <action>
     - Add `tun-rs`, `rtnetlink`, and `zbus` to Cargo.toml.
-    - Create `src/daemon/network.rs` implementing `TunManager`.
-    - `TunManager` should use `tun_rs::Device` to create a TUN device named "vrxx-tun".
-    - Implement `setup_interface` using `rtnetlink` to:
-      1. Set IP address (e.g., 172.19.0.1/30).
+    - Create `src/daemon/network.rs` with `TunManager`.
+    - `TunManager` must create a TUN device named "vrxx-tun".
+    - Use `rtnetlink` to:
+      1. Set IPv4 "172.19.0.1/30".
       2. Set interface UP.
-      3. (Optional) Set routing table rules for Xray if needed later.
+      3. Create a new routing table (e.g., table 100) and add a default route through "vrxx-tun".
+      4. Add an `ip rule` to direct all traffic (except marked traffic) to table 100.
+    - Create `src/daemon/tests.rs` with `test_tun_creation` and `test_routing_rules`.
   </action>
   <verify>
     <automated>cargo check</automated>
   </verify>
-  <done>TUN management code is implemented and compiles.</done>
+  <done>TUN management and routing code is implemented and compiles.</done>
 </task>
 
 <task type="auto">
-  <name>Task 2: Implement DNS integration via systemd-resolved</name>
-  <files>src/daemon/dns.rs</files>
+  <name>Task 2: Implement DnsManager via systemd-resolved</name>
+  <files>src/daemon/dns.rs, src/daemon/tests.rs</files>
   <action>
-    - Create `src/daemon/dns.rs` implementing `DnsManager`.
-    - Use `zbus` to call `org.freedesktop.resolve1.Manager` methods.
-    - Implement `set_dns(iface_index: i32, dns_servers: Vec<String>)`:
-      - Call `SetLinkDNS`.
-      - Call `SetLinkDomains` with `[("~.", true)]` to capture all traffic.
-    - Implement `reset_dns(iface_index: i32)` to revert changes when disconnected.
+    - Create `src/daemon/dns.rs` with `DnsManager`.
+    - Implement `set_dns(iface_index: i32, dns_servers: Vec<String>)` using `zbus` for `SetLinkDNS` and `SetLinkDomains` (with "~.").
+    - Implement `reset_dns(iface_index: i32)` to clear settings.
+    - Add `test_dns_protection` to `src/daemon/tests.rs`.
   </action>
   <verify>
     <automated>cargo check</automated>
@@ -84,16 +78,16 @@ Output: New network and DNS modules in the daemon, extended D-Bus interface.
 </task>
 
 <task type="auto">
-  <name>Task 3: Integrate with Daemon and IPC</name>
-  <files>src/daemon/mod.rs, src/daemon/dns.rs, src/ipc.rs</files>
+  <name>Task 3: Integrate Networking into Daemon and IPC</name>
+  <files>src/daemon/mod.rs, src/ipc.rs</files>
   <action>
-    - Update `src/daemon/mod.rs` to include `network` and `dns` modules.
-    - Add `NetworkManager` to `ProxyManager` struct.
-    - Update `start_proxy` to:
-      1. If TUN mode requested, create TUN device and setup interface.
-      2. If TUN mode requested, configure DNS using `DnsManager`.
-    - Update `stop_proxy` to clean up TUN and DNS.
-    - Update `VrxxDaemon` in `src/ipc.rs` to accept a `tun_mode` flag in `start_proxy` or add a new method.
+    - Add `network` and `dns` modules to `src/daemon/mod.rs`.
+    - Update `ProxyManager` to manage `TunManager` and `DnsManager` lifecycle.
+    - In `start_proxy`, if TUN mode is enabled:
+      1. Create TUN "vrxx-tun" and setup routing rules.
+      2. Set DNS for the TUN interface to "172.19.0.1".
+    - Update `VrxxDaemon` D-Bus interface in `src/ipc.rs` to include a `tun_mode: bool` parameter in `start_proxy`.
+    - Update the `Daemon` proxy trait accordingly.
   </action>
   <verify>
     <automated>cargo check</automated>
@@ -104,14 +98,14 @@ Output: New network and DNS modules in the daemon, extended D-Bus interface.
 </tasks>
 
 <verification>
-Check for compilation and existence of new modules.
-Manual verification of TUN creation will be part of integration testing in later plans.
+Check for compilation and existence of new modules and tests.
 </verification>
 
 <success_criteria>
 1. Daemon compiles with new networking dependencies.
 2. `src/daemon/network.rs` and `src/daemon/dns.rs` exist with requested logic.
-3. IPC interface supports requesting TUN mode.
+3. System routing rules and tables are correctly orchestrated for transparent proxying.
+4. IPC interface supports `tun_mode` parameter.
 </success_criteria>
 
 <output>
