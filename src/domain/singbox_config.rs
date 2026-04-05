@@ -58,7 +58,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         let mut tun_inbound = json!({
             "type": "tun",
             "tag": "tun-in",
-            "interface_name": "tun0",
+            "interface_name": "vrxx-tun",
             "address": [
                 "172.19.0.1/30",
                 "fdfe:dcba:9876::1/126"
@@ -179,10 +179,29 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
             "ip_is_private": true,
             "outbound": "direct"
         }));
+        rules.push(json!({
+            "ip_cidr": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
+            "outbound": "direct"
+        }));
     }
 
     let mut rule_sets = vec![];
     let mut active_rule_sets = vec![];
+
+    if settings.block_ads {
+        let tag = "geosite-category-ads-all";
+        rule_sets.push(json!({
+            "tag": tag,
+            "type": "remote",
+            "format": "binary",
+            "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/main/rule-set/geosite-category-ads-all.srs",
+            "download_detour": "direct"
+        }));
+        rules.push(json!({
+            "rule_set": [tag],
+            "outbound": "block"
+        }));
+    }
 
     if settings.enable_routing {
 

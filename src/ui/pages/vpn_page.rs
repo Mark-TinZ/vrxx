@@ -54,7 +54,7 @@ mod imp {
     impl ObjectImpl for VrxxVpnPage {
         fn constructed(&self) {
             self.parent_constructed();
-            
+
             // Инициализация бэкенда
             self.backend.replace(crate::backend::CoreBackend::new());
 
@@ -63,10 +63,12 @@ mod imp {
             self.obj().setup_callbacks();
             self.obj().start_metrics_timer();
             self.obj().setup_dbus_listener();
+            self.obj().setup_daemon_listener();
 
             setup_primary_menu(&self.primary_menu_btn.get());
         }
     }
+
     impl WidgetImpl for VrxxVpnPage {}
     impl BinImpl for VrxxVpnPage {}
 }
@@ -329,6 +331,90 @@ impl VrxxVpnPage {
                 },
             );
         }
+    }
+
+    fn setup_daemon_listener(&self) {
+        let page_weak = self.downgrade();
+        glib::spawn_future_local(async move {
+            match zbus::Connection::system().await {
+                Ok(conn) => {
+                    match crate::ipc::DaemonProxy::new(&conn).await {
+                        Ok(proxy) => {
+                            use futures_util::StreamExt;
+                            // Initial status
+                            if let Ok(status) = proxy.status().await {
+                                if let Some(page) = page_weak.upgrade() {
+                                    page.handle_daemon_status_change(&status);
+                                }
+                            }
+
+                            // Watch for changes
+                            let mut status_changes = proxy.receive_status_changed().await;
+
+                            while let Some(_) = status_changes.next().await {
+                                if let Ok(status) = proxy.status().await {
+                                    if let Some(page) = page_weak.upgrade() {
+                                        page.handle_daemon_status_change(&status);
+                                    }
+                                }
+                            }
+                        }
+                        Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
+                    }
+                }
+                Err(e) => tracing::error!("Failed to connect to D-Bus System Bus: {}", e),
+            }
+        });
+    }
+
+    fn handle_daemon_status_change(&self, status: &str) {
+        let imp = self.imp();
+        
+        match status {
+            "Connected" => {
+                imp.window_title.set_subtitle(&gettext("Connected"));
+                // Find and update the active item's time metrics
+                if let Some(model) = imp.model.borrow().as_ref() {
+                    for i in 0..model.n_items() {
+                        if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                            if item.is_active() {
+                                item.set_is_loading(false);
+                                item.set_is_error(false);
+                                break;
+                            }
+                        }
+                    }
+                }
+                imp.start_time.replace(Some(std::time::Instant::now()));
+            }
+            "Disconnected" => {
+                imp.window_title.set_subtitle(&gettext("Disconnected"));
+                imp.start_time.replace(None);
+                
+                // Reset all items
+                if let Some(model) = imp.model.borrow().as_ref() {
+                    for i in 0..model.n_items() {
+                        if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                            item.set_is_active(false);
+                            item.set_is_loading(false);
+                        }
+                    }
+                }
+            }
+            "Connecting" => {
+                imp.window_title.set_subtitle(&gettext("Connecting..."));
+            }
+            "Disconnecting" => {
+                imp.window_title.set_subtitle(&gettext("Disconnecting..."));
+            }
+            "Error" => {
+                imp.window_title.set_subtitle(&gettext("Connection error"));
+                // Handle error notification or dialog
+            }
+            _ => {}
+        }
+        
+        self.update_disconnect_action_state();
     }
 
     fn start_metrics_timer(&self) {
@@ -649,32 +735,47 @@ impl VrxxVpnPage {
                 return;
             };
 
-            let backend = self.imp().backend.borrow();
-            tracing::info!("{}", &format!("Connecting to VPN key: {}", active_item.name()));
-            
-            if let Err(e) = backend.start(&config_json) {
-                tracing::error!("{}", &format!("Failed to start backend: {e}"));
-                active_item.set_is_active(false); 
-                active_item.set_is_loading(false);
-                active_item.set_is_error(true);
-                
-                self.imp().start_time.replace(None);
-                self.imp().window_title.set_subtitle(&gettext("Core startup error"));
-                
-                self.save_current_keys();
-                self.update_disconnect_action_state();
-                
-                let dialog = adw::AlertDialog::builder()
-                    .heading(gettext("Connection error"))
-                    .body(e.to_string())
-                    .build();
-                dialog.add_response("ok", &gettext("OK"));
-                if let Some(root) = self.root() {
-                    dialog.present(Some(&root));
+            let core_type = app_settings.core.clone();
+            let tun_mode = app_settings.tun_mode;
+            let page_weak = self.downgrade();
+            let item_clone = active_item.clone();
+
+            glib::spawn_future_local(async move {
+                match zbus::Connection::system().await {
+                    Ok(conn) => {
+                        match crate::ipc::DaemonProxy::new(&conn).await {
+                            Ok(proxy) => {
+                                tracing::info!("Connecting to VPN key via D-Bus: {}", item_clone.name());
+                                if let Err(e) = proxy.start_proxy(core_type, config_json, tun_mode).await {
+                                    tracing::error!("Failed to start backend via D-Bus: {}", e);
+                                    if let Some(page) = page_weak.upgrade() {
+                                        item_clone.set_is_active(false);
+                                        item_clone.set_is_loading(false);
+                                        item_clone.set_is_error(true);
+                                        page.imp().start_time.replace(None);
+                                        page.imp().window_title.set_subtitle(&gettext("Core startup error"));
+                                        page.save_current_keys();
+                                        page.update_disconnect_action_state();
+                                        
+                                        let dialog = adw::AlertDialog::builder()
+                                            .heading(gettext("Connection error"))
+                                            .body(e.to_string())
+                                            .build();
+                                        dialog.add_response("ok", &gettext("OK"));
+                                        if let Some(root) = page.root() {
+                                            dialog.present(Some(&root));
+                                        }
+                                    }
+                                } else {
+                                    tracing::info!("Backend successfully started via D-Bus");
+                                }
+                            }
+                            Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
+                        }
+                    }
+                    Err(e) => tracing::error!("Failed to connect to D-Bus System Bus: {}", e),
                 }
-            } else {
-                tracing::info!("Backend successfully started");
-            }
+            });
         }
     }
 
@@ -1046,35 +1147,23 @@ impl VrxxVpnPage {
 
         // Действие: Disconnect
         let disconnect_action = gio::SimpleAction::new("disconnect", None);
-        let page_weak = self.downgrade();
         disconnect_action.connect_activate(move |_, _| {
-            let page = match page_weak.upgrade() {
-                Some(p) => p,
-                None => return,
-            };
-
-            tracing::info!("Disconnecting VPN");
-            // Остановка бэкенда
-            let backend = page.imp().backend.borrow();
-            if let Err(e) = backend.stop() {
-                tracing::error!("{}", &format!("Error stopping backend: {e}"));
-            }
-
-            // Деактивация всех ключей
-            if let Some(model) = page.imp().model.borrow().as_ref() {
-                for i in 0..model.n_items() {
-                    if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
-                        item.set_is_active(false);
-                        item.set_is_loading(false);
+            tracing::info!("Disconnecting VPN via D-Bus");
+            glib::spawn_future_local(async move {
+                match zbus::Connection::system().await {
+                    Ok(conn) => {
+                        match crate::ipc::DaemonProxy::new(&conn).await {
+                            Ok(proxy) => {
+                                if let Err(e) = proxy.stop_proxy().await {
+                                    tracing::error!("Failed to stop backend via D-Bus: {}", e);
+                                }
+                            }
+                            Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
+                        }
                     }
+                    Err(e) => tracing::error!("Failed to connect to D-Bus System Bus: {}", e),
                 }
-            }
-            
-            page.imp().window_title.set_subtitle(&gettext("Disconnected"));
-            page.imp().start_time.replace(None);
-
-            page.save_current_keys();
-            page.update_disconnect_action_state();
+            });
         });
         action_group.add_action(&disconnect_action);
 

@@ -182,7 +182,7 @@ mod imp {
             buffer.create_tag(Some("app"), &[("foreground", &"#3584e4"), ("weight", &700)]); // GNOME blue
 
             obj.setup_callbacks();
-            obj.start_log_polling();
+            obj.setup_daemon_logs();
         }
     }
     impl WidgetImpl for VrxxLogWindow {}
@@ -308,92 +308,64 @@ impl VrxxLogWindow {
         });
     }
 
-    fn start_log_polling(&self) {
+    fn setup_daemon_logs(&self) {
         let window_weak = self.downgrade();
-        
-        glib::timeout_add_local(std::time::Duration::from_millis(500), move || {
-            if let Some(window) = window_weak.upgrade() {
-                let imp = window.imp();
-                let log_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx").join("logs");
-                let filter_index = imp.dropdown_filter.selected();
-                
-                let file_name = match filter_index {
-                    1 => "core.log",
-                    2 => "app.log",
-                    3 => "access.log",
-                    _ => "all.log",
-                };
-                
-                let log_path = log_dir.join(file_name);
-                
-                if let Ok(mut file) = File::open(&log_path) {
-                    let mut last_pos = *imp.last_pos.borrow();
-                    let len = file.metadata().map(|m| m.len()).unwrap_or(0);
-
-                    // Если файл укоротился (например, после очистки)
-                    if len < last_pos {
-                        last_pos = 0;
-                        imp.text_view.buffer().set_text("");
-                    }
-
-                    if len > last_pos {
-                        let _ = file.seek(SeekFrom::Start(last_pos));
-                        
-                        // Ограничиваем чтение, если файл слишком большой
-                        let to_read = if last_pos == 0 && len > 102400 {
-                            let _ = file.seek(SeekFrom::End(-102400));
-                            102400
-                        } else {
-                            len - last_pos
-                        };
-
-                        let mut buffer_bytes = vec![0u8; to_read as usize];
-                        let _ = file.read_exact(&mut buffer_bytes);
-                        let content = String::from_utf8_lossy(&buffer_bytes);
-                        
-                        let buffer = imp.text_view.buffer();
-                        let mut iter = buffer.end_iter();
-                        
-                        let mut has_new_lines = false;
-
-                        for line in content.lines() {
-                            let tag_name = if filter_index == 1 {
-                                Some("app")
-                            } else if line.contains("ERROR") || line.contains("error") || line.contains("FATAL") {
-                                Some("error")
-                            } else if line.contains("WARN") || line.contains("warning") {
-                                Some("warning")
-                            } else if line.contains("DEBUG") || line.contains("debug") {
-                                Some("debug")
-                            } else {
-                                None
+        glib::spawn_future_local(async move {
+            match zbus::Connection::system().await {
+                Ok(conn) => {
+                    match crate::ipc::DaemonProxy::new(&conn).await {
+                        Ok(proxy) => {
+                            use futures_util::StreamExt;
+                            let mut logs = match proxy.receive_log_message().await {
+                                Ok(stream) => stream,
+                                Err(e) => {
+                                    tracing::error!("Failed to receive log messages: {}", e);
+                                    return;
+                                }
                             };
 
-                            let mut line_with_newline = line.to_string();
-                            line_with_newline.push('\n');
-
-                            if let Some(tag) = tag_name {
-                                buffer.insert_with_tags_by_name(&mut iter, &line_with_newline, &[tag]);
-                            } else {
-                                buffer.insert(&mut iter, &line_with_newline);
+                            while let Some(signal) = logs.next().await {
+                                if let Ok(args) = signal.args() {
+                                    if let Some(window) = window_weak.upgrade() {
+                                        window.append_log(args.level(), args.message());
+                                    }
+                                }
                             }
-                            has_new_lines = true;
                         }
-                        
-                        // Auto-scroll
-                        if has_new_lines && imp.btn_autoscroll.is_active() {
-                            let mark = buffer.create_mark(None, &buffer.end_iter(), false);
-                            imp.text_view.scroll_to_mark(&mark, 0.0, false, 0.0, 1.0);
-                            buffer.delete_mark(&mark);
-                        }
-                        
-                        *imp.last_pos.borrow_mut() = len;
+                        Err(e) => tracing::error!("Failed to create DaemonProxy for logs: {}", e),
                     }
                 }
-                glib::ControlFlow::Continue
-            } else {
-                glib::ControlFlow::Break
+                Err(e) => tracing::error!("Failed to connect to D-Bus System Bus for logs: {}", e),
             }
         });
+    }
+
+    fn append_log(&self, level: &str, message: &str) {
+        let imp = self.imp();
+        let buffer = imp.text_view.buffer();
+        let mut iter = buffer.end_iter();
+        
+        let tag_name = match level {
+            "error" => Some("error"),
+            "warning" => Some("warning"),
+            "debug" => Some("debug"),
+            "app" => Some("app"),
+            _ => None,
+        };
+
+        let mut line = message.to_string();
+        line.push('\n');
+
+        if let Some(tag) = tag_name {
+            buffer.insert_with_tags_by_name(&mut iter, &line, &[tag]);
+        } else {
+            buffer.insert(&mut iter, &line);
+        }
+
+        if imp.btn_autoscroll.is_active() {
+            let mark = buffer.create_mark(None, &buffer.end_iter(), false);
+            imp.text_view.scroll_to_mark(&mark, 0.0, false, 0.0, 1.0);
+            buffer.delete_mark(&mark);
+        }
     }
 }

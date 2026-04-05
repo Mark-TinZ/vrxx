@@ -67,5 +67,6 @@
 |-------|----------------|--------|-----------|
 | 1. Architecture & UI Foundation | 3/3 | Completed | Today |
 | 2. Core Proxy Integration | 3/3 | Completed | Today |
-| 3. Networking & Routing | 0/3 | In Progress | - |
-| 4. User Workflows & Polish | 0/0 | Not started | - |
+| 3. Networking & Routing | 3/3 | Completed | Today |
+| 4. User Workflows & Polish | 0/0 | Planned | - |
+|

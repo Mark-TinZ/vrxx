@@ -46,6 +46,8 @@ pub struct XrayConfig {
     pub stats: Value,
     pub policy: PolicyConfig,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub fakedns: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub dns: Option<Value>,
     pub inbounds: Vec<Value>,
     pub outbounds: Vec<Value>,
@@ -95,6 +97,24 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         }
     }));
 
+    if settings.tun_mode {
+        inbounds.push(json!({
+            "tag": "tun-in",
+            "protocol": "tun",
+            "settings": {
+                "name": "vrxx-tun",
+                "address": "172.19.0.1/30",
+                "autoRoute": true,
+                "strictRoute": true,
+                "stack": "system"
+            },
+            "sniffing": {
+                "enabled": true,
+                "destOverride": ["http", "tls", "quic", "fakedns"]
+            }
+        }));
+    }
+
     let mut stream_settings = json!({});
     
     // Разбор параметров строки запроса для транспорта и безопасности
@@ -139,6 +159,12 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         });
     } else if net == "tcp" {
         // Settings TCP
+    }
+
+    if settings.tun_mode {
+        stream_settings["sockopt"] = json!({
+            "mark": 255
+        });
     }
 
     // Mux и фрагментация
@@ -260,12 +286,20 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         rules.push(json!({
             "type": "field",
             "outboundTag": "direct",
-            "ip": ["geoip:private"]
+            "ip": ["geoip:private", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
         }));
         rules.push(json!({
             "type": "field",
             "outboundTag": "direct",
             "domain": ["geosite:private"]
+        }));
+    }
+
+    if settings.block_ads {
+        rules.push(json!({
+            "type": "field",
+            "outboundTag": "block",
+            "domain": ["geosite:category-ads-all"]
         }));
     }
 
@@ -355,13 +389,18 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
     }));
 
     let mut dns_config = None;
-    if settings.enable_fake_dns {
+    let mut fakedns_config = None;
+    if settings.enable_fake_dns || settings.tun_mode {
         dns_config = Some(json!({
             "servers": [
-                "fakedns"
+                "fakedns",
+                "1.1.1.1"
             ]
         }));
-        // Примечание: Полная реализация fakedns требует настройки fakedns inbound/sniffing.
+        fakedns_config = Some(json!({
+            "ipPool": "198.18.0.0/15",
+            "poolSize": 65535
+        }));
     }
 
     let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
@@ -398,6 +437,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
                 }
             }),
         },
+        fakedns: fakedns_config,
         dns: dns_config,
         inbounds,
         outbounds,

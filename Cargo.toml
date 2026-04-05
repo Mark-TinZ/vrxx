@@ -22,9 +22,15 @@ reqwest = { version = "0.12", features = ["socks", "json", "rustls-tls-native-ro
 tokio = { version = "1", features = ["full"] }
 ureq = { version = "2.9", features = ["socks-proxy", "json"] }
 async-channel = "2.3"
+futures-util = "0.3"
 tracing = "0.1.44"
 tracing-subscriber = "0.3.23"
 tracing-appender = "0.2.4"
+zbus = { version = "5", features = ["tokio"] }
+zbus_polkit = "5"
+tun-rs = { version = "2.8.2", features = ["async"] }
+rtnetlink = "0.20.0"
+ipnet = "2.12.0"
 
 [dependencies.adw]
 package = "libadwaita"

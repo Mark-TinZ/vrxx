@@ -48,6 +48,20 @@
               </object>
             </child>
 
+            <!-- Группа: TUN Mode -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">TUN Mode</property>
+                <property name="description" translatable="yes">Route all traffic through a virtual network interface</property>
+                <child>
+                  <object class="AdwSwitchRow" id="tun_mode_switch">
+                    <property name="title" translatable="yes">Enable TUN Mode</property>
+                    <property name="subtitle" translatable="yes">Requires root privileges</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
             <!-- Группа: Входящие порты -->
             <child>
               <object class="AdwPreferencesGroup">

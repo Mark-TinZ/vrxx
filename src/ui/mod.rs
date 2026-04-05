@@ -21,3 +21,4 @@ pub fn setup_primary_menu(menu_button: &gtk::MenuButton) {
     }
 }
 mod tests;
+mod proxy_tests;

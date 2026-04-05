@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=ru.mark.vrxx.daemon
+Exec=@bindir@/vrxx --daemon
+User=root

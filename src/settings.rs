@@ -106,6 +106,8 @@ pub struct AppSettings {
     pub route_cn: bool,
     #[serde(default)]
     pub route_antifilter: bool,
+    #[serde(default)]
+    pub block_ads: bool,
 
     // IPv6 option
     #[serde(default)]
@@ -165,6 +167,7 @@ impl AppSettings {
             route_ir: false,
             route_cn: false,
             route_antifilter: false,
+            block_ads: false,
             disable_ipv6: false,
             routing_rules: vec![],
         }

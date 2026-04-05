@@ -18,6 +18,8 @@ mod settings;
 mod protocol;
 pub mod domain;
 pub mod services;
+pub mod daemon;
+pub mod ipc;
 
 use self::application::VrxxApplication;
 use config::{GETTEXT_PACKAGE, LOCALEDIR};
@@ -44,6 +46,23 @@ impl std::io::Write for MultiWriter {
 }
 
 fn main() -> glib::ExitCode {
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|arg| arg == "--daemon") {
+        match tokio::runtime::Runtime::new() {
+            Ok(rt) => {
+                if let Err(e) = rt.block_on(daemon::run()) {
+                    eprintln!("Daemon failed: {e}");
+                    std::process::exit(1);
+                }
+                std::process::exit(0);
+            },
+            Err(e) => {
+                eprintln!("Failed to initialize tokio runtime: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
+
     crate::services::geo_updater::spawn_background_updater();
 
     // Устанавливаем язык ДО любой инициализации GTK и gettext

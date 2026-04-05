@@ -20,6 +20,8 @@ mod imp {
         #[template_child]
         pub system_proxy_switch: TemplateChild<adw::SwitchRow>,
         #[template_child]
+        pub tun_mode_switch: TemplateChild<adw::SwitchRow>,
+        #[template_child]
         pub socks_port_row: TemplateChild<adw::SpinRow>,
         #[template_child]
         pub http_port_row: TemplateChild<adw::SpinRow>,
@@ -106,6 +108,7 @@ impl VrxxProxyPage {
 
         // Load values
         imp.system_proxy_switch.set_active(settings.set_system_proxy);
+        imp.tun_mode_switch.set_active(settings.tun_mode);
         imp.socks_port_row.set_value(settings.socks_port as f64);
         imp.http_port_row.set_value(settings.http_port as f64);
         imp.allow_lan_switch.set_active(settings.allow_lan);
@@ -117,6 +120,18 @@ impl VrxxProxyPage {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.set_system_proxy = row.is_active();
+                manager.save(&s);
+                crate::backend::CoreBackend::new().update_system_proxy(s.set_system_proxy);
+                page.mark_changed();
+            }
+        ));
+
+        imp.tun_mode_switch.connect_active_notify(glib::clone!(
+            #[weak(rename_to = page)] self,
+            move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.tun_mode = row.is_active();
                 manager.save(&s);
                 page.mark_changed();
             }

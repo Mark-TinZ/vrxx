@@ -43,4 +43,19 @@ configure_file(
   install_dir: get_option('datadir') / 'dbus-1' / 'services'
 )
 
+install_data('ru.mark.vrxx.daemon.conf',
+  install_dir: get_option('datadir') / 'dbus-1' / 'system.d'
+)
+
+configure_file(
+  input: 'ru.mark.vrxx.daemon.service.in',
+  output: 'ru.mark.vrxx.daemon.service',
+  configuration: service_conf,
+  install_dir: get_option('datadir') / 'dbus-1' / 'system-services'
+)
+
+install_data('ru.mark.vrxx.policy',
+  install_dir: get_option('datadir') / 'polkit-1' / 'actions'
+)
+
 subdir('icons')
