@@ -1,75 +1,81 @@
 # Technology Stack
 
-**Analysis Date:** 2024-05-23
+**Analysis Date:** 2025-02-13
 
 ## Languages
 
 **Primary:**
-- Rust (Edition 2021) - Core application logic, proxy configuration, and UI bindings (`src/main.rs`, `src/**/*.rs`)
+- Rust 2021 - Core application logic, daemon, and UI bindings.
 
 **Secondary:**
-- Meson - Build system configuration (`meson.build`)
-- XML/UI - GTK4 UI layouts (`src/ui/**/*.ui`)
-- Gettext (PO) - Application translations (`po/*.po`)
+- Meson - Build system configuration.
+- XML - GTK4 UI definitions (`.ui`), GResource manifests (`.xml`), and desktop/D-Bus metadata.
+- Bash/Shell - Installation and uninstallation scripts.
 
 ## Runtime
 
 **Environment:**
-- Linux Desktop (Native execution or Flatpak)
+- Linux - Primary target platform.
+- GTK4 4.16+ - UI framework.
+- D-Bus - IPC between client and privileged daemon.
+- systemd - Service management and D-Bus activation.
 
 **Package Manager:**
-- Cargo (Rust package manager)
-- Lockfile: present (`Cargo.lock`)
+- Cargo (Rust) - Dependency management and compilation.
+- Lockfile: `Cargo.lock` present.
 
 ## Frameworks
 
 **Core:**
-- GTK4 (`gtk4-rs` v0.10, features: `v4_16`) - Core GUI framework for Linux
-- Libadwaita (`libadwaita-rs` v0.8, features: `v1_7`) - GNOME HIG compliant UI widgets
-- Tokio (v1) - Asynchronous runtime for networking and proxy management
+- GTK4 (`gtk4` crate) - Primary UI toolkit.
+- Libadwaita (`libadwaita` crate) - Modern GNOME-style UI components.
+- Tokio 1.0 - Async runtime for the daemon and background tasks.
 
 **Testing:**
-- Rust built-in `#[test]` framework - Unit testing (e.g., `src/ui/tests.rs`, `test_sub.rs`)
+- Native Rust tests - Unit tests for configuration generation and parsing.
 
 **Build/Dev:**
-- Meson & Ninja - Primary build system integrating Rust with GNOME ecosystem
-- Cargo - Rust dependency management
+- Meson - Top-level build system.
+- `build.rs` - Rust build script for resource compilation (GResource, Gettext) and Meson integration.
 
 ## Key Dependencies
 
 **Critical:**
-- `reqwest` & `ureq` - HTTP clients used for IP checks and downloading routing rules
-- `serde` & `serde_json` - Core serialization/deserialization for proxy configurations (Xray/Sing-box) and app settings
-- `nix` - System calls and signal management for managing background proxy processes
+- `zbus` 5.0 - High-level D-Bus implementation for IPC.
+- `zbus_polkit` - Polkit integration for daemon authorization.
+- `serde` / `serde_json` - JSON serialization/deserialization for settings and proxy configs.
+- `nix` - Unix-specific system calls (signals, process management).
 
 **Infrastructure:**
-- `tracing`, `tracing-subscriber`, `tracing-appender` - Structured logging framework writing to local files
-- `dirs` - Resolving standard user directories for configuration storage (`~/.config/vrxx/`)
-- `gettext-rs` - Application internationalization (i18n) bindings
+- `reqwest` - HTTP client for downloading GeoIP/Geosite databases.
+- `tracing` / `tracing-subscriber` - Logging and observability.
+- `dirs` - Cross-platform directory path resolution.
+- `anyhow` / `thiserror` - Error handling patterns.
 
 ## Configuration
 
 **Environment:**
-- Configured via local JSON files.
-- Checks `FLATPAK_ID` environment variable to adapt behavior if running under Flatpak (`src/ui/pages/settings_page.rs`).
-- Modifies `LANGUAGE`, `LC_ALL`, `LANG`, `LC_MESSAGES` internally for forcing language settings (`src/main.rs`).
+- `XDG_CONFIG_HOME/vrxx/` - Configuration directory (defaults to `~/.config/vrxx/`).
+- `XDG_DATA_HOME/` - Desktop entries and icon storage.
 
 **Build:**
-- `Cargo.toml` - Rust dependencies
-- `meson.build` - Full project build pipeline, desktop file installation, and GLib schema compilation
+- `meson.build` - Main build configuration.
+- `Cargo.toml` - Rust project metadata.
+- `src/config.rs.in` - Template for build-time constants (version, paths).
 
 ## Platform Requirements
 
 **Development:**
-- Rust toolchain
-- GNOME development libraries (GTK4, libadwaita)
-- Gettext
-- Meson and Ninja
+- Rust toolchain (cargo, rustc).
+- GTK4 and Libadwaita development headers.
+- D-Bus development headers.
+- `glib-compile-resources` and `gettext` tools.
 
 **Production:**
-- Linux desktop environment (GNOME, KDE, etc.) with GTK4 and Libadwaita available
-- Proxy cores (Xray, Sing-box) typically bundled or expected to be available
+- `xray` or `sing-box` binaries (must be in PATH).
+- D-Bus System Bus.
+- Polkit (for privileged daemon).
 
 ---
 
-*Stack analysis: 2024-05-23*
+*Stack analysis: 2025-02-13*

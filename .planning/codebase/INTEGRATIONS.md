@@ -1,81 +1,82 @@
 # External Integrations
 
-**Analysis Date:** 2024-05-23
+**Analysis Date:** 2025-02-13
 
 ## APIs & External Services
 
-**Geolocation API:**
-- IP-API - Validates IP status, country, and timezone (`src/ui/pages/vpn_page.rs`)
-  - Endpoint: `http://ip-api.com/json/?fields=status,country,timezone,query`
-  - SDK/Client: `ureq` crate (blocking HTTP client)
-  - Auth: None (public API)
+**Proxy Engines:**
+- `xray` - Primary proxy engine (VLESS, VMESS, Reality, Trojan, Fragment).
+  - Client: `src/domain/xray_config.rs` (config generation).
+  - Integration: `src/daemon/mod.rs` (process management).
+- `sing-box` - Secondary proxy engine (modern features, better TUN mode).
+  - Client: `src/domain/singbox_config.rs` (config generation).
+  - Integration: `src/daemon/mod.rs` (process management).
 
-**Geo Routing Rules / Download Sources:**
-- GitHub Releases - Downloads latest `geosite.dat` and `geoip.dat` rules for Xray/Sing-box (`src/services/geo_updater.rs`)
-  - Endpoints: Various GitHub user repos (`v2fly`, `Tech-X-Labs`, `1andrevich`)
-  - Client: `reqwest` crate (async HTTP client)
-  - Auth: None (public downloads)
-- GitHub Raw Content - Downloads raw `.srs` rule-sets for Sing-box (`src/domain/singbox_config.rs`)
-  - Endpoints: `https://raw.githubusercontent.com/SagerNet/*`
-  - Client: Handled by proxy core internally
-
-**Proxy Cores:**
-- Xray & Sing-Box - Configured internally, communicates directly through the core's native formats.
-- Internal API Endpoint: `http://127.0.0.1:9090/connections`
-  - Client: Configured and polled by `vrxx`
+**Geo Databases:**
+- GitHub (v2fly, Tech-X-Labs, SagerNet) - Sources for GeoIP/Geosite databases.
+  - Client: `src/services/geo_updater.rs`.
+  - Auth: Public URLs.
 
 ## Data Storage
 
 **Databases:**
-- None detected. The application relies entirely on flat files.
+- Local Filesystem - Native JSON storage.
+  - Path: `~/.config/vrxx/settings.json`.
+  - Client: `src/settings.rs` (`SettingsManager`).
 
 **File Storage:**
-- Local filesystem only.
-- Configuration and VPN Keys stored as JSON: `~/.config/vrxx/settings.json` (`src/settings.rs`)
-- Logging files: `~/.config/vrxx/logs/app.log` and `all.log` (`src/main.rs`)
+- Local filesystem for logs (`~/.config/vrxx/logs/`).
+- Local filesystem for Geo assets (`~/.config/vrxx/*.dat`).
 
 **Caching:**
-- None formal. Downloaded geo-routing files (`geosite.dat`, `geoip.dat`) act as a local cache for the proxy cores (`src/services/geo_updater.rs`).
+- None (beyond local file caching for Geo databases).
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Custom / None. User authentication is not required to use the client. Connections depend directly on imported VPN keys (VMess, VLESS, Trojan, etc.).
+- Polkit - Authorization for privileged daemon access.
+  - Implementation: `data/ru.mark.vrxx.policy`.
+  - Client: `zbus_polkit` used in daemon logic.
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- None detected (no Sentry, Bugsnag, etc.).
+- None (local logging only).
 
 **Logs:**
-- Local log files (`app.log`, `all.log`) generated via `tracing` and `tracing-appender` crates.
-- Overrides GLib's log writer to pipe GTK/GLib logs into the `tracing` sink (`src/main.rs`).
+- `tracing` - Application-level structured logging.
+- `src/main.rs` - Multi-writer setup for `app.log` and `all.log`.
+- `xray` logs - Captured from process stdout/stderr and sent via D-Bus signals.
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Code hosted on GitHub (`https://github.com/Mark-TinZ/vrxx`).
+- GitHub - Source control and releases.
 
 **CI Pipeline:**
-- GitHub Actions (`.github/workflows/rust.yml`, `release.yml`). Builds binaries and prepares releases.
+- GitHub Actions - Automated builds for Rust and releases.
+  - Config: `.github/workflows/rust.yml` and `.github/workflows/release.yml`.
 
 ## Environment Configuration
 
 **Required env vars:**
-- None strictly required.
-- Checks `FLATPAK_ID` to modify execution paths when running inside a Flatpak container (`src/ui/pages/settings_page.rs`).
+- `VRXX_CONFIG_RS_PATH` - Used during build to pass Meson config to Cargo.
+- `XDG_CONFIG_HOME` - Base directory for settings.
+- `LANGUAGE`, `LC_ALL`, `LANG` - Overridden by the application for UI localization.
 
 **Secrets location:**
-- VPN keys (which may contain connection credentials) are stored directly in `~/.config/vrxx/settings.json` as plaintext JSON.
+- Not applicable (no secret credentials used).
 
 ## Webhooks & Callbacks
 
 **Incoming:**
-- None.
+- D-Bus Signals - `log_message` and `status_changed` from the daemon.
+  - Client: `src/ipc.rs` and `src/backend.rs`.
 
 **Outgoing:**
-- None.
+- D-Bus Methods - `start_proxy`, `stop_proxy`, `ping` sent to the daemon.
+  - Client: `src/ipc.rs` and `src/backend.rs`.
 
 ---
 
-*Integration audit: 2024-05-23*
+*Integration audit: 2025-02-13*

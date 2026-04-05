@@ -1,94 +1,106 @@
 # Codebase Structure
 
-**Analysis Date:** 2024-05-24
+**Analysis Date:** 2025-01-24
 
 ## Directory Layout
 
 ```
-/home/mihail/Developer/builder/vrxx/
-├── data/               # Desktop entries, gschema, and icons
-├── docs/               # Project documentation (Architecture, Contributing)
-├── locale/             # Compiled translation files
-├── po/                 # Source translation files (.po, .pot)
-├── scripts/            # Shell scripts for installation/updating
-└── src/                # Rust source code
-    ├── domain/         # Business logic, configuration generation, and parsing
-    ├── services/       # Background services (e.g., geodata updaters)
-    └── ui/             # GTK User Interface components and pages
+/
+├── data/           # D-Bus configuration, service files, and desktop entry
+├── po/             # Translation files (Gettext)
+├── scripts/        # Installation and management scripts
+├── src/            # Source code
+│   ├── daemon/     # Privileged service implementation
+│   ├── domain/     # Core logic and configuration generation
+│   ├── ui/         # UI implementation
+│   │   ├── components/ # Reusable UI widgets
+│   │   └── pages/      # Top-level UI views
+│   ├── services/   # Background services (e.g., geoip updater)
+│   ├── application.rs # Main application logic
+│   ├── backend.rs  # UI-side core management facade
+│   ├── ipc.rs      # D-Bus interface and proxy definitions
+│   ├── main.rs     # Binary entry point (UI & Daemon)
+│   ├── protocol.rs # Protocol-specific definitions
+│   ├── settings.rs # User settings management
+│   └── window.rs   # Main window definition
+└── tests/          # Integration tests
 ```
 
 ## Directory Purposes
 
-**`src/domain/`:**
-- Purpose: Contains the core logic for processing VPN protocols.
-- Contains: Parsers for connection strings, and config builders for underlying proxy cores.
-- Key files: `key_parser.rs`, `xray_config.rs`, `singbox_config.rs`
+**src/daemon/:**
+- Purpose: Contains the privileged service that runs as root.
+- Contains: Logic for managing proxy core processes (Xray, Sing-box).
+- Key files: `src/daemon/mod.rs` (Service implementation).
 
-**`src/ui/`:**
-- Purpose: Houses all GTK4/Libadwaita user interface code.
-- Contains: UI pages, reusable widget components, and model definitions.
-- Key files: `pages/vpn_page.rs`, `components/theme_switcher.rs`, `models.rs`
+**src/ui/pages/:**
+- Purpose: High-level views of the application.
+- Contains: `vpn_page.rs` (Main connection view), `proxy_page.rs` (Proxy settings), `settings_page.rs` (App settings).
+- Key files: `src/ui/pages/vpn_page.rs` (Manages connection logic and status display).
 
-**`src/services/`:**
-- Purpose: For background, non-UI tasks.
-- Contains: Scheduled or background-triggered updates.
-- Key files: `geo_updater.rs`
+**src/ui/components/:**
+- Purpose: Reusable UI widgets.
+- Contains: `vpn_key_row.rs` (Row in the VPN list), `log_window.rs` (View for core logs).
+- Key files: `src/ui/components/vpn_key_row.rs`.
+
+**src/domain/:**
+- Purpose: Business logic and data transformations.
+- Contains: VPN key parsing and configuration generators for different proxy cores.
+- Key files: `src/domain/key_parser.rs`, `src/domain/xray_config.rs`, `src/domain/singbox_config.rs`.
 
 ## Key File Locations
 
 **Entry Points:**
-- `src/main.rs`: Application entry point, logging and localization initialization.
-- `src/application.rs`: `VrxxApplication` definition, setup of GTK actions, and startup sequence.
+- `src/main.rs`: Entry point for both the UI and the daemon.
 
 **Configuration:**
-- `src/settings.rs`: Definitions for `AppSettings` and the `SettingsManager` to save/load from JSON.
-- `src/protocol.rs`: Data structures for various VPN protocols (VLESS, VMess, Trojan, etc.).
+- `src/settings.rs`: Handles loading/saving user settings and VPN keys.
+- `data/ru.mark.vrxx.gschema.xml`: GSettings schema.
 
 **Core Logic:**
-- `src/backend.rs`: Subprocess management for Xray/Sing-box and Tun2Socks.
+- `src/backend.rs`: Provides an abstract `VpnCore` trait for the UI to interact with the daemon.
+- `src/ipc.rs`: Defines the `ru.mark.vrxx.Daemon` D-Bus interface.
 
-**User Interface:**
-- `src/window.rs`: The main application window (`VrxxWindow`) containing navigation and status widgets.
-- `src/ui/pages/`: Specific tabs like proxy routing, VPN key lists, and settings.
+**Testing:**
+- `src/ui/tests.rs`: UI-related tests.
+- `test_subprocess.rs`: Subprocess management tests.
 
 ## Naming Conventions
 
 **Files:**
-- snake_case: Standard Rust convention for modules (`xray_config.rs`, `vpn_page.rs`).
+- Snake case for modules: `vpn_page.rs`, `key_parser.rs`.
+- `.ui` files share the name of their implementation: `vpn_page.ui` for `vpn_page.rs`.
 
-**Types / Structs:**
-- PascalCase: For GTK objects and domain models (`VrxxWindow`, `CoreBackend`, `SettingsManager`).
-
-**GTK Resources:**
-- Extracted into XML/UI files where possible (e.g., `src/ui/components/theme_switcher.ui`).
-- IDs and GTK template names usually follow camelCase or snake_case matching the widget type.
+**Directories:**
+- Plural for collections: `pages`, `components`, `services`.
 
 ## Where to Add New Code
 
-**New Feature (UI):**
-- Primary code: `src/ui/pages/new_feature_page.rs` or as a component in `src/ui/components/`.
-- UI definitions: Use inline GTK builder or create a `.ui` file and load via `#[template(resource = "...")]`.
+**New Feature:**
+- Add a new page in `src/ui/pages/` and a corresponding `.ui` file.
+- Register the page in `src/window.rs`.
 
-**New VPN Core/Protocol:**
-- Domain logic: Add parsers to `src/domain/key_parser.rs` and config generation to `src/domain/`.
-- Data structures: Add the new protocol to `src/protocol.rs`.
-- Backend management: Adjust `src/backend.rs` to support the binary parameters if different from Xray/Sing-box.
+**New Proxy Core:**
+- Create a new config builder in `src/domain/`.
+- Update `src/domain/mod.rs` and the UI logic in `vpn_page.rs` to support the new core.
 
-**New App Settings:**
-- Configuration: Add fields to `AppSettings` in `src/settings.rs`. Update the UI in `src/ui/pages/settings_page.rs` to expose the setting.
+**New UI Widget:**
+- Add implementation in `src/ui/components/` and its `.ui` file.
+
+**Shared Helpers:**
+- Add to `src/services/` if it's a background task.
+- Add to `src/domain/` if it's pure logic.
 
 ## Special Directories
 
-**`data/`:**
-- Purpose: Contains system integration files (desktop shortcut, icons, dbus services).
-- Generated: Some files are processed by `meson.build` (`.in` templates).
+**data/:**
+- Purpose: Contains system integration files (D-Bus policy, systemd service).
 - Committed: Yes.
 
-**`po/`:**
-- Purpose: Gettext translation files.
-- Generated: Partially (`.pot` and compiled `.mo` files), but `.po` files are manually translated.
+**po/:**
+- Purpose: Translations for the application.
 - Committed: Yes.
 
 ---
 
-*Structure analysis: 2024-05-24*
+*Structure analysis: 2025-01-24*

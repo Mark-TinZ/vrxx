@@ -1,84 +1,92 @@
 # Coding Conventions
 
-**Analysis Date:** 2024-05-24
+**Analysis Date:** 2025-02-11
 
 ## Naming Patterns
 
 **Files:**
-- snake_case (e.g., `src/domain/key_parser.rs`, `src/ui/components/vpn_key_row.rs`)
+- Use snake_case for all file names.
+- Module names match file names: `src/application.rs` -> `mod application;`.
 
 **Functions:**
-- snake_case (e.g., `parse_vpn_key`, `setup_callbacks`)
+- Use snake_case for functions and methods: `setup_gactions()`, `is_running()`.
 
 **Variables:**
-- snake_case (e.g., `query_params`, `active_connection_btn`)
+- Use snake_case for variables and parameters: `app_settings`, `config_json`.
 
 **Types:**
-- PascalCase for Structs, Enums, and Traits (e.g., `ParsedKey`, `VrxxWindow`, `MultiWriter`)
+- Use PascalCase for structs, enums, and traits: `VrxxApplication`, `VpnCore`, `AppSettings`.
+- Interface/Proxy traits for D-Bus are named clearly: `Daemon`.
 
 ## Code Style
 
 **Formatting:**
-- Standard `rustfmt` formatting. No custom `rustfmt.toml` detected.
+- Standard Rust formatting (default `rustfmt` rules).
 - 4-space indentation.
 
-**Linting:**
-- Standard `cargo clippy`. No explicit `clippy.toml` configuration.
+**GTK-rs Idioms:**
+- **Subclassing:** Use the `imp` module pattern for GTK/Adwaita subclasses.
+- **Templates:** Use `CompositeTemplate` and `#[template(resource = "...")]` for UI definitions.
+- **Properties:** Use `glib::Properties` derive macro in the implementation struct to define GObject properties.
+- **Models:** Data objects for ListBoxes (like `VpnKeyObject`) are GObjects derived from `ObjectSubclass`.
 
 ## Import Organization
 
 **Order:**
-1. Standard library modules (`use std::collections::HashMap;`)
-2. External crate dependencies (`use url::Url; use serde::{...};`)
-3. Internal crate modules (`use crate::ui::pages::VrxxVpnPage;`)
+1. Standard library `use std::...`
+2. External crates (e.g., `use gtk::{...}`, `use adw::{...}`)
+3. Local modules/crates (e.g., `use crate::config::...`)
 
 **Path Aliases:**
-- `crate::` prefix for internal imports (e.g., `crate::settings::SettingsManager`)
-- `super::*` for nested `mod imp` blocks.
+- Not extensively used. `self::` and `crate::` are preferred for clarity.
 
 ## Error Handling
 
 **Patterns:**
-- Extensive use of `Result<T, E>`.
-- Internal logic often maps errors to `String` (e.g., `Result<ParsedKey, String>`) via `.map_err(|e| e.to_string())?`.
-- `anyhow` and `thiserror` are included in `Cargo.toml` and likely used for more complex backend operations.
-- Avoids `unwrap()` in fallible logic where possible, relying on `unwrap_or(...)` or early returns via `?` operator.
+- Use `anyhow::Result` for application-level operations (e.g., in `src/backend.rs`).
+- Use `thiserror` for custom error types in domain or library-like modules.
+- Explicitly use `.context("...")` with `anyhow` to provide better error messages.
+- For GTK-related code, handle `glib::Error` where necessary.
 
 ## Logging
 
-**Framework:** `tracing` crate. GTK GLib logs are also bridged to `tracing` via `glib::log_set_writer_func`.
+**Framework:** `tracing` and custom `MultiWriter` in `src/main.rs`.
 
 **Patterns:**
-- Initialization in `src/main.rs`.
-- `tracing::info!()`, `tracing::warn!()`, `tracing::error!()` used for standard app logging.
-- Logs are written to `app.log` and `all.log` in `dirs::config_dir()/vrxx/logs`.
+- `tracing::info!`, `tracing::warn!`, `tracing::error!` for application events.
+- Logs are written to both a file (`app.log` and `all.log` in the config directory) and potentially console.
 
 ## Comments
 
 **When to Comment:**
-- Minimal inline comments. Used mainly to clarify business logic or complex data formats (e.g., `// vmess usually is base64 encoded JSON` in `src/domain/key_parser.rs`).
-- Module/File level header comments used for licensing.
+- Use comments for complex logic and sections (e.g., in `src/main.rs` for language initialization).
+- Documentation comments (`///`) are used for public traits and their methods (e.g., `VpnCore` in `src/backend.rs`).
 
 **JSDoc/TSDoc:**
-- Not applicable (Rust). Standard `///` rustdoc comments are sparse, mainly relying on clear naming instead.
+- Not applicable.
 
 ## Function Design
 
-**Size:** Small to medium. Helper functions extract complex parsing logic (e.g., `parse_vmess` in `src/domain/key_parser.rs`).
+**Size:**
+- Generally small to medium functions. GTK implementation methods like `startup` and `activate` contain setup logic.
 
-**Parameters:** Prefers borrowed types like `&str` or `&ParsedKey` instead of taking ownership when mutating is not required.
+**Parameters:**
+- Uses `&str` and `&String` where appropriate.
+- Often passes `Arc<Runtime>` or `Arc<ProxyManager>` for shared state in async/IPC contexts.
 
-**Return Values:** Typically `Result<T, E>` or `Option<T>` for fallible operations. Returns owned objects like `String` or `ParsedKey` when creating new data.
+**Return Values:**
+- `anyhow::Result<()>` or `Result<T, E>` for fallible operations.
+- `glib::ExitCode` for the `main` function.
 
 ## Module Design
 
 **Exports:**
-- Defined via `mod.rs` files (e.g., `pub mod domain;`).
-- GTK subclassing uses internal `mod imp` blocks inside the component file, exposing the outer wrapper class via `glib::wrapper!`.
+- Modules are declared in `main.rs` or `mod.rs`.
+- `pub mod domain`, `pub mod services`, `pub mod daemon`, `pub mod ipc` are public for cross-module usage.
 
 **Barrel Files:**
-- `src/domain/mod.rs` and `src/ui/pages/mod.rs` act similarly to barrel files by aggregating submodule exports.
+- `mod.rs` is used for sub-packages (e.g., `src/ui/mod.rs`, `src/domain/mod.rs`).
 
 ---
 
-*Convention analysis: 2024-05-24*
+*Convention analysis: 2025-02-11*
