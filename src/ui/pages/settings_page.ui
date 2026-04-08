@@ -119,14 +119,7 @@
                   </object>
                 </child>
 
-                <!-- Расширенные настройки TUN спрятаны в ExpanderRow -->
-                <child>
-                  <object class="AdwSwitchRow" id="tun_mode_row">
-                    <property name="title" translatable="yes">TUN mode</property>
-                    <property name="subtitle" translatable="yes">Redirect all system traffic through a virtual interface (Requires Root)</property>
-                    <property name="active">False</property>
-                  </object>
-                </child>
+                <!-- Расширенные настройки TUN перенесены на Proxy Page -->
               </object>
             </child>
 
@@ -179,6 +172,7 @@
                       <object class="AdwExpanderRow" id="mux_row">
                         <property name="title" translatable="yes">Multiplexing (Mux)</property>
                         <property name="subtitle" translatable="yes">Speeds up connections but may cause instability</property>
+                        <property name="tooltip-text" translatable="yes">Reduces handshake latency by reusing a single TCP connection for multiple requests.</property>
                         <property name="show-enable-switch">True</property>
                         <child>
                             <object class="AdwSpinRow" id="mux_concurrency_row">
@@ -325,5 +319,8 @@
       </object>
     </property>
   </template>
+</interface>
+
+ </template>
 </interface>
 

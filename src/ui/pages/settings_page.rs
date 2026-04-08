@@ -289,16 +289,6 @@ impl VrxxSettingsPage {
             }
         ));
 
-        imp.tun_mode_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
-                let manager = SettingsManager::new();
-                let mut s = manager.load();
-                s.tun_mode = row.is_active();
-                manager.save(&s);
-                page.mark_changed(false);
-            }
-        ));
-
         imp.sniffing_row.connect_active_notify(glib::clone!(
             #[weak(rename_to = page)] self, move |row| {
                 let manager = SettingsManager::new();
@@ -408,6 +398,16 @@ impl VrxxSettingsPage {
 
         let version_str = match output {
             Ok(out) => {
+                let s = String::from_utf8_lossy(&out.stdout);
+                s.lines().next().unwrap_or("Unknown Version").to_string()
+            }
+            Err(_) => format!("{bin_name} not found"),
+        };
+
+        self.imp().core_info_row.set_subtitle(&version_str);
+    }
+}
+          Ok(out) => {
                 let s = String::from_utf8_lossy(&out.stdout);
                 s.lines().next().unwrap_or("Unknown Version").to_string()
             }
