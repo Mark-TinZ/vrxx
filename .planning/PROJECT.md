@@ -46,4 +46,4 @@ Providing a seamless, natively integrated GNOME experience with transparent, int
 | Single core process | Saves memory and prevents port conflicts. | — Pending |
 
 ---
-*Last updated: Today after initialization*
+*Last updated: April 8, 2026* Today after initialization*
