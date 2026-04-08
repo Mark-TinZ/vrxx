@@ -58,7 +58,10 @@
   1. User can import connection keys and subscriptions from clipboard or URL
   2. User can view live connection status and debug logs in the UI
   3. User sees educational tooltips explaining technical routing terms inline
-**Plans**: TBD
+**Plans**: 3 plans
+- [x] 04-user-workflows-01-PLAN.md — Импорт ключей и управление конфигурациями
+- [ ] 04-user-workflows-02-PLAN.md — Доработка UI и исправление UX-ошибок
+- [ ] 04-user-workflows-03-PLAN.md — Локализация и Geo-ресурсы
 **UI hint**: yes
 
 ## Progress
@@ -68,5 +71,5 @@
 | 1. Architecture & UI Foundation | 3/3 | Completed | Today |
 | 2. Core Proxy Integration | 3/3 | Completed | Today |
 | 3. Networking & Routing | 3/3 | Completed | Today |
-| 4. User Workflows & Polish | 0/0 | Planned | - |
+| 4. User Workflows & Polish | 1/3 | In Progress | - |
 |
