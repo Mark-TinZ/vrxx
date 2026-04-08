@@ -151,6 +151,19 @@
                 </child>
 
                 <child>
+                  <object class="AdwActionRow" id="update_geo_row">
+                    <property name="title" translatable="yes">Update Geo Data</property>
+                    <property name="subtitle" translatable="yes">Download latest geoip and geosite data</property>
+                    <child>
+                      <object class="GtkButton" id="btn_update_geo">
+                        <property name="label" translatable="yes">Update</property>
+                        <property name="valign">center</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <child>
                   <object class="AdwSwitchRow" id="bypass_lan_row">
                     <property name="title" translatable="yes">Bypass LAN</property>
                     <property name="subtitle" translatable="yes">Do not route local traffic through VPN</property>

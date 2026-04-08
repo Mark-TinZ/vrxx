@@ -20,6 +20,7 @@ pub enum DaemonEvent {
 }
 
 pub struct ProxyManager {
+    // Менеджер прокси
     child: Arc<Mutex<Option<Child>>>,
     status: Arc<Mutex<String>>,
     event_sender: async_channel::Sender<DaemonEvent>,

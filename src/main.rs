@@ -46,6 +46,7 @@ impl std::io::Write for MultiWriter {
 }
 
 fn main() -> glib::ExitCode {
+    // Точка входа в приложение
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|arg| arg == "--daemon") {
         match tokio::runtime::Runtime::new() {

@@ -194,7 +194,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
             "tag": tag,
             "type": "remote",
             "format": "binary",
-            "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/main/rule-set/geosite-category-ads-all.srs",
+            "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/geosite-category-ads-all.srs",
             "download_detour": "direct"
         }));
         rules.push(json!({
@@ -217,19 +217,19 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         };
 
         if settings.route_ru {
-            add_region("geosite-ru", "https://raw.githubusercontent.com/SagerNet/sing-geosite/main/rule-set/geosite-ru.srs");
-            add_region("geoip-ru", "https://raw.githubusercontent.com/SagerNet/sing-geoip/main/rule-set/geoip-ru.srs");
+            add_region("geosite-ru", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/geosite-ru.srs");
+            add_region("geoip-ru", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/geoip-ru.srs");
         }
         if settings.route_cn {
-            add_region("geosite-cn", "https://raw.githubusercontent.com/SagerNet/sing-geosite/main/rule-set/geosite-cn.srs");
-            add_region("geoip-cn", "https://raw.githubusercontent.com/SagerNet/sing-geoip/main/rule-set/geoip-cn.srs");
+            add_region("geosite-cn", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/geosite-cn.srs");
+            add_region("geoip-cn", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/geoip-cn.srs");
         }
         if settings.route_ir {
-            add_region("geosite-ir", "https://raw.githubusercontent.com/SagerNet/sing-geosite/main/rule-set/geosite-ir.srs");
-            add_region("geoip-ir", "https://raw.githubusercontent.com/SagerNet/sing-geoip/main/rule-set/geoip-ir.srs");
+            add_region("geosite-ir", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/geosite-ir.srs");
+            add_region("geoip-ir", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/geoip-ir.srs");
         }
         if settings.route_antifilter {
-            add_region("geosite-antifilter", "https://raw.githubusercontent.com/SagerNet/sing-geosite/main/rule-set/geosite-antifilter.srs");
+            add_region("geosite-antifilter", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/geosite-antifilter.srs");
         }
 
         if !active_rule_sets.is_empty() {
