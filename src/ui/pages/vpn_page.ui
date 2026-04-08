@@ -15,13 +15,28 @@
             </object>
             </property>
 
-            <!-- Кнопка добавить ключ -->
+            <!-- Кнопки импорта ключей -->
             <child type="start">
-               <object class="GtkMenuButton" id="btn_add">
-                 <property name="icon-name">list-add-symbolic</property>
-                 <property name="menu-model">add_key_menu</property>
-                 <property name="tooltip-text" translatable="yes">Add connection</property>
-               </object>
+              <object class="GtkBox">
+                <property name="spacing">6</property>
+                
+                <child>
+                  <object class="GtkButton" id="btn_import_link">
+                    <property name="icon-name">list-add-symbolic</property>
+                    <property name="tooltip-text" translatable="yes">Import from link</property>
+                    <property name="action-name">vpn.add_key</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkButton" id="btn_import_clipboard">
+                    <property name="icon-name">edit-paste-symbolic</property>
+                    <property name="tooltip-text" translatable="yes">Import from clipboard</property>
+                    <property name="action-name">vpn.import_clipboard</property>
+                  </object>
+                </child>
+
+              </object>
             </child>
 
             <child type="end">
@@ -70,55 +85,5 @@
       </object>
     </property>
   </template>
-
-  <!-- Меню добавления ключей -->
-  <menu id="add_key_menu">
-    <section>
-      <attribute name="label" translatable="yes">Xray / Sing-box</attribute>
-      <item>
-        <attribute name="label">VLESS</attribute>
-        <attribute name="action">vpn.add_key</attribute>
-        <attribute name="target">VLESS</attribute>
-      </item>
-      <item>
-        <attribute name="label">VMess</attribute>
-        <attribute name="action">vpn.add_key</attribute>
-        <attribute name="target">VMess</attribute>
-      </item>
-      <item>
-        <attribute name="label">Trojan</attribute>
-        <attribute name="action">vpn.add_key</attribute>
-        <attribute name="target">Trojan</attribute>
-      </item>
-      <item>
-        <attribute name="label">Shadowsocks</attribute>
-        <attribute name="action">vpn.add_key</attribute>
-        <attribute name="target">Shadowsocks</attribute>
-      </item>
-    </section>
-    <section>
-      <attribute name="label" translatable="yes">Tunnels</attribute>
-      <item>
-        <attribute name="label">WireGuard</attribute>
-        <attribute name="action">vpn.add_key</attribute>
-        <attribute name="target">WireGuard</attribute>
-      </item>
-    </section>
-    <section>
-      <attribute name="label" translatable="yes">Proxies</attribute>
-      <item>
-        <attribute name="label">Socks</attribute>
-        <attribute name="action">vpn.add_key</attribute>
-        <attribute name="target">Socks</attribute>
-      </item>
-      <item>
-        <attribute name="label">HTTP</attribute>
-        <attribute name="action">vpn.add_key</attribute>
-        <attribute name="target">HTTP</attribute>
-      </item>
-    </section>
-  </menu>
-
-
 </interface>
 
