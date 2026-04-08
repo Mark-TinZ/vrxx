@@ -161,6 +161,7 @@
                   <object class="AdwSwitchRow" id="fake_dns_row">
                     <property name="title" translatable="yes">Fake DNS</property>
                     <property name="subtitle" translatable="yes">Return fake IPs (improves speed but breaks some apps)</property>
+                    <property name="tooltip-text" translatable="yes">Returns fake local IP addresses for DNS requests, then resolves the real IP remotely. Speeds up browsing but may break apps requiring real IPs.</property>
                   </object>
                 </child>
 

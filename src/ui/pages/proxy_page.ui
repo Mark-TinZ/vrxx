@@ -57,6 +57,7 @@
                   <object class="AdwSwitchRow" id="tun_mode_switch">
                     <property name="title" translatable="yes">Enable TUN Mode</property>
                     <property name="subtitle" translatable="yes">Requires root privileges</property>
+                    <property name="tooltip-text" translatable="yes">Creates a virtual network interface to route all system traffic transparently, bypassing application-specific proxy settings.</property>
                   </object>
                 </child>
               </object>

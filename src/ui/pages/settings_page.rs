@@ -1,9 +1,9 @@
-use adw::subclass::prelude::*;
-use adw::prelude::*;
-use gtk::{glib, gio, CompositeTemplate};
-use gettextrs::gettext;
-use crate::ui::setup_primary_menu;
 use crate::settings::SettingsManager;
+use crate::ui::setup_primary_menu;
+use adw::prelude::*;
+use adw::subclass::prelude::*;
+use gettextrs::gettext;
+use gtk::{gio, glib, CompositeTemplate};
 use std::cell::RefCell;
 
 mod imp {
@@ -115,7 +115,7 @@ impl VrxxSettingsPage {
 
         // Save all settings here if we want, but currently they save on every toggle anyway.
         // The apply button is just to confirm and maybe restart.
-        
+
         *imp.has_changes.borrow_mut() = false;
         *imp.has_lang_changed.borrow_mut() = false;
         imp.btn_apply.set_visible(false);
@@ -126,11 +126,11 @@ impl VrxxSettingsPage {
                     .heading("Restart Required")
                     .body("You have changed the language. The application needs to restart to apply the new language. Restart now?")
                     .build();
-                    
+
                 dialog.add_response("cancel", "Cancel");
                 dialog.add_response("restart", "Restart");
                 dialog.set_response_appearance("restart", adw::ResponseAppearance::Destructive);
-                
+
                 gtk::glib::MainContext::default().spawn_local(async move {
                     let response = dialog.choose_future(Some(&window)).await;
                     if response == "restart" {
@@ -154,7 +154,8 @@ impl VrxxSettingsPage {
         imp.btn_apply.set_visible(false);
 
         imp.btn_apply.connect_clicked(glib::clone!(
-            #[weak(rename_to = page)] self,
+            #[weak(rename_to = page)]
+            self,
             move |_| {
                 page.apply_changes();
             }
@@ -174,7 +175,8 @@ impl VrxxSettingsPage {
         imp.language_row.set_selected(lang_idx);
 
         imp.autostart_row.set_active(settings.autostart);
-        imp.connect_startup_row.set_active(settings.connect_on_startup);
+        imp.connect_startup_row
+            .set_active(settings.connect_on_startup);
         imp.notifications_row.set_active(settings.notifications);
         imp.streamer_mode_row.set_active(settings.streamer_mode);
         imp.tun_mode_row.set_active(settings.tun_mode);
@@ -183,7 +185,8 @@ impl VrxxSettingsPage {
         imp.bypass_lan_row.set_active(settings.bypass_lan);
         imp.fake_dns_row.set_active(settings.enable_fake_dns);
         imp.mux_row.set_enable_expansion(settings.enable_mux);
-        imp.mux_concurrency_row.set_value(settings.mux_concurrency as f64);
+        imp.mux_concurrency_row
+            .set_value(settings.mux_concurrency as f64);
         imp.fragment_row.set_active(settings.enable_fragment);
 
         let strategy_idx = match settings.domain_strategy.as_str() {
@@ -205,11 +208,17 @@ impl VrxxSettingsPage {
 
         // Connect signals
         imp.core_selector.connect_selected_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 let is_singbox = row.selected() == 1;
-                s.core = if is_singbox { "sing-box".to_string() } else { "xray".to_string() };
+                s.core = if is_singbox {
+                    "sing-box".to_string()
+                } else {
+                    "xray".to_string()
+                };
                 manager.save(&s);
                 page.update_core_info();
                 page.imp().fragment_row.set_visible(!is_singbox);
@@ -218,7 +227,9 @@ impl VrxxSettingsPage {
         ));
 
         imp.language_row.connect_selected_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.language = match row.selected() {
@@ -260,7 +271,9 @@ impl VrxxSettingsPage {
         ));
 
         imp.connect_startup_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.connect_on_startup = row.is_active();
@@ -270,7 +283,9 @@ impl VrxxSettingsPage {
         ));
 
         imp.notifications_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.notifications = row.is_active();
@@ -280,7 +295,9 @@ impl VrxxSettingsPage {
         ));
 
         imp.streamer_mode_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.streamer_mode = row.is_active();
@@ -290,7 +307,9 @@ impl VrxxSettingsPage {
         ));
 
         imp.sniffing_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.enable_sniffing = row.is_active();
@@ -300,7 +319,9 @@ impl VrxxSettingsPage {
         ));
 
         imp.bypass_lan_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.bypass_lan = row.is_active();
@@ -310,7 +331,9 @@ impl VrxxSettingsPage {
         ));
 
         imp.fake_dns_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.enable_fake_dns = row.is_active();
@@ -320,7 +343,9 @@ impl VrxxSettingsPage {
         ));
 
         imp.fragment_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.enable_fragment = row.is_active();
@@ -330,7 +355,9 @@ impl VrxxSettingsPage {
         ));
 
         imp.mux_row.connect_enable_expansion_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.enable_mux = row.enables_expansion();
@@ -340,7 +367,9 @@ impl VrxxSettingsPage {
         ));
 
         imp.mux_concurrency_row.connect_value_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.mux_concurrency = row.value() as i32;
@@ -349,22 +378,27 @@ impl VrxxSettingsPage {
             }
         ));
 
-        imp.domain_strategy_row.connect_selected_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
-                let manager = SettingsManager::new();
-                let mut s = manager.load();
-                s.domain_strategy = match row.selected() {
-                    1 => "IPIfNonMatch".to_string(),
-                    2 => "IPOnDemand".to_string(),
-                    _ => "AsIs".to_string(),
-                };
-                manager.save(&s);
-                page.mark_changed(false);
-            }
-        ));
+        imp.domain_strategy_row
+            .connect_selected_notify(glib::clone!(
+                #[weak(rename_to = page)]
+                self,
+                move |row| {
+                    let manager = SettingsManager::new();
+                    let mut s = manager.load();
+                    s.domain_strategy = match row.selected() {
+                        1 => "IPIfNonMatch".to_string(),
+                        2 => "IPOnDemand".to_string(),
+                        _ => "AsIs".to_string(),
+                    };
+                    manager.save(&s);
+                    page.mark_changed(false);
+                }
+            ));
 
         imp.log_level_row.connect_selected_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |row| {
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.log_level = match row.selected() {
@@ -383,18 +417,22 @@ impl VrxxSettingsPage {
         let _ = crate::settings::core_restart_channel().0.send_blocking(());
         if let Some(app) = gtk::gio::Application::default().and_downcast::<gtk::Application>() {
             let notification = gtk::gio::Notification::new(&gettextrs::gettext("Settings applied"));
-            notification.set_body(Some(&gettextrs::gettext("Core was restarted to apply new settings.")));
+            notification.set_body(Some(&gettextrs::gettext(
+                "Core was restarted to apply new settings.",
+            )));
             app.send_notification(Some("settings_applied"), &notification);
         }
     }
 
     fn update_core_info(&self) {
         let settings = SettingsManager::new().load();
-        let bin_name = if settings.core == "sing-box" { "sing-box" } else { "xray" };
-        
-        let output = std::process::Command::new(bin_name)
-            .arg("version")
-            .output();
+        let bin_name = if settings.core == "sing-box" {
+            "sing-box"
+        } else {
+            "xray"
+        };
+
+        let output = std::process::Command::new(bin_name).arg("version").output();
 
         let version_str = match output {
             Ok(out) => {

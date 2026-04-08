@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-03-21 00:01+0600\n"
+"POT-Creation-Date: 2026-04-06 00:33+0600\n"
 "PO-Revision-Date: 2026-03-03 00:10+0600\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -57,9 +57,8 @@ msgid "Application logs"
 msgstr "Логи приложения"
 
 #: src/ui/components/log_window.rs:174
-#, fuzzy
 msgid "Access logs"
-msgstr "Все логи"
+msgstr "Логи доступа"
 
 #: src/ui/components/theme_switcher.ui:16
 msgid "System"
@@ -87,17 +86,15 @@ msgstr "Редактировать"
 
 #: src/ui/components/vpn_key_row.ui:172
 msgid "_Copy"
-msgstr ""
+msgstr "Копировать"
 
 #: src/ui/components/vpn_key_row.ui:174
-#, fuzzy
 msgid "_Link"
-msgstr "Скопировать ссылку"
+msgstr "Ссылка"
 
 #: src/ui/components/vpn_key_row.ui:178
-#, fuzzy
 msgid "_JSON"
-msgstr "Скопировать JSON"
+msgstr "JSON"
 
 #: src/ui/components/vpn_key_row.ui:183
 msgid "_Delete"
@@ -119,16 +116,13 @@ msgstr "О программе"
 msgid "_Quit"
 msgstr "Выход"
 
-#: src/ui/pages/proxy_page.rs:81 src/ui/pages/settings_page.rs:358
-#: src/ui/pages/whitelist_page.rs:94
-#, fuzzy
-msgid "Settings applied"
-msgstr "Настройки"
+#: src/ui/pages/proxy_page.rs:90 src/ui/pages/proxy_page.ui:101
+msgid "Allow connections from LAN"
+msgstr "Разрешить подключения из локальной сети"
 
-#: src/ui/pages/proxy_page.rs:82 src/ui/pages/settings_page.rs:359
-#: src/ui/pages/whitelist_page.rs:95
-msgid "Core was restarted to apply new settings."
-msgstr ""
+#: src/ui/pages/proxy_page.rs:91 src/ui/pages/proxy_page.ui:102
+msgid "Proxy will be available for other devices in your local network"
+msgstr "Прокси будет доступен для других устройств в вашей локальной сети"
 
 #: src/ui/pages/proxy_page.ui:12
 msgid "Local proxy"
@@ -136,9 +130,8 @@ msgstr "Локальный прокси"
 
 #: src/ui/pages/proxy_page.ui:18 src/ui/pages/settings_page.ui:18
 #: src/ui/pages/whitelist_page.ui:18
-#, fuzzy
 msgid "Apply and Restart Core"
-msgstr "Требуется перезапуск приложения (Requires restart)"
+msgstr "Применить и перезапустить ядро"
 
 #: src/ui/pages/proxy_page.ui:40
 msgid "System proxy"
@@ -157,35 +150,48 @@ msgid "When connected, application traffic will go through the proxy"
 msgstr "При активном подключении трафик приложений пойдет через прокси"
 
 #: src/ui/pages/proxy_page.ui:54
+msgid "TUN Mode"
+msgstr "Режим TUN"
+
+#: src/ui/pages/proxy_page.ui:55
+msgid "Route all traffic through a virtual network interface"
+msgstr "Маршрутизировать весь трафик через виртуальный сетевой интерфейс"
+"Перенаправлять весь системный трафик через виртуальный интерфейс (Требуется "
+"Root)"
+
+#: src/ui/pages/proxy_page.ui:58
+msgid "Enable TUN Mode"
+msgstr "Включить режим TUN"
+
+#: src/ui/pages/proxy_page.ui:59
+msgid "Requires root privileges"
+msgstr "Требуются права Root"
+
+#: src/ui/pages/proxy_page.ui:68
 msgid "Inbound connections (Inbounds)"
 msgstr "Входящие подключения (Inbounds)"
 
-#: src/ui/pages/proxy_page.ui:55
+#: src/ui/pages/proxy_page.ui:69
 msgid "Local ports where the core proxy servers run"
 msgstr "Локальные порты, на которых работают прокси-серверы ядра"
 
-#: src/ui/pages/proxy_page.ui:59
-msgid "SOCKS5 Port"
-msgstr ""
-
 #: src/ui/pages/proxy_page.ui:73
-#, fuzzy
-msgid "HTTP Port"
-msgstr "Порт"
+msgid "SOCKS5 Port"
+msgstr "SOCKS5 Порт"
 
 #: src/ui/pages/proxy_page.ui:87
-msgid "Allow connections from LAN"
-msgstr "Разрешить подключения из локальной сети"
+msgid "HTTP Port"
+msgstr "HTTP Порт"
 
-#: src/ui/pages/proxy_page.ui:88
-msgid "Proxy will be available for other devices in your local network"
-msgstr "Прокси будет доступен для других устройств в вашей локальной сети"
+#: src/ui/pages/settings_page.rs:395
+msgid "Settings applied"
+msgstr "Настройки применены"
 
-#: src/ui/pages/settings_page.rs:194
-msgid "Application restart required to apply language"
-msgstr "Требуется перезапуск приложения для применения языка"
+#: src/ui/pages/settings_page.rs:396
+msgid "Core was restarted to apply new settings."
+msgstr "Ядро было перезапущено для применения новых настроек."
 
-#: src/ui/pages/settings_page.ui:12 src/window.ui:56
+#: src/ui/pages/settings_page.ui:12 src/window.ui:60
 msgid "Settings"
 msgstr "Настройки"
 
@@ -193,7 +199,7 @@ msgstr "Настройки"
 msgid "Menu"
 msgstr "Меню"
 
-#: src/ui/pages/settings_page.ui:41 src/ui/pages/vpn_page.rs:770
+#: src/ui/pages/settings_page.ui:41 src/ui/pages/vpn_page.rs:899
 msgid "General"
 msgstr "Общие"
 
@@ -313,11 +319,11 @@ msgstr "AsIs (Как есть)"
 
 #: src/ui/pages/settings_page.ui:152
 msgid "IPIfNonMatch"
-msgstr ""
+msgstr "IPIfNonMatch"
 
 #: src/ui/pages/settings_page.ui:153
 msgid "IPOnDemand"
-msgstr ""
+msgstr "IPOnDemand"
 
 #: src/ui/pages/settings_page.ui:162
 msgid "Bypass LAN"
@@ -329,7 +335,7 @@ msgstr "Не маршрутизировать локальный трафик ч
 
 #: src/ui/pages/settings_page.ui:169
 msgid "Fake DNS"
-msgstr ""
+msgstr "Fake DNS"
 
 #: src/ui/pages/settings_page.ui:170
 msgid "Return fake IPs (improves speed but breaks some apps)"
@@ -337,244 +343,247 @@ msgstr ""
 "Возвращать поддельные IP (улучшает скорость, но ломает некоторые приложения)"
 
 #: src/ui/pages/settings_page.ui:176
+msgid "Advanced Settings"
+msgstr "Расширенные настройки"
+
+#: src/ui/pages/settings_page.ui:180
 msgid "Multiplexing (Mux)"
 msgstr "Мультиплексирование (Mux)"
 
-#: src/ui/pages/settings_page.ui:177
+#: src/ui/pages/settings_page.ui:181
 msgid "Speeds up connections but may cause instability"
 msgstr "Ускоряет соединения, но может вызвать нестабильность"
 
-#: src/ui/pages/settings_page.ui:197
+#: src/ui/pages/settings_page.ui:201
 msgid "Fragmentation (Fragment)"
 msgstr "Фрагментация (Fragment)"
 
-#: src/ui/pages/settings_page.ui:198
+#: src/ui/pages/settings_page.ui:202
 msgid "Split packets to bypass DPI (TCP/TLS only)"
 msgstr "Разделять пакеты для обхода DPI (Только для TCP/TLS)"
 
-#: src/ui/pages/settings_page.ui:208
+#: src/ui/pages/settings_page.ui:214
 msgid "Backup"
 msgstr "Резервное копирование"
 
-#: src/ui/pages/settings_page.ui:211
+#: src/ui/pages/settings_page.ui:217
 msgid "Import settings"
 msgstr "Импорт настроек"
 
-#: src/ui/pages/settings_page.ui:212
+#: src/ui/pages/settings_page.ui:218
 msgid "Load profiles and settings from file"
 msgstr "Загрузить профили и настройки из файла"
 
-#: src/ui/pages/settings_page.ui:225
+#: src/ui/pages/settings_page.ui:231
 msgid "Export settings"
 msgstr "Экспорт настроек"
 
-#: src/ui/pages/settings_page.ui:226
+#: src/ui/pages/settings_page.ui:232
 msgid "Save current configuration to file"
 msgstr "Сохранить текущую конфигурацию в файл"
 
-#: src/ui/pages/settings_page.ui:243
+#: src/ui/pages/settings_page.ui:249
 msgid "Diagnostics"
 msgstr "Диагностика"
 
-#: src/ui/pages/settings_page.ui:247
+#: src/ui/pages/settings_page.ui:253
 msgid "Logging level"
 msgstr "Уровень логирования"
 
-#: src/ui/pages/settings_page.ui:251
+#: src/ui/pages/settings_page.ui:257
 msgid "Error"
 msgstr "Error"
 
-#: src/ui/pages/settings_page.ui:252
+#: src/ui/pages/settings_page.ui:258
 msgid "Warning"
 msgstr "Warning"
 
-#: src/ui/pages/settings_page.ui:253
+#: src/ui/pages/settings_page.ui:259
 msgid "Info"
 msgstr "Info"
 
-#: src/ui/pages/settings_page.ui:254
+#: src/ui/pages/settings_page.ui:260
 msgid "Debug"
 msgstr "Debug"
 
-#: src/ui/pages/settings_page.ui:264
+#: src/ui/pages/settings_page.ui:270
 msgid "View logs"
 msgstr "Просмотр логов"
 
-#: src/ui/pages/settings_page.ui:265
+#: src/ui/pages/settings_page.ui:271
 msgid "Open console with real-time logs"
 msgstr "Открыть консоль с логами в реальном времени"
 
-#: src/ui/pages/settings_page.ui:279
+#: src/ui/pages/settings_page.ui:285
 msgid "Open logs folder"
 msgstr "Открыть папку логов"
 
-#: src/ui/pages/settings_page.ui:280
+#: src/ui/pages/settings_page.ui:286
 msgid "Open system folder with log files"
 msgstr "Открыть системную папку с файлами журналов"
 
-#: src/ui/pages/settings_page.ui:298
+#: src/ui/pages/settings_page.ui:304
 msgid "Reset settings"
 msgstr "Сбросить настройки"
 
-#: src/ui/pages/settings_page.ui:299
+#: src/ui/pages/settings_page.ui:305
 msgid "Delete all saved data (danger zone)"
 msgstr "Удалить все сохраненные данные (опасная зона)"
 
-#: src/ui/pages/vpn_page.rs:210
+#: src/ui/pages/vpn_page.rs:216
 msgid "pinging..."
 msgstr "пинг..."
 
-#: src/ui/pages/vpn_page.rs:232 src/ui/pages/vpn_page.rs:508
+#: src/ui/pages/vpn_page.rs:238 src/ui/pages/vpn_page.rs:622
 msgid "timeout"
 msgstr "таймаут"
 
-#: src/ui/pages/vpn_page.rs:355 src/ui/pages/vpn_page.rs:640
-msgid "Connection error"
-msgstr "Ошибка соединения"
-
-#: src/ui/pages/vpn_page.rs:369 src/ui/pages/vpn_page.rs:467
-#: src/ui/pages/vpn_page.rs:472
-msgid "Connection failure"
-msgstr "Сбой подключения"
-
-#: src/ui/pages/vpn_page.rs:372 src/ui/pages/vpn_page.rs:643
-msgid "OK"
-msgstr "ОК"
-
-#: src/ui/pages/vpn_page.rs:473
-msgid "Failed to connect to the selected VPN key."
-msgstr "Не удалось подключиться к выбранному VPN ключу."
-
-#: src/ui/pages/vpn_page.rs:504
+#: src/ui/pages/vpn_page.rs:375 src/ui/pages/vpn_page.rs:618 src/window.ui:104
 msgid "Connected"
 msgstr "Подключено"
 
-#: src/ui/pages/vpn_page.rs:513
-#, fuzzy
-msgid "Connection timeout"
-msgstr "Список подключений"
-
-#: src/ui/pages/vpn_page.rs:606
-msgid "Connecting..."
-msgstr "Подключение..."
-
-#: src/ui/pages/vpn_page.rs:620
-msgid "Configuration error"
-msgstr "Ошибка конфигурации"
-
-#: src/ui/pages/vpn_page.rs:634
-msgid "Core startup error"
-msgstr "Ошибка запуска ядра"
-
-#: src/ui/pages/vpn_page.rs:688 src/ui/pages/vpn_page.rs:765
-#, fuzzy
-msgid "Server address"
-msgstr "Адрес Сервера"
-
-#: src/ui/pages/vpn_page.rs:689
-msgid "Location"
-msgstr "Локация"
-
-#: src/ui/pages/vpn_page.rs:690
-msgid "Timezone"
-msgstr "Часовой пояс"
-
-#: src/ui/pages/vpn_page.rs:691 src/ui/pages/vpn_page.rs:764
-msgid "Protocol"
-msgstr "Протокол"
-
-#: src/ui/pages/vpn_page.rs:696 src/ui/pages/vpn_page.rs:766
-msgid "Port"
-msgstr "Порт"
-
-#: src/ui/pages/vpn_page.rs:699
-msgid "Network"
-msgstr "Сеть"
-
-#: src/ui/pages/vpn_page.rs:702
-msgid "Security"
-msgstr "Безопасность"
-
-#: src/ui/pages/vpn_page.rs:706
-msgid "SNI"
-msgstr ""
-
-#: src/ui/pages/vpn_page.rs:709
-msgid "Fingerprint"
-msgstr ""
-
-#: src/ui/pages/vpn_page.rs:713
-msgid "Public key"
-msgstr "Публичный ключ"
-
-#: src/ui/pages/vpn_page.rs:717
-msgid "Flow"
-msgstr ""
-
-#: src/ui/pages/vpn_page.rs:740
-msgid "Close"
-msgstr "Закрыть"
-
-#: src/ui/pages/vpn_page.rs:760
-#, fuzzy
-msgid "Edit VPN key"
-msgstr "Изменить VPN Ключ"
-
-#: src/ui/pages/vpn_page.rs:763
-msgid "Name"
-msgstr "Имя"
-
-#: src/ui/pages/vpn_page.rs:767
-msgid "UUID / Password"
-msgstr "UUID / Пароль"
-
-#: src/ui/pages/vpn_page.rs:775
-msgid "Connection"
-msgstr "Соединение"
-
-#: src/ui/pages/vpn_page.rs:801 src/ui/pages/vpn_page.rs:849
-#: src/ui/pages/vpn_page.rs:953
-msgid "Cancel"
-msgstr "Отмена"
-
-#: src/ui/pages/vpn_page.rs:802
-msgid "Save"
-msgstr "Сохранить"
-
-#: src/ui/pages/vpn_page.rs:845
-#, fuzzy
-msgid "Delete VPN key"
-msgstr "Удалить VPN ключ"
-
-#: src/ui/pages/vpn_page.rs:850
-msgid "Delete"
-msgstr "Удалить"
-
-#: src/ui/pages/vpn_page.rs:925
-#, fuzzy
-msgid "Add VPN key"
-msgstr "Добавить VPN Ключ"
-
-#: src/ui/pages/vpn_page.rs:929
-msgid "VPN Link"
-msgstr "VPN Ссылка"
-
-#: src/ui/pages/vpn_page.rs:954
-msgid "Add"
-msgstr "Добавить"
-
-#: src/ui/pages/vpn_page.rs:1045
+#: src/ui/pages/vpn_page.rs:391
 msgid "Disconnected"
 msgstr "Отключено"
 
-#: src/ui/pages/vpn_page.ui:13 src/window.ui:35
+#: src/ui/pages/vpn_page.rs:405 src/ui/pages/vpn_page.rs:720
+msgid "Connecting..."
+msgstr "Подключение..."
+
+#: src/ui/pages/vpn_page.rs:408
+msgid "Disconnecting..."
+msgstr "Отключение..."
+
+#: src/ui/pages/vpn_page.rs:411 src/ui/pages/vpn_page.rs:445
+#: src/ui/pages/vpn_page.rs:761
+msgid "Connection error"
+msgstr "Ошибка соединения"
+
+#: src/ui/pages/vpn_page.rs:459 src/ui/pages/vpn_page.rs:581
+#: src/ui/pages/vpn_page.rs:586
+msgid "Connection failure"
+msgstr "Сбой подключения"
+
+#: src/ui/pages/vpn_page.rs:462 src/ui/pages/vpn_page.rs:764
+msgid "OK"
+msgstr "ОК"
+
+#: src/ui/pages/vpn_page.rs:587
+msgid "Failed to connect to the selected VPN key."
+msgstr "Не удалось подключиться к выбранному VPN ключу."
+
+#: src/ui/pages/vpn_page.rs:627
+msgid "Connection timeout"
+msgstr "Таймаут подключения"
+
+#: src/ui/pages/vpn_page.rs:734
+msgid "Configuration error"
+msgstr "Ошибка конфигурации"
+
+#: src/ui/pages/vpn_page.rs:756
+msgid "Core startup error"
+msgstr "Ошибка запуска ядра"
+
+#: src/ui/pages/vpn_page.rs:817 src/ui/pages/vpn_page.rs:894
+msgid "Server address"
+msgstr "Адрес сервера"
+
+#: src/ui/pages/vpn_page.rs:818
+msgid "Location"
+msgstr "Локация"
+
+#: src/ui/pages/vpn_page.rs:819
+msgid "Timezone"
+msgstr "Часовой пояс"
+
+#: src/ui/pages/vpn_page.rs:820 src/ui/pages/vpn_page.rs:893
+msgid "Protocol"
+msgstr "Протокол"
+
+#: src/ui/pages/vpn_page.rs:825 src/ui/pages/vpn_page.rs:895
+msgid "Port"
+msgstr "Порт"
+
+#: src/ui/pages/vpn_page.rs:828
+msgid "Network"
+msgstr "Сеть"
+
+#: src/ui/pages/vpn_page.rs:831
+msgid "Security"
+msgstr "Безопасность"
+
+#: src/ui/pages/vpn_page.rs:835
+msgid "SNI"
+msgstr "SNI"
+
+#: src/ui/pages/vpn_page.rs:838
+msgid "Fingerprint"
+msgstr "Отпечаток"
+
+#: src/ui/pages/vpn_page.rs:842
+msgid "Public key"
+msgstr "Публичный ключ"
+
+#: src/ui/pages/vpn_page.rs:846
+msgid "Flow"
+msgstr "Flow"
+
+#: src/ui/pages/vpn_page.rs:869
+msgid "Close"
+msgstr "Закрыть"
+
+#: src/ui/pages/vpn_page.rs:889
+msgid "Edit VPN key"
+msgstr "Изменить VPN ключ"
+
+#: src/ui/pages/vpn_page.rs:892
+msgid "Name"
+msgstr "Имя"
+
+#: src/ui/pages/vpn_page.rs:896
+msgid "UUID / Password"
+msgstr "UUID / Пароль"
+
+#: src/ui/pages/vpn_page.rs:904
+msgid "Connection"
+msgstr "Соединение"
+
+#: src/ui/pages/vpn_page.rs:930 src/ui/pages/vpn_page.rs:978
+#: src/ui/pages/vpn_page.rs:1082
+msgid "Cancel"
+msgstr "Отмена"
+
+#: src/ui/pages/vpn_page.rs:931
+msgid "Save"
+msgstr "Сохранить"
+
+#: src/ui/pages/vpn_page.rs:974
+msgid "Delete VPN key"
+msgstr "Удалить VPN ключ"
+
+#: src/ui/pages/vpn_page.rs:979
+msgid "Delete"
+msgstr "Удалить"
+
+#: src/ui/pages/vpn_page.rs:1054
+msgid "Add VPN key"
+msgstr "Добавить VPN ключ"
+
+#: src/ui/pages/vpn_page.rs:1058
+msgid "VPN Link"
+msgstr "VPN Ссылка"
+
+#: src/ui/pages/vpn_page.rs:1083
+msgid "Add"
+msgstr "Добавить"
+
+#: src/ui/pages/vpn_page.ui:13 src/window.ui:39
 msgid "VPN Keys"
 msgstr "Ключи VPN"
 
 #: src/ui/pages/vpn_page.ui:14
-#, fuzzy
 msgid "Mark-Vless Connected"
-msgstr "Подключено"
+msgstr "Mark-Vless Подключено"
 
 #: src/ui/pages/vpn_page.ui:23
 msgid "Add connection"
@@ -600,7 +609,7 @@ msgstr "Туннели"
 msgid "Proxies"
 msgstr "Прокси"
 
-#: src/ui/pages/whitelist_page.ui:12 src/window.ui:49
+#: src/ui/pages/whitelist_page.ui:12 src/window.ui:53
 msgid "Routing"
 msgstr "Маршрутизация"
 
@@ -613,77 +622,92 @@ msgid "Use rules below to route traffic"
 msgstr "Использовать правила ниже для направления трафика"
 
 #: src/ui/pages/whitelist_page.ui:54
-msgid "Mode"
-msgstr "Режим"
+msgid "Global Routing Mode"
+msgstr "Глобальный режим маршрутизации"
 
-#: src/ui/pages/whitelist_page.ui:58
-msgid "Exceptions (bypass VPN)"
-msgstr "Исключения (обход VPN)"
+#: src/ui/pages/whitelist_page.ui:55
+msgid "Default action for specified rules"
+msgstr "Действие по умолчанию для указанных правил"
 
 #: src/ui/pages/whitelist_page.ui:59
-msgid "Inclusions (VPN only)"
-msgstr "Включения (только VPN)"
+msgid "Bypass (direct)"
+msgstr "Обход (напрямую)"
 
-#: src/ui/pages/whitelist_page.ui:72
-msgid "Geosite Rules"
-msgstr ""
+#: src/ui/pages/whitelist_page.ui:60
+msgid "Proxy (VPN)"
+msgstr "Прокси (VPN)"
 
-#: src/ui/pages/whitelist_page.ui:76
-msgid "Route Russia (RU)"
-msgstr ""
+#: src/ui/pages/whitelist_page.ui:73
+msgid "Routing Rules"
+msgstr "Правила маршрутизации"
 
-#: src/ui/pages/whitelist_page.ui:77
-msgid "Apply rule for Russian domains and IPs"
-msgstr ""
+#: src/ui/pages/whitelist_page.ui:74
+msgid "Manage specific rules for domains and IP addresses"
+msgstr "Управление конкретными правилами для доменов и IP адресов"
 
-#: src/ui/pages/whitelist_page.ui:82
-msgid "Route China (CN)"
-msgstr ""
-
-#: src/ui/pages/whitelist_page.ui:83
-msgid "Apply rule for Chinese domains and IPs"
-msgstr ""
-
-#: src/ui/pages/whitelist_page.ui:88
-msgid "Route Iran (IR)"
-msgstr ""
-
-#: src/ui/pages/whitelist_page.ui:89
-msgid "Apply rule for Iranian domains and IPs"
-msgstr ""
-
-#: src/ui/pages/whitelist_page.ui:94
-msgid "Route Antifilter"
-msgstr ""
-
-#: src/ui/pages/whitelist_page.ui:95
-msgid "Apply rule for blocked domains (Antifilter)"
-msgstr ""
-
-#: src/ui/pages/whitelist_page.ui:103
-#, fuzzy
+#: src/ui/pages/whitelist_page.ui:97
 msgid "Network Settings"
-msgstr "Сеть и Маршрутизация"
+msgstr "Сетевые настройки"
 
-#: src/ui/pages/whitelist_page.ui:106
+#: src/ui/pages/whitelist_page.ui:100
 msgid "Disable IPv6"
-msgstr ""
+msgstr "Отключить IPv6"
 
-#: src/ui/pages/whitelist_page.ui:107
+#: src/ui/pages/whitelist_page.ui:101
 msgid "Force VPN core to use IPv4 only"
-msgstr ""
+msgstr "Принудительно использовать только IPv4 для VPN ядра"
+
+#: src/ui/pages/whitelist_page.ui:112
+msgid "Predefined Regional Rules"
+msgstr "Региональные правила"
+
+#: src/ui/pages/whitelist_page.ui:113
+msgid "Quick toggles for RU, CN, IR"
+msgstr "Быстрые переключатели для RU, CN, IR"
+
+#: src/ui/pages/whitelist_page.ui:117
+msgid "Russia (RU)"
+msgstr "Россия (RU)"
+
+#: src/ui/pages/whitelist_page.ui:122
+msgid "China (CN)"
+msgstr "Китай (CN)"
+
+#: src/ui/pages/whitelist_page.ui:127
+msgid "Iran (IR)"
+msgstr "Иран (IR)"
+
+#: src/ui/pages/whitelist_page.ui:132
+msgid "Antifilter (blocked domains)"
+msgstr "Антизапрет (заблокированные домены)"
 
 #: src/window.ui:7
 msgid "Vrxx"
 msgstr "Vrxx"
 
-#: src/window.ui:42
+#: src/window.ui:46
 msgid "Proxy"
 msgstr "Прокси"
 
-#: src/window.ui:73
+#: src/window.ui:125
+msgid "Active Connection Details"
+msgstr "Детали активного подключения"
+
+#: src/window.ui:154
 msgid "Content"
 msgstr "Контент"
+
+#~ msgid "Application restart required to apply language"
+#~ msgstr "Требуется перезапуск приложения для применения языка"
+
+#~ msgid "Mode"
+#~ msgstr "Режим"
+
+#~ msgid "Exceptions (bypass VPN)"
+#~ msgstr "Исключения (обход VPN)"
+
+#~ msgid "Inclusions (VPN only)"
+#~ msgstr "Включения (только VPN)"
 
 #~ msgid "Clear Whitelist"
 #~ msgstr "Очистить список"
@@ -717,9 +741,6 @@ msgstr "Контент"
 
 #~ msgid "Connection Error"
 #~ msgstr "Ошибка соединения"
-
-#~ msgid "Connection Failed"
-#~ msgstr "Ошибка подключения"
 
 #~ msgid "Unable to connect to the selected VPN key."
 #~ msgstr "Не удалось подключиться к выбранному VPN ключу."
@@ -941,9 +962,6 @@ msgstr "Контент"
 #~ msgid "Search domain or rule (e.g. domain:vk.com, *.org)..."
 #~ msgstr "Поиск домена или правила (e.g. domain:vk.com, *.org)..."
 
-#~ msgid "Domains and IP addresses"
-#~ msgstr "Домены и IP адреса"
-
 #~ msgid "Import from file..."
 #~ msgstr "Импорт из файла..."
 
@@ -1057,28 +1075,3 @@ msgstr "Контент"
 #~ "\n"
 #~ "Выполните в терминале:\n"
 #~ "sudo setcap cap_net_admin=ep {core_path}"
-
-#: src/ui/pages/whitelist_page.ui:100
-msgid "Predefined Regional Rules"
-msgstr "Региональные правила"
-
-#: src/ui/pages/whitelist_page.ui:101
-msgid "Quick toggles for RU, CN, IR"
-msgstr "Быстрые переключатели для RU, CN, IR"
-
-#: src/ui/pages/whitelist_page.ui:104
-msgid "Russia (RU)"
-msgstr "Россия (RU)"
-
-#: src/ui/pages/whitelist_page.ui:109
-msgid "China (CN)"
-msgstr "Китай (CN)"
-
-#: src/ui/pages/whitelist_page.ui:114
-msgid "Iran (IR)"
-msgstr "Иран (IR)"
-
-#: src/ui/pages/whitelist_page.ui:119
-msgid "Antifilter (blocked domains)"
-msgstr "Антизапрет (заблокированные домены)"
-
