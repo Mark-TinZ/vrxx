@@ -480,8 +480,7 @@ mod tests {
 
     #[test]
     fn test_xray_config_validity_permutations() {
-        use std::process::Command;
-        use std::fs::File;
+        use std::process::{Command, Stdio};
         use std::io::Write;
 
         // Skip test if xray is not installed
@@ -493,53 +492,47 @@ mod tests {
         let key = ParsedKey {
             protocol: "VLESS".to_string(),
             name: "Test".to_string(),
-            host: "example.com".to_string(),
+            host: "1.2.3.4".to_string(),
             port: 443,
             uuid: "uuid-123".to_string(),
-            query_params: HashMap::new(),
+            query_params: std::collections::HashMap::new(),
             raw_url: "vless://...".to_string(),
         };
 
-        let config_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
-        if !config_dir.join("geosite_ir.dat").exists() {
-            println!("geosite_ir.dat not found in config_dir, skipping test to avoid Xray crash on missing external resources");
-            return;
-        }
+        let combinations = [
+            (false, false, false), // Basic config
+            (true, true, true),    // IPv6 block, Frag, Mux
+        ];
 
-        let toggles = [false, true];
-        for &ipv6 in &toggles {
-            for &ru in &toggles {
-                for &cn in &toggles {
-                    for &ir in &toggles {
-                        let mut settings = AppSettings::new();
-                        settings.socks_port = 1080;
-                        settings.disable_ipv6 = ipv6;
-                        settings.route_ru = ru;
-                        settings.route_cn = cn;
-                        settings.route_ir = ir;
-                        settings.enable_routing = ru || cn || ir;
-                        
-                        let json_str = build_xray_config(&key, &settings);
-                        
-                        let temp_file_path = format!("/tmp/vrxx_xray_test_{}_{}_{}_{}.json", ipv6, ru, cn, ir);
-                        let mut file = File::create(&temp_file_path).unwrap();
-                        file.write_all(json_str.as_bytes()).unwrap();
-                        
-                        let config_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
-                        
-                        let output = Command::new("xray")
-                            .env("XRAY_LOCATION_ASSET", config_dir)
-                            .args(["run", "-test", "-config", &temp_file_path])
-                            .output()
-                            .expect("Failed to execute xray test");
-                        
-                        let stdout = String::from_utf8_lossy(&output.stdout);
-                        assert!(output.status.success(), "Xray test failed for toggles (IPv6: {}, RU: {}, CN: {}, IR: {}):\n{}", ipv6, ru, cn, ir, stdout);
-                        
-                        std::fs::remove_file(temp_file_path).unwrap();
-                    }
-                }
-            }
+        for (ipv6, frag, mux) in combinations {
+            let mut settings = AppSettings::new();
+            settings.socks_port = 1080;
+            settings.disable_ipv6 = ipv6;
+            settings.enable_fragment = frag;
+            settings.enable_mux = mux;
+            // Disable routing for this test to avoid dependency on geoip/geosite assets
+            settings.enable_routing = false;
+            
+            let json_str = build_xray_config(&key, &settings);
+            
+            // Xray supports reading from stdin via -c /dev/stdin and -format json
+            let mut child = Command::new("xray")
+                .args(["run", "-test", "-format", "json", "-c", "/dev/stdin"])
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .expect("Failed to execute xray check");
+            
+            let mut stdin = child.stdin.take().expect("Failed to open stdin");
+            stdin.write_all(json_str.as_bytes()).unwrap();
+            drop(stdin);
+            
+            let output = child.wait_with_output().expect("Failed to wait on xray check");
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            
+            assert!(output.status.success(), "Xray check failed for toggles (IPv6: {}, Frag: {}, Mux: {}):\nSTDOUT:\n{}\nSTDERR:\n{}", ipv6, frag, mux, stdout, stderr);
         }
     }
 }

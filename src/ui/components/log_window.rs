@@ -369,3 +369,32 @@ impl VrxxLogWindow {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "Requires main thread for GTK initialization"]
+    fn test_log_window_append() {
+        let _ = gtk::init();
+        
+        // Load resources for templates
+        let res_data = include_bytes!(concat!(env!("OUT_DIR"), "/vrxx.gresource"));
+        if let Ok(res) = gtk::gio::Resource::from_data(&glib::Bytes::from(res_data)) {
+            gtk::gio::resources_register(&res);
+        }
+
+        let log_window = VrxxLogWindow::new();
+        let buffer = log_window.imp().text_view.buffer();
+        
+        log_window.append_log("error", "Test error message");
+        log_window.append_log("app", "Test app message");
+        
+        let (start, end) = buffer.bounds();
+        let text = buffer.text(&start, &end, false);
+        
+        assert!(text.contains("Test error message"));
+        assert!(text.contains("Test app message"));
+    }
+}
