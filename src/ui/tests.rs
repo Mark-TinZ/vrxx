@@ -14,6 +14,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Requires main thread for GTK initialization"]
     fn test_ui_components_init() {
         init_gtk();
 
