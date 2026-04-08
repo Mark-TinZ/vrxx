@@ -407,13 +407,3 @@ impl VrxxSettingsPage {
         self.imp().core_info_row.set_subtitle(&version_str);
     }
 }
-          Ok(out) => {
-                let s = String::from_utf8_lossy(&out.stdout);
-                s.lines().next().unwrap_or("Unknown Version").to_string()
-            }
-            Err(_) => format!("{bin_name} not found"),
-        };
-
-        self.imp().core_info_row.set_subtitle(&version_str);
-    }
-}
