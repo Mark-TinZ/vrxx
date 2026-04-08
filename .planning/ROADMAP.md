@@ -60,7 +60,7 @@
   3. User sees educational tooltips explaining technical routing terms inline
 **Plans**: 3 plans
 - [x] 04-user-workflows-01-PLAN.md — Импорт ключей и управление конфигурациями
-- [ ] 04-user-workflows-02-PLAN.md — Доработка UI и исправление UX-ошибок
+- [x] 04-user-workflows-02-PLAN.md — Доработка UI и исправление UX-ошибок
 - [ ] 04-user-workflows-03-PLAN.md — Локализация и Geo-ресурсы
 **UI hint**: yes
 

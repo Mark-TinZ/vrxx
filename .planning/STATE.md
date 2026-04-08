@@ -47,7 +47,7 @@ Progress: [█████████░] 92%
 | 1 | 3 | 3 | 0 |
 | 2 | 3 | 3 | 0 |
 | 3 | 3 | 3 | 0 |
-| 4 | 1 | 3 | 0 |
+| 4 | 2 | 3 | 0 |
 
 **Recent Trend:**
 
@@ -65,7 +65,7 @@ Progress: [█████████░] 92%
 ### Pending Todos
 
 - [ ] [01-core-integration-fixes.md](todos/01-core-integration-fixes.md) — Исправление интеграции ядер sing-box и xray.
-- [ ] [02-ui-ux-improvements.md](todos/02-ui-ux-improvements.md) — Улучшение UI/UX и устранение дублирования настроек.
+- [x] [02-ui-ux-improvements.md](todos/02-ui-ux-improvements.md) — Улучшение UI/UX и устранение дублирования настроек.
 - [ ] [03-quality-localization-debt.md](todos/03-quality-localization-debt.md) — Технический долг, локализация и стандарты кода.
 
 ### Blockers/Concerns
