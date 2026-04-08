@@ -3,8 +3,9 @@
 ## Phases
 - [x] **Phase 1: Architecture & UI Foundation** - Establish the secure, privilege-separated application skeleton with a native interface.
 - [x] **Phase 2: Core Proxy Integration** - The backend reliably manages and pipes configurations to proxy engines without touching disk.
-- [ ] **Phase 3: Networking & Routing** - System traffic is securely routed through the proxy with essential rules applied.
-- [ ] **Phase 4: User Workflows & Polish** - Users can easily import keys, view status, and learn how to use the client.
+- [x] **Phase 3: Networking & Routing** - System traffic is securely routed through the proxy with essential rules applied.
+- [x] **Phase 4: User Workflows & Polish** - Users can easily import keys, view status, and learn how to use the client.
+- [ ] **Phase 5: UI Cleanup & Core Fixes** - Stable UI with descriptive tooltips and reliable core selection logic.
 
 ## Phase Details
 
@@ -45,9 +46,9 @@
   2. User can fall back to HTTP/SOCKS5 system proxy if TUN mode is disabled
   3. Basic routing rules automatically bypass local LAN traffic
 **Plans**: 3 plans
-- [ ] 03-networking-routing-01-PLAN.md — Privileged Daemon Networking Foundation
-- [ ] 03-networking-routing-02-PLAN.md — Enhanced Core Configurations
-- [ ] 03-networking-routing-03-PLAN.md — UI Integration & System Proxy
+- [x] 03-networking-routing-01-PLAN.md — Privileged Daemon Networking Foundation
+- [x] 03-networking-routing-02-PLAN.md — Enhanced Core Configurations
+- [x] 03-networking-routing-03-PLAN.md — UI Integration & System Proxy
 **UI hint**: yes
 
 ### Phase 4: User Workflows & Polish
@@ -61,7 +62,20 @@
 **Plans**: 3 plans
 - [x] 04-user-workflows-01-PLAN.md — Импорт ключей и управление конфигурациями
 - [x] 04-user-workflows-02-PLAN.md — Доработка UI и исправление UX-ошибок
-- [ ] 04-user-workflows-03-PLAN.md — Локализация и Geo-ресурсы
+- [x] 04-user-workflows-03-PLAN.md — Локализация и Geo-ресурсы
+**UI hint**: yes
+
+### Phase 5: UI Cleanup & Core Fixes
+**Goal**: Stable UI with descriptive tooltips and reliable core selection logic
+**Depends on**: Phase 4
+**Requirements**: UI-01, UI-04, CORE-01
+**Success Criteria**:
+  1. Dead UI references removed from Settings page to prevent runtime errors
+  2. All configuration options have descriptive tooltips in English and Russian
+  3. Core selection correctly switches between Xray and Sing-box without race conditions
+**Plans**: 2 plans
+- [ ] 05-01-PLAN.md — UI Cleanup & Tooltips
+- [ ] 05-02-PLAN.md — Core Selection & Life Cycle Fixes
 **UI hint**: yes
 
 ## Progress
@@ -72,4 +86,4 @@
 | 2. Core Proxy Integration | 3/3 | Completed | Today |
 | 3. Networking & Routing | 3/3 | Completed | Today |
 | 4. User Workflows & Polish | 3/3 | Completed | Today |
-|
+| 5. UI Cleanup & Core Fixes | 0/2 | In Progress | — |
