@@ -5,7 +5,7 @@
 - [x] **Phase 2: Core Proxy Integration** - The backend reliably manages and pipes configurations to proxy engines without touching disk.
 - [x] **Phase 3: Networking & Routing** - System traffic is securely routed through the proxy with essential rules applied.
 - [x] **Phase 4: User Workflows & Polish** - Users can easily import keys, view status, and learn how to use the client.
-- [ ] **Phase 5: UI Cleanup & Core Fixes** - Stable UI with descriptive tooltips and reliable core selection logic.
+- [x] **Phase 5: UI Cleanup & Core Fixes** - Stable UI with descriptive tooltips and reliable core selection logic.
 
 ## Phase Details
 
@@ -66,6 +66,18 @@
 **UI hint**: yes
 
 ### Phase 5: UI Cleanup & Core Fixes
+
+### Phase 6: Stability & Cleanup
+**Goal**: Remove dummy keys and ensure stability when no keys exist or when keys are malformed
+**Depends on**: Phase 5
+**Requirements**: CORE-01, UI-01, UI-02
+**Success Criteria**:
+  1. Application launches with an empty VPN key list if no keys are saved
+  2. Malformed or garbage strings passed to the key parser do not cause crashes
+  3. UI actions like "Disconnect" are properly disabled when no active key exists
+**Plans**: 2 plans
+- [ ] 06-01-PLAN.md — Key Management Cleanup
+- [ ] 06-02-PLAN.md — Key Parser Hardening
 **Goal**: Stable UI with descriptive tooltips and reliable core selection logic
 **Depends on**: Phase 4
 **Requirements**: UI-01, UI-04, CORE-01
@@ -73,9 +85,10 @@
   1. Dead UI references removed from Settings page to prevent runtime errors
   2. All configuration options have descriptive tooltips in English and Russian
   3. Core selection correctly switches between Xray and Sing-box without race conditions
-**Plans**: 2 plans
-- [ ] 05-01-PLAN.md — UI Cleanup & Tooltips
-- [ ] 05-02-PLAN.md — Core Selection & Life Cycle Fixes
+**Plans**: 3 plans
+- [x] 05-01-PLAN.md — UI Cleanup & Tooltips
+- [x] 05-02-PLAN.md — Core Selection & Life Cycle Fixes
+- [x] 05-03-PLAN.md — Gap Closure (Runtime Panics)
 **UI hint**: yes
 
 ## Progress
@@ -86,4 +99,5 @@
 | 2. Core Proxy Integration | 3/3 | Completed | Today |
 | 3. Networking & Routing | 3/3 | Completed | Today |
 | 4. User Workflows & Polish | 3/3 | Completed | Today |
-| 5. UI Cleanup & Core Fixes | 0/2 | In Progress | — |
+| 5. UI Cleanup & Core Fixes | 3/3 | Completed | Today |
+| 6. Stability & Cleanup | 0/2 | To be planned | - |
