@@ -2,7 +2,7 @@
 
 ## What This Is
 
-VRXX is a modern, native VPN client for Linux built on GTK4 and Libadwaita. It serves as an intuitive bridge between maximum simplicity for regular users and ultimate flexibility for advanced users, combining the power of Xray and Sing-box under the hood.
+VRXX is a modern, native VPN client for Linux built on GTK4 and Libadwaita. It serves as an intuitive bridge between maximum simplicity for regular users and ultimate flexibility for advanced users, focusing on Sing-box under the hood for maximum performance.
 
 ## Core Value
 
@@ -12,14 +12,14 @@ Providing a seamless, natively integrated GNOME experience with transparent, int
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] **Backend Stability**: Zero-disk footprint (in-memory configs), robust error handling preventing silent crashes, and strict network control. (Validated in Phase 06: Stability & Cleanup)
+- [x] **Smart Routing**: Single process execution, on-the-fly multiplexing of multiple keys, and automatic traffic splitting using built-in routing modules. (Validated in Phase 03: Networking & Routing)
+- [x] **Native UI/UX (KISS + GNOME HIG)**: Informative animated status widget, educational interface to explain technical terms, and fully asynchronous UI that never freezes. (Validated in Phase 01-05)
+- [x] **Open Source & Clean Architecture**: Licensed under MPL-2.0, with a modular, well-commented, community-friendly codebase. (Validated in Phase 01: Architecture & UI Foundation)
 
 ### Active
 
-- [ ] **Backend Stability**: Zero-disk footprint (in-memory configs), robust error handling preventing silent crashes, and strict network control (TIME_WAIT resolution).
-- [ ] **Smart Routing**: Single process execution, on-the-fly multiplexing of multiple keys, and automatic traffic splitting using built-in routing modules.
-- [ ] **Native UI/UX (KISS + GNOME HIG)**: Informative animated status widget, educational interface to explain technical terms, and fully asynchronous UI that never freezes.
-- [ ] **Open Source & Clean Architecture**: Licensed under MPL-2.0, with a modular, well-commented, community-friendly codebase.
+(None currently active)
 
 ### Out of Scope
 
@@ -27,7 +27,7 @@ Providing a seamless, natively integrated GNOME experience with transparent, int
 
 ## Context
 
-- **Tech Stack**: Rust, GTK4, Libadwaita, Xray, Sing-box.
+- **Tech Stack**: Rust, GTK4, Libadwaita, Sing-box.
 - **Problem solved**: Existing VPN clients are either too complex for regular users or too limited for power users. VRXX aims to bridge this gap with an educational, modern native interface while retaining powerful smart routing capabilities.
 - **Existing codebase**: This is a brownfield project; a codebase map already exists and should be used as a reference.
 
@@ -41,9 +41,9 @@ Providing a seamless, natively integrated GNOME experience with transparent, int
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| In-memory config only | Improves security and prevents disk clutter. | — Pending |
-| GTK4/Libadwaita | Ensures a native, modern GNOME experience. | — Pending |
-| Single core process | Saves memory and prevents port conflicts. | — Pending |
+| In-memory config only | Improves security and prevents disk clutter. | Validated |
+| GTK4/Libadwaita | Ensures a native, modern GNOME experience. | Validated |
+| Single core process | Saves memory and prevents port conflicts. | Validated |
 
 ---
-*Last updated: April 8, 2026* Today after initialization*
+*Last updated: April 12, 2026*
