@@ -6,6 +6,7 @@
 - [x] **Phase 3: Networking & Routing** - System traffic is securely routed through the proxy with essential rules applied.
 - [x] **Phase 4: User Workflows & Polish** - Users can easily import keys, view status, and learn how to use the client.
 - [x] **Phase 5: UI Cleanup & Core Fixes** - Stable UI with descriptive tooltips and reliable core selection logic.
+- [ ] **Phase 6: Core Stability & Sing-box Refactor** - Transition to Sing-box only, fix proxy/TUN bugs, and improve logging.
 
 ## Phase Details
 
@@ -66,18 +67,6 @@
 **UI hint**: yes
 
 ### Phase 5: UI Cleanup & Core Fixes
-
-### Phase 6: Stability & Cleanup
-**Goal**: Remove dummy keys and ensure stability when no keys exist or when keys are malformed
-**Depends on**: Phase 5
-**Requirements**: CORE-01, UI-01, UI-02
-**Success Criteria**:
-  1. Application launches with an empty VPN key list if no keys are saved
-  2. Malformed or garbage strings passed to the key parser do not cause crashes
-  3. UI actions like "Disconnect" are properly disabled when no active key exists
-**Plans**: 2 plans
-- [ ] 06-01-PLAN.md — Key Management Cleanup
-- [ ] 06-02-PLAN.md — Key Parser Hardening
 **Goal**: Stable UI with descriptive tooltips and reliable core selection logic
 **Depends on**: Phase 4
 **Requirements**: UI-01, UI-04, CORE-01
@@ -91,6 +80,21 @@
 - [x] 05-03-PLAN.md — Gap Closure (Runtime Panics)
 **UI hint**: yes
 
+### Phase 6: Core Stability & Sing-box Refactor
+**Goal**: Transition to Sing-box only, fix proxy/TUN bugs, update version, and improve logging.
+**Depends on**: Phase 5
+**Requirements**: CORE-01, UI-01, UI-02, CORE-02, NET-01
+**Success Criteria**:
+  1. Application version updated to 0.1.8 and Xray support is completely removed.
+  2. Sing-box proxy and TUN modes function reliably across different engine versions.
+  3. Log rotation is implemented and UI console displays real-time backend logs.
+  4. Import logic is consolidated and prepared for QR-code inputs.
+**Plans**: 3 plans
+- [ ] 06-01-PLAN.md — Version Update & UI Refinement
+- [ ] 06-02-PLAN.md — Core Removal & Sing-box Refactor
+- [ ] 06-03-PLAN.md — Sing-box Stability & Logging
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -100,4 +104,4 @@
 | 3. Networking & Routing | 3/3 | Completed | Today |
 | 4. User Workflows & Polish | 3/3 | Completed | Today |
 | 5. UI Cleanup & Core Fixes | 3/3 | Completed | Today |
-| 6. Stability & Cleanup | 0/2 | To be planned | - |
+| 6. Core Stability & Sing-box Refactor | 0/3 | In Progress | - |
