@@ -146,7 +146,19 @@ impl ProxyManager {
             async move {
                 let mut reader = BufReader::new(stdout).lines();
                 // OPTIMIZE: Открываем файл один раз для записи всех логов текущей сессии
-                let mut file = std::fs::OpenOptions::new().create(true).append(true).open(&core_log_path).ok();
+                #[cfg(unix)]
+                use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+                let mut opts = std::fs::OpenOptions::new();
+                opts.create(true).append(true);
+                #[cfg(unix)]
+                opts.mode(0o600);
+
+                let mut file = opts.open(&core_log_path).ok();
+                #[cfg(unix)]
+                if let Some(ref f) = file {
+                    let _ = f.set_permissions(std::fs::Permissions::from_mode(0o600));
+                }
 
                 while let Ok(Some(line)) = reader.next_line().await {
                     if let Some(ref mut f) = file {
@@ -169,7 +181,19 @@ impl ProxyManager {
             async move {
                 let mut reader = BufReader::new(stderr).lines();
                 // OPTIMIZE: Открываем файл один раз
-                let mut file = std::fs::OpenOptions::new().create(true).append(true).open(&core_log_path).ok();
+                #[cfg(unix)]
+                use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+                let mut opts = std::fs::OpenOptions::new();
+                opts.create(true).append(true);
+                #[cfg(unix)]
+                opts.mode(0o600);
+
+                let mut file = opts.open(&core_log_path).ok();
+                #[cfg(unix)]
+                if let Some(ref f) = file {
+                    let _ = f.set_permissions(std::fs::Permissions::from_mode(0o600));
+                }
 
                 while let Ok(Some(line)) = reader.next_line().await {
                     if let Some(ref mut f) = file {
