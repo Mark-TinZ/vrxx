@@ -56,24 +56,37 @@ fn main() -> glib::ExitCode {
     let is_daemon = args.iter().any(|arg| arg == "--daemon");
     let log_suffix = if is_daemon { "daemon" } else { "app" };
 
-    let log_file = match std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_dir.join(format!("{}.log", log_suffix)))
-    {
-        Ok(file) => file,
+    #[cfg(unix)]
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+    let mut log_opts = std::fs::OpenOptions::new();
+    log_opts.create(true).append(true);
+    #[cfg(unix)]
+    log_opts.mode(0o600);
+
+    let log_file = match log_opts.open(log_dir.join(format!("{}.log", log_suffix))) {
+        Ok(file) => {
+            #[cfg(unix)]
+            let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+            file
+        },
         Err(e) => {
             eprintln!("Warning: Failed to open {}.log: {}. Using /dev/null", log_suffix, e);
             std::fs::OpenOptions::new().write(true).open("/dev/null").unwrap_or_else(|_| std::process::exit(1))
         }
     };
 
-    let all_log_file = match std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_dir.join("all.log"))
-    {
-        Ok(file) => file,
+    let mut all_log_opts = std::fs::OpenOptions::new();
+    all_log_opts.create(true).append(true);
+    #[cfg(unix)]
+    all_log_opts.mode(0o600);
+
+    let all_log_file = match all_log_opts.open(log_dir.join("all.log")) {
+        Ok(file) => {
+            #[cfg(unix)]
+            let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+            file
+        },
         Err(e) => {
             eprintln!("Warning: Failed to open all.log: {}. Using /dev/null", e);
             std::fs::OpenOptions::new().write(true).open("/dev/null").unwrap_or_else(|_| std::process::exit(1))
