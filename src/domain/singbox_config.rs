@@ -318,14 +318,14 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         route_config["rule_set"] = json!(rule_sets);
     }
 
-    let mut remote_dns = json!({
+    let remote_dns = json!({
         "tag": "remote-dns",
         "type": "https",
         "server": "1.1.1.1",
         "detour": "proxy"
     });
     
-    let mut local_dns = json!({
+    let local_dns = json!({
         "tag": "local-dns",
         "type": "local",
         "detour": "direct"

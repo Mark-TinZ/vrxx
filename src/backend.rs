@@ -5,7 +5,9 @@ use crate::ipc::DaemonProxy;
 use tokio::runtime::Runtime;
 
 pub trait VpnCore: Send + Sync + std::fmt::Debug {
+    #[allow(dead_code)]
     fn start(&self, config_json: &str) -> Result<()>;
+    #[allow(dead_code)]
     fn stop(&self) -> Result<()>;
     fn is_running(&self) -> bool;
 }
