@@ -25,7 +25,9 @@ impl CoreBackend {
     pub fn new() -> Self {
         let rt = Runtime::new().expect("Failed to create tokio runtime");
         
-        // Background check for daemon availability
+        // --- Раздел: Проверка окружения ---
+        // HACK: Фоновая проверка доступности демона при инициализации.
+        // Это позволяет избежать подвисания UI, если D-Bus недоступен.
         let rt_clone = Arc::new(rt);
         let rt_bg = rt_clone.clone();
         std::thread::spawn(move || {
@@ -46,12 +48,16 @@ impl CoreBackend {
                 }
             });
         });
+        // ================================
 
         Self {
             rt: rt_clone,
         }
     }
 
+    // --- Раздел: IPC Взаимодействие ---
+    // OPTIMIZE: Мы создаем новое подключение D-Bus при каждом вызове.
+    // Стоит рассмотреть возможность кэширования прокси-объекта.
     async fn get_proxy() -> Result<DaemonProxy<'static>> {
         let conn = zbus::Connection::system().await
             .context("Failed to connect to D-Bus System Bus")?;

@@ -48,11 +48,56 @@ impl std::io::Write for MultiWriter {
 fn main() -> glib::ExitCode {
     // Точка входа в приложение
     let args: Vec<String> = std::env::args().collect();
-    if args.iter().any(|arg| arg == "--daemon") {
+
+    // --- Раздел: Логирование ---
+    let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
+    std::fs::create_dir_all(&log_dir).ok();
+    
+    let is_daemon = args.iter().any(|arg| arg == "--daemon");
+    let log_suffix = if is_daemon { "daemon" } else { "app" };
+
+    let log_file = match std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_dir.join(format!("{}.log", log_suffix)))
+    {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("Warning: Failed to open {}.log: {}. Using /dev/null", log_suffix, e);
+            std::fs::OpenOptions::new().write(true).open("/dev/null").unwrap_or_else(|_| std::process::exit(1))
+        }
+    };
+
+    let all_log_file = match std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_dir.join("all.log"))
+    {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("Warning: Failed to open all.log: {}. Using /dev/null", e);
+            std::fs::OpenOptions::new().write(true).open("/dev/null").unwrap_or_else(|_| std::process::exit(1))
+        }
+    };
+
+    let multi_writer = MultiWriter {
+        app_log: log_file,
+        all_log: all_log_file,
+    };
+
+    let (non_blocking, _guard) = tracing_appender::non_blocking(multi_writer);
+
+    tracing_subscriber::fmt()
+        .with_writer(non_blocking)
+        .with_ansi(false)
+        .init();
+    // ================================
+
+    if is_daemon {
         match tokio::runtime::Runtime::new() {
             Ok(rt) => {
                 if let Err(e) = rt.block_on(daemon::run()) {
-                    eprintln!("Daemon failed: {e}");
+                    tracing::error!("Daemon failed: {e}");
                     std::process::exit(1);
                 }
                 std::process::exit(0);
@@ -76,46 +121,6 @@ fn main() -> glib::ExitCode {
         std::env::set_var("LANG", lang);
         std::env::set_var("LC_MESSAGES", lang);
     }
-    
-    let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
-    std::fs::create_dir_all(&log_dir).ok();
-    
-    // Пишем логи приложения в отдельный файл app.log и all.log
-    let app_log_file = match std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_dir.join("app.log"))
-    {
-        Ok(file) => file,
-        Err(e) => {
-            eprintln!("Warning: Failed to open app.log: {}. Using /dev/null", e);
-            std::fs::OpenOptions::new().write(true).open("/dev/null").unwrap_or_else(|_| std::process::exit(1))
-        }
-    };
-
-    let all_log_file = match std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_dir.join("all.log"))
-    {
-        Ok(file) => file,
-        Err(e) => {
-            eprintln!("Warning: Failed to open all.log: {}. Using /dev/null", e);
-            std::fs::OpenOptions::new().write(true).open("/dev/null").unwrap_or_else(|_| std::process::exit(1))
-        }
-    };
-
-    let multi_writer = MultiWriter {
-        app_log: app_log_file,
-        all_log: all_log_file,
-    };
-
-    let (non_blocking, _guard) = tracing_appender::non_blocking(multi_writer);
-
-    tracing_subscriber::fmt()
-        .with_writer(non_blocking)
-        .with_ansi(false)
-        .init();
 
     tracing::info!("Vrxx Application Started");
 

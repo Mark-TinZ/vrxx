@@ -3,6 +3,7 @@ use anyhow::Result;
 use std::fs;
 use std::io::Write;
 
+// --- Раздел: Работа с гео-базами ---
 pub async fn update_geo_databases() -> Result<()> {
     let config_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx");
     fs::create_dir_all(&config_dir)?;
@@ -59,10 +60,14 @@ pub async fn update_geo_databases() -> Result<()> {
     Ok(())
 }
 
+// ================================
+
+// --- Раздел: Фоновое обновление ---
 pub fn spawn_background_updater() {
     std::thread::spawn(move || {
         if let Ok(rt) = tokio::runtime::Runtime::new() {
             rt.block_on(async {
+                // FIXME: При первом запуске может возникнуть гонка, если ядро стартует раньше скачивания баз.
                 let _ = update_geo_databases().await;
                 
                 let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(24 * 3600));

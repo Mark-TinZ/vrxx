@@ -97,6 +97,10 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         if parsed_key.protocol.to_lowercase() == "vmess" {
             proxy_outbound["alter_id"] = json!(0);
             proxy_outbound["security"] = json!("auto");
+
+            // FIXME: VMess в sing-box требует явного указания метода шифрования, если не auto.
+            // BUG: Некоторые старые конфигурации могут не работать без packet_encoding.
+            proxy_outbound["packet_encoding"] = json!("xudp");
         } else {
             let flow = qp.get("flow").map(|s| s.as_str()).unwrap_or("");
             if !flow.is_empty() {

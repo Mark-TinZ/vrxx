@@ -91,6 +91,7 @@ impl VrxxVpnPage {
         glib::Object::builder().build()
     }
 
+    // --- Раздел: Работа с данными (Model) ---
     fn setup_model(&self) {
         let model = gio::ListStore::new::<VpnKeyObject>();
 
@@ -216,7 +217,7 @@ impl VrxxVpnPage {
                 item_clone.set_ping(gettext("pinging..."));
                 item_clone.set_is_loading(true);
                 
-                // Извлекаем хост и порт из ключа для прямого пинга
+                // XXX: Извлекаем хост и порт из ключа для прямого TCP-пинга
                 let raw_url = item_clone.url();
                 let parsed = crate::domain::key_parser::parse_vpn_key(&raw_url).unwrap_or_else(|_| crate::domain::key_parser::ParsedKey {
                     protocol: "".to_string(), name: "".to_string(), host: "127.0.0.1".to_string(), port: 0, uuid: "".to_string(), query_params: std::collections::HashMap::new(), raw_url: "".to_string()
@@ -269,6 +270,9 @@ impl VrxxVpnPage {
         });
     }
 
+    // ================================
+
+    // --- Раздел: Сигналы и Колбэки ---
     fn setup_callbacks(&self) {
         let imp = self.imp();
         let page_weak = self.downgrade();
@@ -333,6 +337,9 @@ impl VrxxVpnPage {
         }
     }
 
+    // ================================
+
+    // --- Раздел: Мониторинг демона и метрики ---
     fn setup_daemon_listener(&self) {
         let page_weak = self.downgrade();
         glib::spawn_future_local(async move {
@@ -367,6 +374,9 @@ impl VrxxVpnPage {
         });
     }
 
+    // ================================
+
+    // --- Раздел: Управление состоянием соединения ---
     fn handle_daemon_status_change(&self, status: &str) {
         let imp = self.imp();
         
@@ -692,6 +702,9 @@ impl VrxxVpnPage {
         });
     }
 
+    // ================================
+
+    // --- Раздел: Управление ключами и конфигурацией ---
     fn set_active_key(&self, active_item: &VpnKeyObject) {
         if let Some(model) = self.imp().model.borrow().as_ref() {
             for i in 0..model.n_items() {
@@ -803,6 +816,9 @@ impl VrxxVpnPage {
     }
 
     // Логика отображения информации о ключе
+    // ================================
+
+    // --- Раздел: UI Диалоги ---
     fn handle_info_key(&self, key: &VpnKeyObject) {
         let current_settings = SettingsManager::new().load();
         key.set_hide_ip(current_settings.streamer_mode);
@@ -1033,6 +1049,9 @@ impl VrxxVpnPage {
         }
     }
 
+    // ================================
+
+    // --- Раздел: GActions ---
     fn setup_actions(&self) {
         let action_group = gio::SimpleActionGroup::new();
         self.imp().action_group.replace(Some(action_group.clone()));

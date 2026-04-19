@@ -76,11 +76,13 @@ impl VrxxProxyPage {
         glib::Object::builder().build()
     }
 
+    // --- Раздел: Состояние ---
     fn mark_changed(&self) {
         let imp = self.imp();
         *imp.has_changes.borrow_mut() = true;
         imp.btn_apply.set_visible(true);
     }
+    // ================================
 
     fn setup_settings(&self) {
         let imp = self.imp();
@@ -113,7 +115,8 @@ impl VrxxProxyPage {
         imp.http_port_row.set_value(settings.http_port as f64);
         imp.allow_lan_switch.set_active(settings.allow_lan);
 
-        // Bind signals to save
+        // --- Раздел: Привязка настроек ---
+        // REVIEW: Возможно стоит объединить сохранение всех полей в один метод.
         imp.system_proxy_switch.connect_active_notify(glib::clone!(
             #[weak(rename_to = page)] self,
             move |row| {

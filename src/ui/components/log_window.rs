@@ -179,9 +179,11 @@ mod imp {
             buffer.create_tag(Some("error"), &[("foreground", &"red"), ("weight", &700)]);
             buffer.create_tag(Some("warning"), &[("foreground", &"orange")]);
             buffer.create_tag(Some("debug"), &[("foreground", &"gray")]);
+            buffer.create_tag(Some("info"), &[("foreground", &"green")]);
             buffer.create_tag(Some("app"), &[("foreground", &"#3584e4"), ("weight", &700)]); // GNOME blue
 
             obj.setup_callbacks();
+            obj.load_logs_from_file();
             obj.setup_daemon_logs();
         }
     }
@@ -291,6 +293,7 @@ impl VrxxLogWindow {
                 // При смене фильтра очищаем экран и читаем всё заново
                 window.imp().text_view.buffer().set_text("");
                 *window.imp().last_pos.borrow_mut() = 0;
+                window.load_logs_from_file();
             }
         });
 
@@ -340,15 +343,71 @@ impl VrxxLogWindow {
         });
     }
 
+    fn load_logs_from_file(&self) {
+        let log_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx").join("logs");
+        let filter_index = self.imp().dropdown_filter.selected();
+        let file_name = match filter_index {
+            1 => "core.log",
+            2 => "app.log",
+            3 => "access.log",
+            _ => "all.log",
+        };
+        let log_path = log_dir.join(file_name);
+
+        // OPTIMIZE: Не читаем весь файл целиком (может быть огромным),
+        // а берем только последние N килобайт
+        if let Ok(mut file) = std::fs::File::open(log_path) {
+            let metadata = file.metadata().unwrap();
+            let file_size = metadata.len();
+            let read_size = 128 * 1024; // Читаем последние 128 КБ
+
+            let start_pos = if file_size > read_size { file_size - read_size } else { 0 };
+            let mut buffer = Vec::new();
+
+            use std::io::{Seek, SeekFrom, Read};
+            if file.seek(SeekFrom::Start(start_pos)).is_ok() {
+                let _ = file.read_to_end(&mut buffer);
+                let content = String::from_utf8_lossy(&buffer);
+
+                let lines: Vec<&str> = content.lines().collect();
+                // Пропускаем первую (возможно неполную) строку, если мы читали не с начала
+                let start_idx = if start_pos > 0 { 1 } else { 0 };
+
+                for line in &lines[start_idx..] {
+                    let level = if line.contains("ERROR") || line.contains("error") { "error" }
+                                else if line.contains("WARN") || line.contains("warning") { "warning" }
+                                else if line.contains("DEBUG") || line.contains("debug") { "debug" }
+                                else if line.contains("INFO") || line.contains("info") { "info" }
+                                else { "info" };
+                    self.append_log(level, line);
+                }
+            }
+        }
+    }
+
     fn append_log(&self, level: &str, message: &str) {
         let imp = self.imp();
         let buffer = imp.text_view.buffer();
+
+        // --- Раздел: Фильтрация логов ---
+        let filter_index = imp.dropdown_filter.selected();
+        let is_app_log = level == "app" || message.contains("[Vrxx]");
+        let is_core_log = !is_app_log; // Упрощенно
+
+        match filter_index {
+            1 if !is_core_log => return,
+            2 if !is_app_log => return,
+            _ => {}
+        }
+        // ================================
+
         let mut iter = buffer.end_iter();
         
         let tag_name = match level {
             "error" => Some("error"),
             "warning" => Some("warning"),
             "debug" => Some("debug"),
+            "info" => Some("info"),
             "app" => Some("app"),
             _ => None,
         };
