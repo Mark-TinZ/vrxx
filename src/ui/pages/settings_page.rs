@@ -36,6 +36,10 @@ mod imp {
         #[template_child]
         pub domain_strategy_row: TemplateChild<adw::ComboRow>,
         #[template_child]
+        pub update_geo_row: TemplateChild<adw::ActionRow>,
+        #[template_child]
+        pub btn_update_geo: TemplateChild<gtk::Button>,
+        #[template_child]
         pub bypass_lan_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub fake_dns_row: TemplateChild<adw::SwitchRow>,
@@ -162,6 +166,14 @@ impl VrxxSettingsPage {
             }
         ));
 
+        imp.btn_update_geo.connect_clicked(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            move |_| {
+                page.update_geo_data();
+            }
+        ));
+
         let selected_idx = match settings.core.as_str() {
             "sing-box" => 1,
             _ => 0, // xray default
@@ -205,6 +217,7 @@ impl VrxxSettingsPage {
         imp.log_level_row.set_selected(log_idx);
 
         self.update_core_info();
+        self.refresh_geo_status();
 
         // Connect signals
         imp.core_selector.connect_selected_notify(glib::clone!(
@@ -428,6 +441,39 @@ impl VrxxSettingsPage {
     }
 
     // --- Раздел: Диагностика ---
+    fn refresh_geo_status(&self) {
+        let status = crate::services::geo_updater::get_geo_status();
+        self.imp()
+            .update_geo_row
+            .set_subtitle(&format!("Last update: {}", status));
+    }
+
+    fn update_geo_data(&self) {
+        let imp = self.imp();
+        imp.btn_update_geo.set_sensitive(false);
+        imp.update_geo_row.set_subtitle("Updating...");
+
+        gtk::glib::MainContext::default().spawn_local(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            async move {
+                let _ = crate::services::geo_updater::update_geo_databases(true).await;
+                page.refresh_geo_status();
+                page.imp().btn_update_geo.set_sensitive(true);
+
+                if let Some(app) =
+                    gtk::gio::Application::default().and_downcast::<gtk::Application>()
+                {
+                    let notification =
+                        gtk::gio::Notification::new(&gettextrs::gettext("Geo Data Updated"));
+                    notification
+                        .set_body(Some(&gettextrs::gettext("Latest geo-databases downloaded.")));
+                    app.send_notification(Some("geo_updated"), &notification);
+                }
+            }
+        ));
+    }
+
     fn update_core_info(&self) {
         let settings = SettingsManager::new().load();
         let bin_name = if settings.core == "sing-box" {
