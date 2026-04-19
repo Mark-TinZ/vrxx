@@ -25,4 +25,35 @@ mod tests {
         let _whitelist_page = crate::ui::pages::VrxxWhitelistPage::new();
         let _proxy_page = crate::ui::pages::VrxxProxyPage::new();
     }
+
+    #[test]
+    #[ignore = "Requires main thread for GTK initialization"]
+    fn test_log_filtering_integration() {
+        // --- Раздел: Глобальное тестирование логов ---
+        init_gtk();
+        let log_window = crate::ui::components::log_window::VrxxLogWindow::new();
+        let buffer = log_window.imp().text_view.buffer();
+
+        // 1. Тест фильтра "Все логи"
+        log_window.imp().dropdown_filter.set_selected(0);
+        log_window.append_log("info", "[Vrxx] App started");
+        log_window.append_log("info", "Core accepted connection");
+
+        let (start, end) = buffer.bounds();
+        let text = buffer.text(&start, &end, false);
+        assert!(text.contains("[Vrxx] App started"));
+        assert!(text.contains("Core accepted connection"));
+
+        buffer.set_text("");
+
+        // 2. Тест фильтра "Логи приложения"
+        log_window.imp().dropdown_filter.set_selected(2);
+        log_window.append_log("info", "[Vrxx] Important event");
+        log_window.append_log("info", "Random core message");
+
+        let (start, end) = buffer.bounds();
+        let text = buffer.text(&start, &end, false);
+        assert!(text.contains("[Vrxx] Important event"));
+        assert!(!text.contains("Random core message"));
+    }
 }

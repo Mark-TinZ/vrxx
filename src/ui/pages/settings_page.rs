@@ -40,6 +40,8 @@ mod imp {
         #[template_child]
         pub btn_update_geo: TemplateChild<gtk::Button>,
         #[template_child]
+        pub geo_progress_bar: TemplateChild<gtk::ProgressBar>,
+        #[template_child]
         pub bypass_lan_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub fake_dns_row: TemplateChild<adw::SwitchRow>,
@@ -216,7 +218,7 @@ impl VrxxSettingsPage {
         };
         imp.log_level_row.set_selected(log_idx);
 
-        self.update_core_info();
+        self.update_core_info(None);
         self.refresh_geo_status();
 
         // Connect signals
@@ -227,13 +229,14 @@ impl VrxxSettingsPage {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 let is_singbox = row.selected() == 1;
-                s.core = if is_singbox {
-                    "sing-box".to_string()
+                let core_name = if is_singbox {
+                    "sing-box"
                 } else {
-                    "xray".to_string()
+                    "xray"
                 };
+                s.core = core_name.to_string();
                 manager.save(&s);
-                page.update_core_info();
+                page.update_core_info(Some(core_name));
                 page.imp().fragment_row.set_visible(!is_singbox);
                 page.mark_changed(false);
             }
@@ -452,14 +455,19 @@ impl VrxxSettingsPage {
         let imp = self.imp();
         imp.btn_update_geo.set_sensitive(false);
         imp.update_geo_row.set_subtitle("Updating...");
+        imp.geo_progress_bar.set_visible(true);
+        imp.geo_progress_bar.set_fraction(0.0);
+
+        let (tx, rx) = async_channel::unbounded();
 
         gtk::glib::MainContext::default().spawn_local(glib::clone!(
             #[weak(rename_to = page)]
             self,
             async move {
-                let _ = crate::services::geo_updater::update_geo_databases(true).await;
+                let _ = crate::services::geo_updater::update_geo_databases(true, Some(tx)).await;
                 page.refresh_geo_status();
                 page.imp().btn_update_geo.set_sensitive(true);
+                page.imp().geo_progress_bar.set_visible(false);
 
                 if let Some(app) =
                     gtk::gio::Application::default().and_downcast::<gtk::Application>()
@@ -472,18 +480,34 @@ impl VrxxSettingsPage {
                 }
             }
         ));
+
+        gtk::glib::MainContext::default().spawn_local(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            async move {
+                while let Ok(progress) = rx.recv().await {
+                    page.imp().geo_progress_bar.set_fraction(progress);
+                }
+            }
+        ));
     }
 
-    fn update_core_info(&self) {
-        let settings = SettingsManager::new().load();
-        let bin_name = if settings.core == "sing-box" {
-            "sing-box"
+    fn update_core_info(&self, name: Option<&str>) {
+        // --- Раздел: Диагностика ядер ---
+        // XXX: Мы используем переданное имя или загружаем из настроек, если оно не указано
+        let bin_name = if let Some(n) = name {
+            n.to_string()
         } else {
-            "xray"
+            let settings = SettingsManager::new().load();
+            if settings.core == "sing-box" {
+                "sing-box".to_string()
+            } else {
+                "xray".to_string()
+            }
         };
 
         // TODO: Использовать асинхронный вызов команды для получения версии
-        let output = std::process::Command::new(bin_name).arg("version").output();
+        let output = std::process::Command::new(&bin_name).arg("version").output();
 
         let version_str = match output {
             Ok(out) => {

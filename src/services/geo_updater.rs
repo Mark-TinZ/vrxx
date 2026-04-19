@@ -4,7 +4,7 @@ use std::fs;
 use std::io::Write;
 
 // --- Раздел: Работа с гео-базами ---
-pub async fn update_geo_databases(force: bool) -> Result<()> {
+pub async fn update_geo_databases(force: bool, progress_tx: Option<async_channel::Sender<f64>>) -> Result<()> {
     let config_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx");
     fs::create_dir_all(&config_dir)?;
 
@@ -21,6 +21,8 @@ pub async fn update_geo_databases(force: bool) -> Result<()> {
     ];
 
     let client = reqwest::Client::new();
+    let total_files = files_to_download.len();
+    let mut downloaded_count = 0;
 
     for (filename, url) in files_to_download {
         let file_path = config_dir.join(filename);
@@ -58,6 +60,12 @@ pub async fn update_geo_databases(force: bool) -> Result<()> {
                     tracing::warn!("Failed to download {}: {}", filename, e);
                 }
             }
+        }
+
+        downloaded_count += 1;
+        if let Some(ref tx) = progress_tx {
+            let progress = downloaded_count as f64 / total_files as f64;
+            let _ = tx.send(progress).await;
         }
     }
 
@@ -104,12 +112,12 @@ pub fn spawn_background_updater() {
         if let Ok(rt) = tokio::runtime::Runtime::new() {
             rt.block_on(async {
                 // FIXME: При первом запуске может возникнуть гонка, если ядро стартует раньше скачивания баз.
-                let _ = update_geo_databases(false).await;
+                let _ = update_geo_databases(false, None).await;
                 
                 let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(24 * 3600));
                 loop {
                     interval.tick().await;
-                    let _ = update_geo_databases(false).await;
+                    let _ = update_geo_databases(false, None).await;
                 }
             });
         }

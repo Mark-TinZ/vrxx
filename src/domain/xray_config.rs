@@ -308,6 +308,8 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         let mut domains = vec![];
         let mut ips = vec![];
         
+        // --- Раздел: Региональная маршрутизация ---
+        // XXX: Мы используем локальные .dat файлы через ext: или встроенные базы
         if settings.route_ru {
             domains.push("ext:geosite_ru.dat:ru".to_string());
             domains.push("geosite:ru".to_string());
@@ -332,6 +334,9 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         }
 
         if !domains.is_empty() || !ips.is_empty() {
+            // --- Раздел: Логика маршрутизации (Whitelist/Blacklist) ---
+            // REVIEW: Если режим "proxy", то это Whitelist (только регионы через прокси).
+            // Если "bypass", то это Blacklist (регионы напрямую, остальное через прокси).
             let target_tag = if settings.routing_mode == "proxy" { "proxy" } else { "direct" };
             let mut rule = json!({
                 "type": "field",
@@ -346,7 +351,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
             }
             rules.push(rule);
             
-            // Если режим proxy (Включения), то ТОЛЬКО указанные домены/IP идут через proxy.
+            // Если режим proxy (Whitelist), то ТОЛЬКО указанные домены/IP идут через proxy.
             // Остальной трафик должен идти напрямую (direct).
             if settings.routing_mode == "proxy" {
                 rules.push(json!({
@@ -476,6 +481,36 @@ mod tests {
         
         let proxy_outbound = parsed["outbounds"].as_array().unwrap().first().unwrap();
         assert_eq!(proxy_outbound["protocol"], "vless");
+    }
+
+    #[test]
+    fn test_xray_ipv6_disabling() {
+        // --- Раздел: Тестирование IPv6 ---
+        let key = ParsedKey {
+            protocol: "VLESS".to_string(),
+            name: "TestXray".to_string(),
+            host: "example.com".to_string(),
+            port: 443,
+            uuid: "uuid-456".to_string(),
+            query_params: std::collections::HashMap::new(),
+            raw_url: "vless://...".to_string(),
+        };
+        let mut settings = AppSettings::new();
+        settings.disable_ipv6 = true;
+
+        let json_str = build_xray_config(&key, &settings);
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Valid JSON for Xray");
+
+        // Проверка domainStrategy
+        assert_eq!(parsed["routing"]["domainStrategy"], "UseIPv4");
+
+        // Проверка блокировки IPv6
+        let rules = parsed["routing"]["rules"].as_array().unwrap();
+        let has_ipv6_block = rules.iter().any(|r| {
+            r["ip"].as_array().map_or(false, |ips| ips.contains(&json!("::/0"))) &&
+            r["outboundTag"] == json!("block")
+        });
+        assert!(has_ipv6_block, "Xray IPv6 block rule missing");
     }
 
     #[test]
