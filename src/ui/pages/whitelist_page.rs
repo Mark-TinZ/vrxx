@@ -52,6 +52,7 @@ mod imp {
         fn class_init(klass: &mut Self::Class) {
             adw::ComboRow::static_type();
             adw::SwitchRow::static_type();
+            adw::ExpanderRow::static_type();
             klass.bind_template();
         }
 
@@ -69,6 +70,7 @@ mod imp {
             
             self.obj().setup_settings();
             self.obj().setup_rules_list();
+            self.obj().setup_actions();
             setup_primary_menu(&self.primary_menu_btn.get());
         }
     }
@@ -194,7 +196,7 @@ impl VrxxWhitelistPage {
             
             let page = self.clone();
             gtk::glib::MainContext::default().spawn_local(async move {
-                let response = dialog.choose_future(Some(&window)).await;
+                let response = dialog.choose_future(&window).await;
                 if response == "add" {
                     let name = entry_name.text().to_string();
                     let val = entry_val.text().to_string();
@@ -315,7 +317,6 @@ impl VrxxWhitelistPage {
 
     fn setup_actions(&self) {
         let imp = self.imp();
-        let page = self.clone();
 
         imp.enable_routing_row.connect_active_notify(glib::clone!(
             #[weak(rename_to = page)] self, move |_| page.mark_changed()

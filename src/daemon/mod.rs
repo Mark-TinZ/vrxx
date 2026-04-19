@@ -3,7 +3,6 @@ pub mod dns;
 
 use crate::ipc::{VrxxDaemon, VrxxDaemonSignals};
 use zbus::connection::Builder;
-use zbus::object_server::InterfaceRef;
 use std::future::pending;
 use std::sync::Arc;
 use tokio::sync::Mutex;

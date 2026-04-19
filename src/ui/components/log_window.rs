@@ -1,8 +1,6 @@
 use adw::subclass::prelude::*;
 use adw::prelude::*;
 use gtk::glib;
-use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
 
 mod imp {

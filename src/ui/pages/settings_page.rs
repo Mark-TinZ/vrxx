@@ -2,8 +2,7 @@ use crate::settings::SettingsManager;
 use crate::ui::setup_primary_menu;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gettextrs::gettext;
-use gtk::{gio, glib, CompositeTemplate};
+use gtk::{glib, CompositeTemplate};
 use std::cell::RefCell;
 
 mod imp {
@@ -30,8 +29,6 @@ mod imp {
         pub notifications_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub streamer_mode_row: TemplateChild<adw::SwitchRow>,
-        #[template_child]
-        pub tun_mode_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub log_level_row: TemplateChild<adw::ComboRow>,
         #[template_child]
@@ -64,6 +61,7 @@ mod imp {
             adw::SwitchRow::static_type();
             adw::ExpanderRow::static_type();
             adw::SpinRow::static_type();
+            adw::ActionRow::static_type();
             klass.bind_template();
         }
 
@@ -134,7 +132,7 @@ impl VrxxSettingsPage {
                 dialog.set_response_appearance("restart", adw::ResponseAppearance::Destructive);
 
                 gtk::glib::MainContext::default().spawn_local(async move {
-                    let response = dialog.choose_future(Some(&window)).await;
+                    let response = dialog.choose_future(&window).await;
                     if response == "restart" {
                         if let Ok(exe) = std::env::current_exe() {
                             let _ = std::process::Command::new(exe).spawn();
@@ -182,7 +180,6 @@ impl VrxxSettingsPage {
             .set_active(settings.connect_on_startup);
         imp.notifications_row.set_active(settings.notifications);
         imp.streamer_mode_row.set_active(settings.streamer_mode);
-        imp.tun_mode_row.set_active(settings.tun_mode);
 
         imp.sniffing_row.set_active(settings.enable_sniffing);
         imp.bypass_lan_row.set_active(settings.bypass_lan);
