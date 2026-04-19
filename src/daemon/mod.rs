@@ -55,6 +55,7 @@ impl ProxyManager {
 
         self.set_status("Connecting").await;
 
+        // --- Раздел: Сетевая настройка ---
         if tun_mode {
             tracing::info!("Setting up TUN interface and DNS for proxy");
             let mut tun_mgr = network::TunManager::new().await?;
@@ -68,6 +69,7 @@ impl ProxyManager {
             let mut dns_guard = self.dns_manager.lock().await;
             *dns_guard = Some(dns_mgr);
         }
+        // ================================
 
         let bin_name = match core_type {
             "sing-box" => "sing-box",
@@ -78,12 +80,23 @@ impl ProxyManager {
 
         let mut cmd = Command::new(bin_name);
         
+        // --- Раздел: Конфигурация запуска ---
         // Pass config via stdin
         if bin_name == "xray" {
             cmd.arg("run").arg("-config").arg("stdin:");
         } else {
+            // FIXME: В некоторых версиях sing-box /dev/stdin может не работать корректно.
+            // XXX: Возможно стоит использовать временный файл.
             cmd.arg("run").arg("-c").arg("/dev/stdin");
+
+            // Добавляем рабочую директорию, чтобы sing-box мог найти geo-файлы
+            if let Ok(exe_path) = std::env::current_exe() {
+                if let Some(parent) = exe_path.parent() {
+                    cmd.current_dir(parent);
+                }
+            }
         }
+        // ================================
 
         // We use piped stdin to pass config
         let mut child = cmd
@@ -121,12 +134,26 @@ impl ProxyManager {
 
         let event_sender = self.event_sender.clone();
         
+        let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
+        std::fs::create_dir_all(&log_dir).ok();
+        let core_log_path = log_dir.join("core.log");
+
+        // --- Раздел: Обработка логов ядра ---
         // Stdout reader task
         tokio::spawn({
             let event_sender = event_sender.clone();
+            let core_log_path = core_log_path.clone();
             async move {
                 let mut reader = BufReader::new(stdout).lines();
+                // OPTIMIZE: Открываем файл один раз для записи всех логов текущей сессии
+                let mut file = std::fs::OpenOptions::new().create(true).append(true).open(&core_log_path).ok();
+
                 while let Ok(Some(line)) = reader.next_line().await {
+                    if let Some(ref mut f) = file {
+                        use std::io::Write;
+                        let _ = writeln!(f, "{}", line);
+                    }
+
                     let _ = event_sender.send(DaemonEvent::Log {
                         level: "info".to_string(),
                         message: line,
@@ -138,9 +165,18 @@ impl ProxyManager {
         // Stderr reader task
         tokio::spawn({
             let event_sender = event_sender.clone();
+            let core_log_path = core_log_path.clone();
             async move {
                 let mut reader = BufReader::new(stderr).lines();
+                // OPTIMIZE: Открываем файл один раз
+                let mut file = std::fs::OpenOptions::new().create(true).append(true).open(&core_log_path).ok();
+
                 while let Ok(Some(line)) = reader.next_line().await {
+                    if let Some(ref mut f) = file {
+                        use std::io::Write;
+                        let _ = writeln!(f, "{}", line);
+                    }
+
                     let _ = event_sender.send(DaemonEvent::Log {
                         level: "error".to_string(),
                         message: line,
@@ -148,6 +184,7 @@ impl ProxyManager {
                 }
             }
         });
+        // ================================
 
         let mut guard = self.child.lock().await;
         *guard = Some(child);
@@ -222,6 +259,7 @@ impl ProxyManager {
             self.set_status("Disconnected").await;
         }
 
+        // --- Раздел: Очистка сетевых настроек ---
         // Teardown DNS and TUN
         if let Some(dns_mgr) = self.dns_manager.lock().await.take() {
             if let Some(tun_mgr) = self.tun_manager.lock().await.as_mut() {
@@ -234,6 +272,7 @@ impl ProxyManager {
             tracing::info!("Tearing down TUN interface");
             let _ = tun_mgr.teardown().await;
         }
+        // ================================
 
         Ok(())
     }
@@ -248,6 +287,7 @@ pub async fn run() -> anyhow::Result<()> {
         proxy_manager: proxy_manager.clone(),
     };
 
+    // --- Раздел: D-Bus Сервер ---
     let connection = Builder::system()?
         .name("ru.mark.vrxx.daemon")?
         .serve_at("/ru/mark/vrxx/Daemon", daemon)?
@@ -273,6 +313,7 @@ pub async fn run() -> anyhow::Result<()> {
             }
         }
     });
+    // ================================
 
     // Keep the daemon running indefinitely
     pending::<()>().await;

@@ -100,6 +100,7 @@ impl VrxxSettingsPage {
         glib::Object::builder().build()
     }
 
+    // --- Раздел: Обработка изменений ---
     fn mark_changed(&self, is_lang: bool) {
         let imp = self.imp();
         *imp.has_changes.borrow_mut() = true;
@@ -113,8 +114,9 @@ impl VrxxSettingsPage {
         let imp = self.imp();
         let lang_changed = *imp.has_lang_changed.borrow();
 
-        // Save all settings here if we want, but currently they save on every toggle anyway.
-        // The apply button is just to confirm and maybe restart.
+        // REFACTOR: Сохранение настроек сейчас происходит при каждом изменении (connect_active_notify и т.д.)
+        // Кнопка Apply по сути просто скрывается и инициирует перезапуск ядра или приложения.
+        // Стоит перенести логику сохранения именно сюда для атомарности.
 
         *imp.has_changes.borrow_mut() = false;
         *imp.has_lang_changed.borrow_mut() = false;
@@ -145,6 +147,7 @@ impl VrxxSettingsPage {
             self.show_restart_core_toast();
         }
     }
+    // ================================
 
     fn setup_settings(&self) {
         let imp = self.imp();
@@ -242,6 +245,7 @@ impl VrxxSettingsPage {
             }
         ));
 
+        // --- Раздел: Системные настройки ---
         imp.autostart_row.connect_active_notify(glib::clone!(
             #[weak(rename_to = page)] self, move |row| {
                 let manager = SettingsManager::new();
@@ -249,6 +253,7 @@ impl VrxxSettingsPage {
                 s.autostart = row.is_active();
                 manager.save(&s);
                 
+                // NOTE: Настройка автозагрузки через создание .desktop файла
                 let autostart_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("autostart");
                 std::fs::create_dir_all(&autostart_dir).ok();
                 let desktop_file_path = autostart_dir.join("ru.mark.vrxx.desktop");
@@ -269,6 +274,7 @@ impl VrxxSettingsPage {
                 page.mark_changed(false);
             }
         ));
+        // ================================
 
         imp.connect_startup_row.connect_active_notify(glib::clone!(
             #[weak(rename_to = page)]
@@ -424,6 +430,7 @@ impl VrxxSettingsPage {
         }
     }
 
+    // --- Раздел: Диагностика ---
     fn update_core_info(&self) {
         let settings = SettingsManager::new().load();
         let bin_name = if settings.core == "sing-box" {
@@ -432,6 +439,7 @@ impl VrxxSettingsPage {
             "xray"
         };
 
+        // TODO: Использовать асинхронный вызов команды для получения версии
         let output = std::process::Command::new(bin_name).arg("version").output();
 
         let version_str = match output {
@@ -444,4 +452,5 @@ impl VrxxSettingsPage {
 
         self.imp().core_info_row.set_subtitle(&version_str);
     }
+    // ================================
 }
