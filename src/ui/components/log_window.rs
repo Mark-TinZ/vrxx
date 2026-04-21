@@ -288,7 +288,8 @@ impl VrxxLogWindow {
         let window_weak_filter = self.downgrade();
         self.imp().dropdown_filter.connect_selected_notify(move |_| {
             if let Some(window) = window_weak_filter.upgrade() {
-                // При смене фильтра очищаем экран и читаем всё заново
+                // --- Раздел: Смена фильтра ---
+                // REVIEW: При смене фильтра очищаем экран и читаем всё заново из соответствующего файла
                 window.imp().text_view.buffer().set_text("");
                 *window.imp().last_pos.borrow_mut() = 0;
                 window.load_logs_from_file();
@@ -376,7 +377,10 @@ impl VrxxLogWindow {
                                 else if line.contains("WARN") || line.contains("warning") { "warning" }
                                 else if line.contains("DEBUG") || line.contains("debug") { "debug" }
                                 else if line.contains("INFO") || line.contains("info") { "info" }
+                                else if line.contains("[Vrxx]") { "app" }
                                 else { "info" };
+
+                    // REVIEW: При загрузке из файла мы также применяем фильтрацию
                     self.append_log(level, line);
                 }
             }
@@ -388,13 +392,16 @@ impl VrxxLogWindow {
         let buffer = imp.text_view.buffer();
 
         // --- Раздел: Фильтрация логов ---
+        // XXX: Мы фильтруем логи в зависимости от выбранного раздела в DropDown
         let filter_index = imp.dropdown_filter.selected();
-        let is_app_log = level == "app" || message.contains("[Vrxx]");
-        let is_core_log = !is_app_log; // Упрощенно
+        let is_app_log = level == "app" || message.contains("[Vrxx]") || message.contains("vrxx::");
+        let is_access_log = message.contains("accepted") || message.contains("proxying") || message.contains("->");
+        let is_core_log = !is_app_log && !is_access_log;
 
         match filter_index {
             1 if !is_core_log => return,
             2 if !is_app_log => return,
+            3 if !is_access_log => return,
             _ => {}
         }
         // ================================

@@ -172,6 +172,8 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
     }
 
     if settings.disable_ipv6 {
+        // --- Раздел: Блокировка IPv6 ---
+        // XXX: Мы блокируем весь IPv6 трафик
         rules.push(json!({
             "ip_cidr": ["::/0"],
             "outbound": "block"
@@ -220,6 +222,8 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
             }));
         };
 
+        // --- Раздел: Региональная маршрутизация ---
+        // REVIEW: Используем SRS файлы для эффективной фильтрации в sing-box
         if settings.route_ru {
             add_region("geosite-ru", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/geosite-ru.srs");
             add_region("geoip-ru", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/geoip-ru.srs");
@@ -331,15 +335,13 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         "detour": "direct"
     });
 
-    if is_1_12_or_newer && settings.disable_ipv6 {
-        // dns rules reject ipv6
-    }
-
     let mut dns_rules = vec![];
 
     if is_1_12_or_newer && settings.disable_ipv6 {
+        // --- Раздел: DNS IPv6 ---
+        // XXX: В новых версиях sing-box отклоняем AAAA запросы
         dns_rules.push(json!({
-            "ip_version": 6,
+            "query_type": ["AAAA"],
             "action": "reject",
             "method": "drop"
         }));
@@ -416,6 +418,41 @@ mod tests {
         assert_eq!(proxy_outbound["type"], "vless");
         assert_eq!(proxy_outbound["server"], "example.com");
         assert_eq!(proxy_outbound["uuid"], "uuid-123");
+    }
+
+    #[test]
+    fn test_singbox_ipv6_disabling() {
+        // --- Раздел: Тестирование IPv6 ---
+        let key = ParsedKey {
+            protocol: "VLESS".to_string(),
+            name: "Test".to_string(),
+            host: "example.com".to_string(),
+            port: 443,
+            uuid: "uuid-123".to_string(),
+            query_params: std::collections::HashMap::new(),
+            raw_url: "vless://...".to_string(),
+        };
+        let mut settings = AppSettings::new();
+        settings.disable_ipv6 = true;
+
+        let json_str = build_singbox_config(&key, &settings);
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Valid JSON");
+
+        // Проверка наличия правила блокировки IPv6
+        let rules = parsed["route"]["rules"].as_array().unwrap();
+        let has_ipv6_block = rules.iter().any(|r| {
+            r["ip_cidr"].as_array().map_or(false, |cidrs| cidrs.contains(&json!("::/0"))) &&
+            r["outbound"] == json!("block")
+        });
+        assert!(has_ipv6_block, "IPv6 block rule missing");
+
+        // Проверка DNS правил для 1.12+
+        let dns_rules = parsed["dns"]["rules"].as_array().unwrap();
+        let has_aaaa_reject = dns_rules.iter().any(|r| {
+            r["query_type"].as_array().map_or(false, |qt| qt.contains(&json!("AAAA"))) &&
+            r["action"] == json!("reject")
+        });
+        assert!(has_aaaa_reject, "AAAA reject rule missing in DNS");
     }
 
     #[test]

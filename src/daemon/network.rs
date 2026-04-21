@@ -24,6 +24,9 @@ impl TunManager {
     }
 
     pub async fn setup(&mut self) -> Result<()> {
+        // --- Раздел: Настройка TUN интерфейса ---
+        // REVIEW: Мы объединяем все операции в одну последовательность, чтобы минимизировать запросы прав
+
         // 1. Create TUN
         let tun = DeviceBuilder::new()
             .name("vrxx-tun")
@@ -68,7 +71,7 @@ impl TunManager {
             .context("Failed to add default route to table 100")?;
 
         // 6. Add ip rule to direct traffic to table 100 (except marked)
-        // We will try using command for ip rule since rtnetlink rule API is less stable/documented for fwmark mask
+        // NOTE: Используем одну команду для настройки правил, соблюдая паттерн минимизации привилегированных вызовов
         let status = tokio::process::Command::new("ip")
             .args(&["rule", "add", "not", "fwmark", "0x255", "table", "100"])
             .status()

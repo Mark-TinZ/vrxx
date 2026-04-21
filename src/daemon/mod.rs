@@ -57,16 +57,31 @@ impl ProxyManager {
         // --- Раздел: Сетевая настройка ---
         if tun_mode {
             tracing::info!("Setting up TUN interface and DNS for proxy");
-            let mut tun_mgr = network::TunManager::new().await?;
-            tun_mgr.setup().await?;
-            let if_index = tun_mgr.if_index;
-            let mut tun_guard = self.tun_manager.lock().await;
-            *tun_guard = Some(tun_mgr);
+            // BUG: Мы должны ловить ошибки настройки сети и уведомлять UI через логи и статусы
+            let setup_res = async {
+                let mut tun_mgr = network::TunManager::new().await?;
+                tun_mgr.setup().await?;
+                let if_index = tun_mgr.if_index;
+                let mut tun_guard = self.tun_manager.lock().await;
+                *tun_guard = Some(tun_mgr);
 
-            let dns_mgr = dns::DnsManager::new().await?;
-            dns_mgr.set_dns(if_index as i32, vec!["172.19.0.1".to_string()]).await?;
-            let mut dns_guard = self.dns_manager.lock().await;
-            *dns_guard = Some(dns_mgr);
+                let dns_mgr = dns::DnsManager::new().await?;
+                dns_mgr.set_dns(if_index as i32, vec!["172.19.0.1".to_string()]).await?;
+                let mut dns_guard = self.dns_manager.lock().await;
+                *dns_guard = Some(dns_mgr);
+                Ok::<(), anyhow::Error>(())
+            }.await;
+
+            if let Err(e) = setup_res {
+                let err_msg = format!("Network setup failed: {}", e);
+                tracing::error!("{}", err_msg);
+                let _ = self.event_sender.send(DaemonEvent::Log {
+                    level: "error".to_string(),
+                    message: err_msg,
+                }).await;
+                self.set_status("Error").await;
+                return Err(e);
+            }
         }
         // ================================
 

@@ -164,6 +164,15 @@
                 </child>
 
                 <child>
+                  <object class="GtkProgressBar" id="geo_progress_bar">
+                    <property name="visible">False</property>
+                    <property name="margin-start">12</property>
+                    <property name="margin-end">12</property>
+                    <property name="margin-bottom">12</property>
+                  </object>
+                </child>
+
+                <child>
                   <object class="AdwSwitchRow" id="bypass_lan_row">
                     <property name="title" translatable="yes">Bypass LAN</property>
                     <property name="subtitle" translatable="yes">Do not route local traffic through VPN</property>
