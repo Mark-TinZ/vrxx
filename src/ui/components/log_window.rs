@@ -234,7 +234,21 @@ impl VrxxLogWindow {
                     _ => "all.log",
                 };
                 let log_path = log_dir.join(file_name);
-                let _ = std::fs::write(log_path, ""); // Очищаем файл
+
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+                    let mut opts = std::fs::OpenOptions::new();
+                    opts.create(true).write(true).truncate(true).mode(0o600);
+                    if let Ok(file) = opts.open(&log_path) {
+                        let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+                    }
+                }
+                #[cfg(not(unix))]
+                {
+                    let _ = std::fs::write(log_path, ""); // Очищаем файл
+                }
+
                 window.imp().text_view.buffer().set_text("");
                 *window.imp().last_pos.borrow_mut() = 0;
             }
