@@ -166,7 +166,21 @@ impl VrxxApplication {
                             if let Some(path) = file.path() {
                                 let settings = crate::settings::SettingsManager::new().load();
                                 if let Ok(content) = serde_json::to_string_pretty(&settings) {
-                                    let _ = std::fs::write(path, content);
+                                    #[cfg(unix)]
+                                    {
+                                        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+                                        use std::io::Write;
+                                        let mut opts = std::fs::OpenOptions::new();
+                                        opts.create(true).write(true).truncate(true).mode(0o600);
+                                        if let Ok(mut file) = opts.open(&path) {
+                                            let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+                                            let _ = file.write_all(content.as_bytes());
+                                        }
+                                    }
+                                    #[cfg(not(unix))]
+                                    {
+                                        let _ = std::fs::write(path, content);
+                                    }
                                 }
                             }
                         }
