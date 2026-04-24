@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod tests {
     use gtk::{gio, glib};
+    use glib::subclass::types::ObjectSubclassIsExt;
+    use gtk::prelude::TextViewExt;
+    use gtk::prelude::TextBufferExt;
 
     // Need to initialize GTK before creating widgets.
     fn init_gtk() {
