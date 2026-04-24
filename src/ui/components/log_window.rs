@@ -401,7 +401,7 @@ impl VrxxLogWindow {
         }
     }
 
-    fn append_log(&self, level: &str, message: &str) {
+    pub fn append_log(&self, level: &str, message: &str) {
         let imp = self.imp();
         let buffer = imp.text_view.buffer();
 

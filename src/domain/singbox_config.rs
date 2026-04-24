@@ -447,12 +447,14 @@ mod tests {
         assert!(has_ipv6_block, "IPv6 block rule missing");
 
         // Проверка DNS правил для 1.12+
-        let dns_rules = parsed["dns"]["rules"].as_array().unwrap();
-        let has_aaaa_reject = dns_rules.iter().any(|r| {
-            r["query_type"].as_array().map_or(false, |qt| qt.contains(&json!("AAAA"))) &&
-            r["action"] == json!("reject")
-        });
-        assert!(has_aaaa_reject, "AAAA reject rule missing in DNS");
+        if get_singbox_version() >= (1, 12, 0) {
+            let dns_rules = parsed["dns"]["rules"].as_array().unwrap();
+            let has_aaaa_reject = dns_rules.iter().any(|r| {
+                r["query_type"].as_array().map_or(false, |qt| qt.contains(&json!("AAAA"))) &&
+                r["action"] == json!("reject")
+            });
+            assert!(has_aaaa_reject, "AAAA reject rule missing in DNS");
+        }
     }
 
     #[test]
