@@ -6,3 +6,7 @@
 **Vulnerability:** Found `std::fs::write` used for configuration export and clearing log files. This creates files with default permissive permissions (`0o666` modified by umask, usually resulting in `0o644`), which allows other system users to read sensitive VPN credentials and log data.
 **Learning:** In Rust, default file writing functions like `std::fs::write` or `File::create` do not restrict file access on Unix systems. For an application handling sensitive network proxies and VPN keys, these functions can inadvertently leak configuration and metadata to unauthorized local users.
 **Prevention:** Always use `std::fs::OpenOptions` with `.mode(0o600)` (requiring `std::os::unix::fs::OpenOptionsExt`) and explicitly call `.set_permissions()` when creating or overwriting files that contain sensitive configurations, exports, or logs on Unix platforms.
+## 2024-04-26 - Insecure External Process Log File Permissions
+**Vulnerability:** Xray core was allowed to create its own `access.log` and `error.log` files with default system umask (often 0644), potentially exposing sensitive VPN traffic and access metadata to other local users.
+**Learning:** When passing file paths to external binaries (like Xray or sing-box), those binaries will create the files if they don't exist, using their own or the system's default permissive umask.
+**Prevention:** Always pre-create sensitive files passed to external binaries with strict `0o600` permissions from the host application before executing the external process.
