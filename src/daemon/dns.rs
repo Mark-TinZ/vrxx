@@ -18,7 +18,7 @@ pub struct DnsManager {
 
 impl DnsManager {
     pub async fn new() -> Result<Self> {
-        let connection = Connection::system().await?;
+        let connection = crate::ipc::get_system_connection().await?;
         Ok(Self { connection })
     }
 

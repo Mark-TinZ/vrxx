@@ -343,7 +343,7 @@ impl VrxxVpnPage {
     fn setup_daemon_listener(&self) {
         let page_weak = self.downgrade();
         glib::spawn_future_local(async move {
-            match zbus::Connection::system().await {
+            match crate::ipc::get_system_connection().await {
                 Ok(conn) => {
                     match crate::ipc::DaemonProxy::new(&conn).await {
                         Ok(proxy) => {
@@ -754,7 +754,7 @@ impl VrxxVpnPage {
             let item_clone = active_item.clone();
 
             glib::spawn_future_local(async move {
-                match zbus::Connection::system().await {
+                match crate::ipc::get_system_connection().await {
                     Ok(conn) => {
                         match crate::ipc::DaemonProxy::new(&conn).await {
                             Ok(proxy) => {
@@ -1169,7 +1169,7 @@ impl VrxxVpnPage {
         disconnect_action.connect_activate(move |_, _| {
             tracing::info!("Disconnecting VPN via D-Bus");
             glib::spawn_future_local(async move {
-                match zbus::Connection::system().await {
+                match crate::ipc::get_system_connection().await {
                     Ok(conn) => {
                         match crate::ipc::DaemonProxy::new(&conn).await {
                             Ok(proxy) => {

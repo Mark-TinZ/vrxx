@@ -1,0 +1,3 @@
+## 2024-04-26 - Cached D-Bus Connections
+**Learning:** We are creating new D-Bus connections via zbus::Connection::system().await repeatedly across the codebase (in backend.rs, ui/pages/vpn_page.rs, ui/components/log_window.rs). Creating a new D-Bus connection is an expensive operation that requires socket connection, authentication, and handshake. Doing this repeatedly, especially during UI updates or polling, introduces significant IPC overhead.
+**Action:** Use a global tokio::sync::OnceCell to cache the system D-Bus connection so we only establish it once per process. This pattern should be applied in `src/ipc.rs` and consumed wherever `zbus::Connection::system().await` is used.
