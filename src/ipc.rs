@@ -1,5 +1,6 @@
 use zbus::{interface, proxy};
 use std::sync::Arc;
+use tokio::sync::OnceCell;
 use crate::daemon::ProxyManager;
 
 pub struct VrxxDaemon {
