@@ -1,6 +1,17 @@
 use zbus::{interface, proxy};
 use std::sync::Arc;
+use tokio::sync::OnceCell;
 use crate::daemon::ProxyManager;
+use tokio::sync::OnceCell;
+use zbus::Connection;
+
+static SYSTEM_CONNECTION: OnceCell<Connection> = OnceCell::const_new();
+
+pub async fn get_system_connection() -> zbus::Result<Connection> {
+    SYSTEM_CONNECTION.get_or_try_init(|| async {
+        Connection::system().await
+    }).await.cloned()
+}
 
 pub struct VrxxDaemon {
     pub proxy_manager: Arc<ProxyManager>,
@@ -59,4 +70,14 @@ pub trait Daemon {
 
     #[zbus(signal)]
     fn log_message(&self, level: &str, message: &str) -> zbus::Result<()>;
+}
+
+use tokio::sync::OnceCell;
+
+static SYSTEM_CONNECTION: OnceCell<zbus::Connection> = OnceCell::const_new();
+
+pub async fn get_system_connection() -> zbus::Result<zbus::Connection> {
+    SYSTEM_CONNECTION.get_or_try_init(|| async {
+        zbus::Connection::system().await
+    }).await.cloned()
 }

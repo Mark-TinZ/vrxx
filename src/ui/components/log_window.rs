@@ -327,7 +327,7 @@ impl VrxxLogWindow {
     fn setup_daemon_logs(&self) {
         let window_weak = self.downgrade();
         glib::spawn_future_local(async move {
-            match zbus::Connection::system().await {
+            match crate::ipc::get_system_connection().await {
                 Ok(conn) => {
                     match crate::ipc::DaemonProxy::new(&conn).await {
                         Ok(proxy) => {
