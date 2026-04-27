@@ -15,6 +15,7 @@ pub trait VpnCore: Send + Sync + std::fmt::Debug {
 #[derive(Debug)]
 pub struct CoreBackend {
     rt: Arc<Runtime>,
+    conn: tokio::sync::OnceCell<zbus::Connection>,
 }
 
 impl Default for CoreBackend {
@@ -34,7 +35,7 @@ impl CoreBackend {
         let rt_bg = rt_clone.clone();
         std::thread::spawn(move || {
             rt_bg.block_on(async {
-                match zbus::Connection::system().await {
+                match crate::ipc::get_system_connection().await {
                     Ok(conn) => {
                         match DaemonProxy::new(&conn).await {
                             Ok(proxy) => {
@@ -54,15 +55,16 @@ impl CoreBackend {
 
         Self {
             rt: rt_clone,
+            conn: tokio::sync::OnceCell::new(),
         }
     }
 
     // --- Раздел: IPC Взаимодействие ---
-    // OPTIMIZE: Мы создаем новое подключение D-Bus при каждом вызове.
-    // Стоит рассмотреть возможность кэширования прокси-объекта.
-    async fn get_proxy() -> Result<DaemonProxy<'static>> {
-        let conn = zbus::Connection::system().await
-            .context("Failed to connect to D-Bus System Bus")?;
+    async fn get_proxy(&self) -> Result<DaemonProxy<'static>> {
+        let conn = self.conn.get_or_try_init(|| async { zbus::Connection::system().await })
+            .await
+            .context("Failed to connect to D-Bus System Bus")?
+            .clone();
         DaemonProxy::new(&conn).await
             .context("Failed to create DaemonProxy")
     }
@@ -91,7 +93,7 @@ impl VpnCore for CoreBackend {
         tracing::info!("Requesting daemon to start proxy (core: {})...", core_type);
 
         self.rt.block_on(async {
-            let proxy = Self::get_proxy().await?;
+            let proxy = self.get_proxy().await?;
             proxy.start_proxy(core_type, config_json.to_string(), tun_mode).await
                 .map_err(|e| anyhow::anyhow!("D-Bus error: {e}"))?;
             Ok(())
@@ -103,7 +105,7 @@ impl VpnCore for CoreBackend {
         tracing::info!("Requesting daemon to stop proxy...");
 
         self.rt.block_on(async {
-            let proxy = Self::get_proxy().await?;
+            let proxy = self.get_proxy().await?;
             proxy.stop_proxy().await
                 .map_err(|e| anyhow::anyhow!("D-Bus error: {e}"))?;
             Ok(())
@@ -112,7 +114,7 @@ impl VpnCore for CoreBackend {
 
     fn is_running(&self) -> bool {
         self.rt.block_on(async {
-            if let Ok(proxy) = Self::get_proxy().await {
+            if let Ok(proxy) = self.get_proxy().await {
                 proxy.is_running().await.unwrap_or(false)
             } else {
                 false

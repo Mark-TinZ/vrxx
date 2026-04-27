@@ -414,24 +414,27 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
     let access_log_path = log_dir.join("access.log");
     let error_log_path = log_dir.join("error.log");
 
+    // --- Раздел: Безопасность логов ---
+    // SENTINEL: Pre-create log files with 0600 permissions so the external
+    // core binary doesn't create them with default umask (exposing IPs/URLs).
     #[cfg(unix)]
     {
-        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-        let mut opts = std::fs::OpenOptions::new();
-        opts.create(true).append(true).mode(0o600);
-        if let Ok(file) = opts.open(&access_log_path) {
-            let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
-        }
-        if let Ok(file) = opts.open(&error_log_path) {
-            let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+        use std::os::unix::fs::OpenOptionsExt;
+        use std::os::unix::fs::PermissionsExt;
+
+        for path in [&access_log_path, &error_log_path] {
+            let mut opts = std::fs::OpenOptions::new();
+            opts.create(true).append(true).mode(0o600);
+            if let Ok(file) = opts.open(path) {
+                let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+            }
         }
     }
     #[cfg(not(unix))]
     {
-        let mut opts = std::fs::OpenOptions::new();
-        opts.create(true).append(true);
-        let _ = opts.open(&access_log_path);
-        let _ = opts.open(&error_log_path);
+        for path in [&access_log_path, &error_log_path] {
+            let _ = std::fs::OpenOptions::new().create(true).append(true).open(path);
+        }
     }
 
     let access_log = access_log_path.to_string_lossy().to_string();

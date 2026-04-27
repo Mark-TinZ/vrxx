@@ -47,10 +47,27 @@ pub async fn update_geo_databases(force: bool, progress_tx: Option<async_channel
                 Ok(response) => {
                     if response.status().is_success() {
                         if let Ok(bytes) = response.bytes().await {
-                            if let Ok(mut file) = fs::File::create(&file_path) {
-                                let _ = file.write_all(&bytes);
-                                tracing::info!("{} updated successfully.", filename);
+                            // --- Раздел: Безопасное сохранение файлов ---
+                            // На Unix-системах ограничиваем права до 0600 для предотвращения утечек
+                            #[cfg(unix)]
+                            {
+                                use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+                                let mut opts = std::fs::OpenOptions::new();
+                                opts.create(true).write(true).truncate(true).mode(0o600);
+                                if let Ok(mut file) = opts.open(&file_path) {
+                                    let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+                                    let _ = file.write_all(&bytes);
+                                    tracing::info!("{} updated successfully.", filename);
+                                }
                             }
+                            #[cfg(not(unix))]
+                            {
+                                if let Ok(mut file) = fs::File::create(&file_path) {
+                                    let _ = file.write_all(&bytes);
+                                    tracing::info!("{} updated successfully.", filename);
+                                }
+                            }
+                            // ============================================
                         }
                     } else {
                         tracing::warn!("Failed to download {}: HTTP {}", filename, response.status());
