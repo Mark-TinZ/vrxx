@@ -1075,3 +1075,9 @@ msgstr "Контент"
 #~ "\n"
 #~ "Выполните в терминале:\n"
 #~ "sudo setcap cap_net_admin=ep {core_path}"
+
+msgid "No VPN Connections"
+msgstr "Нет VPN-подключений"
+
+msgid "Add a new connection using the buttons above to get started."
+msgstr "Добавьте новое подключение с помощью кнопок выше, чтобы начать."

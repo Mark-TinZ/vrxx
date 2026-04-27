@@ -98,51 +98,48 @@ impl VrxxVpnPage {
         let settings = SettingsManager::new();
         let saved_keys = settings.load_keys();
 
-        if saved_keys.is_empty() {
-            // Инициализация тестовых данных, если ключей нет
-            let key1 = VpnKeyObject::new("Mark-Vless", "VLESS+Reality", false, "vless://uuid@host:443?security=reality");
-            let key2 = VpnKeyObject::new("Wumt-Vless", "VMess", false, "vmess://...");
-            let key3 = VpnKeyObject::new("Eleon-Vless", "VMess", false, "vmess://...");
-
-            model.append(&key1);
-            model.append(&key2);
-            model.append(&key3);
-        } else {
-            let loaded_settings = settings.load();
-            let streamer_mode = loaded_settings.streamer_mode;
-            let auto_connect = loaded_settings.connect_on_startup;
+        let loaded_settings = settings.load();
+        let streamer_mode = loaded_settings.streamer_mode;
+        let auto_connect = loaded_settings.connect_on_startup;
+        
+        for k in saved_keys {
+            let key_obj = VpnKeyObject::new(&k.name, &k.protocol, k.is_active, &k.url);
+            key_obj.set_traffic_down(k.traffic_down);
+            key_obj.set_traffic_up(k.traffic_up);
+            key_obj.set_time_connected(k.time_connected);
+            key_obj.set_ping(k.ping);
+            key_obj.set_location(k.location);
+            key_obj.set_timezone(k.timezone);
+            key_obj.set_hide_ip(streamer_mode);
+            model.append(&key_obj);
             
-            for k in saved_keys {
-                let key_obj = VpnKeyObject::new(&k.name, &k.protocol, k.is_active, &k.url);
-                key_obj.set_traffic_down(k.traffic_down);
-                key_obj.set_traffic_up(k.traffic_up);
-                key_obj.set_time_connected(k.time_connected);
-                key_obj.set_ping(k.ping);
-                key_obj.set_location(k.location);
-                key_obj.set_timezone(k.timezone);
-                key_obj.set_hide_ip(streamer_mode);
-                model.append(&key_obj);
+            if auto_connect && k.is_active {
+                let key_clone = key_obj.clone();
+                let page_weak = self.downgrade();
                 
-                if auto_connect && k.is_active {
-                    let key_clone = key_obj.clone();
-                    let page_weak = self.downgrade();
-                    
-                    self.connect_map(move |_| {
-                        if let Some(page) = page_weak.upgrade() {
-                            // Run only once by checking if we are already connected
-                            if !page.imp().backend.borrow().is_running() {
-                                page.set_active_key(&key_clone);
-                            }
+                self.connect_map(move |_| {
+                    if let Some(page) = page_weak.upgrade() {
+                        // Run only once by checking if we are already connected
+                        if !page.imp().backend.borrow().is_running() {
+                            page.set_active_key(&key_clone);
                         }
-                    });
-                } else if !auto_connect && k.is_active {
-                     // Сбрасываем активное состояние, если автоподключение выключено
-                     key_obj.set_is_active(false);
-                }
+                    }
+                });
+            } else if !auto_connect && k.is_active {
+                 // Сбрасываем активное состояние, если автоподключение выключено
+                 key_obj.set_is_active(false);
             }
         }
 
         self.imp().model.replace(Some(model.clone()));
+
+        // Устанавливаем заглушку (empty state) для пустого списка по HIG
+        let status_page = adw::StatusPage::builder()
+            .icon_name("network-vpn-symbolic")
+            .title(gettext("No VPN Connections"))
+            .description(gettext("Add a new connection using the buttons above to get started."))
+            .build();
+        self.imp().keys_list.set_placeholder(Some(&status_page));
 
         // Привязываем модель к ListBox
         let page_weak = self.downgrade();

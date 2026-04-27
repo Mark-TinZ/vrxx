@@ -183,6 +183,9 @@ fn main() -> glib::ExitCode {
         glib::LogWriterOutput::Handled
     });
 
+    let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+    let _guard = rt.enter();
+
     // Запускаем приложение
     let app = VrxxApplication::new("ru.mark.vrxx", &gio::ApplicationFlags::empty());
     app.run()
