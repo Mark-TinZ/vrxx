@@ -446,11 +446,9 @@ mod tests {
         });
         assert!(has_ipv6_block, "IPv6 block rule missing");
 
-        // Проверка DNS правил для 1.12+
-        let is_1_12_or_newer = {
-            let sb_version = get_singbox_version();
-            sb_version.0 > 1 || (sb_version.0 == 1 && sb_version.1 >= 12)
-        };
+        // Проверка DNS правил для 1.12+ (только если sing-box установлен и версия >= 1.12)
+        let sb_version = get_singbox_version();
+        let is_1_12_or_newer = sb_version.0 > 1 || (sb_version.0 == 1 && sb_version.1 >= 12);
         if is_1_12_or_newer {
             let dns_rules = parsed["dns"]["rules"].as_array().unwrap();
             let has_aaaa_reject = dns_rules.iter().any(|r| {

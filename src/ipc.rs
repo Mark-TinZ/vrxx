@@ -62,7 +62,9 @@ pub trait Daemon {
     fn log_message(&self, level: &str, message: &str) -> zbus::Result<()>;
 }
 
-pub static SYSTEM_CONNECTION: OnceCell<zbus::Connection> = OnceCell::const_new();
+use tokio::sync::OnceCell;
+
+static SYSTEM_CONNECTION: OnceCell<zbus::Connection> = OnceCell::const_new();
 
 pub async fn get_system_connection() -> zbus::Result<zbus::Connection> {
     SYSTEM_CONNECTION.get_or_try_init(|| async {
