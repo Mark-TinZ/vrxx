@@ -32,6 +32,8 @@ mod tests {
     #[test]
     #[ignore = "Requires main thread for GTK initialization"]
     fn test_log_filtering_integration() {
+        use adw::subclass::prelude::*;
+        use gtk::prelude::*;
         // --- Раздел: Глобальное тестирование логов ---
         init_gtk();
         let log_window = crate::ui::components::log_window::VrxxLogWindow::new();
