@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod tests {
+    use gtk::prelude::*;
+    use glib::subclass::prelude::ObjectSubclassIsExt;
     use gtk::{gio, glib};
     use gtk::subclass::prelude::*;
     use gtk::prelude::*;

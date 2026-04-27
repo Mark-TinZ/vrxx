@@ -35,7 +35,7 @@ impl CoreBackend {
         let rt_bg = rt_clone.clone();
         std::thread::spawn(move || {
             rt_bg.block_on(async {
-                match zbus::Connection::system().await {
+                match crate::ipc::get_system_connection().await {
                     Ok(conn) => {
                         match DaemonProxy::new(&conn).await {
                             Ok(proxy) => {
