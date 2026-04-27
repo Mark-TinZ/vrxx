@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
     use gtk::{gio, glib};
+use gtk::prelude::*;
+use gtk::subclass::prelude::*;
 
     // Need to initialize GTK before creating widgets.
     fn init_gtk() {

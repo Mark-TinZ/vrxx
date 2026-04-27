@@ -410,8 +410,29 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
 
     let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
     let _ = std::fs::create_dir_all(&log_dir);
-    let access_log = log_dir.join("access.log").to_string_lossy().to_string();
-    let error_log = log_dir.join("error.log").to_string_lossy().to_string();
+
+    #[cfg(unix)]
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+    let mut opts = std::fs::OpenOptions::new();
+    opts.create(true).append(true);
+    #[cfg(unix)]
+    opts.mode(0o600);
+
+    let access_path = log_dir.join("access.log");
+    let error_path = log_dir.join("error.log");
+
+    if let Ok(file) = opts.open(&access_path) {
+        #[cfg(unix)]
+        let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+    }
+    if let Ok(file) = opts.open(&error_path) {
+        #[cfg(unix)]
+        let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+    }
+
+    let access_log = access_path.to_string_lossy().to_string();
+    let error_log = error_path.to_string_lossy().to_string();
 
     let root_config = XrayConfig {
         log: LogConfig {
