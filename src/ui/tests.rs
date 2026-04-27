@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
     use gtk::{gio, glib};
+    use gtk::subclass::prelude::*;
+    use gtk::prelude::*;
     use glib::subclass::types::ObjectSubclassIsExt;
     use gtk::prelude::TextViewExt;
     use gtk::prelude::TextBufferExt;

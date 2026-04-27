@@ -6,8 +6,7 @@
 **Vulnerability:** Found `std::fs::write` used for configuration export and clearing log files. This creates files with default permissive permissions (`0o666` modified by umask, usually resulting in `0o644`), which allows other system users to read sensitive VPN credentials and log data.
 **Learning:** In Rust, default file writing functions like `std::fs::write` or `File::create` do not restrict file access on Unix systems. For an application handling sensitive network proxies and VPN keys, these functions can inadvertently leak configuration and metadata to unauthorized local users.
 **Prevention:** Always use `std::fs::OpenOptions` with `.mode(0o600)` (requiring `std::os::unix::fs::OpenOptionsExt`) and explicitly call `.set_permissions()` when creating or overwriting files that contain sensitive configurations, exports, or logs on Unix platforms.
-
-## 2026-04-22 - [Secure geodata file creation]
-**Vulnerability:** Downloaded geodata files (.dat) were created using `fs::File::create`, which leaves them readable by other users on Unix systems via default permissive umask.
-**Learning:** Like logs and configuration files, locally stored proxy routing files (geodata) may contain context about user traffic routing and shouldn't be world-readable.
-**Prevention:** Explicitly set `0o600` permissions on geodata files using `OpenOptionsExt::mode` and `PermissionsExt::set_permissions` when saving them.
+## 2026-03-05 - Insecure Log File Permissions Created by External Binaries
+**Vulnerability:** Xray-core generated its `access.log` and `error.log` files with default system permissions (e.g., 0644), exposing users' VPN browsing history and IP addresses to other local users.
+**Learning:** Even if the application strictly enforces `0600` permissions for its own files, external core binaries orchestrated by the application will use the system's default `umask` when creating new files like logs.
+**Prevention:** Always pre-create sensitive log/config files with restricted permissions (`0o600`) from within the parent application before passing their paths to external binaries. The binaries will then append to the existing files and preserve their strict permissions.
