@@ -1,13 +1,13 @@
 use adw::prelude::*;
 use adw::subclass::prelude::*;
-use gtk::{gio, glib, CompositeTemplate};
 use gettextrs::gettext;
+use gtk::{gio, glib, CompositeTemplate};
 
-use crate::ui::models::VpnKeyObject;
-use crate::ui::components::vpn_key_row::VrxxVpnKeyRow;
-use crate::ui::setup_primary_menu;
-use crate::settings::{SettingsManager, VpnKeyData};
 use crate::backend::VpnCore;
+use crate::settings::{SettingsManager, VpnKeyData};
+use crate::ui::components::vpn_key_row::VrxxVpnKeyRow;
+use crate::ui::models::VpnKeyObject;
+use crate::ui::setup_primary_menu;
 
 mod imp {
     use super::*;
@@ -27,7 +27,7 @@ mod imp {
         pub model: RefCell<Option<gio::ListStore>>,
         pub backend: RefCell<crate::backend::CoreBackend>,
         pub action_group: RefCell<Option<gio::SimpleActionGroup>>,
-        
+
         pub start_time: RefCell<Option<std::time::Instant>>,
         pub bytes_down: RefCell<u64>,
         pub bytes_up: RefCell<u64>,
@@ -101,7 +101,7 @@ impl VrxxVpnPage {
         let loaded_settings = settings.load();
         let streamer_mode = loaded_settings.streamer_mode;
         let auto_connect = loaded_settings.connect_on_startup;
-        
+
         for k in saved_keys {
             let key_obj = VpnKeyObject::new(&k.name, &k.protocol, k.is_active, &k.url);
             key_obj.set_traffic_down(k.traffic_down);
@@ -112,11 +112,11 @@ impl VrxxVpnPage {
             key_obj.set_timezone(k.timezone);
             key_obj.set_hide_ip(streamer_mode);
             model.append(&key_obj);
-            
+
             if auto_connect && k.is_active {
                 let key_clone = key_obj.clone();
                 let page_weak = self.downgrade();
-                
+
                 self.connect_map(move |_| {
                     if let Some(page) = page_weak.upgrade() {
                         // Run only once by checking if we are already connected
@@ -126,8 +126,8 @@ impl VrxxVpnPage {
                     }
                 });
             } else if !auto_connect && k.is_active {
-                 // Сбрасываем активное состояние, если автоподключение выключено
-                 key_obj.set_is_active(false);
+                // Сбрасываем активное состояние, если автоподключение выключено
+                key_obj.set_is_active(false);
             }
         }
 
@@ -137,14 +137,18 @@ impl VrxxVpnPage {
         let status_page = adw::StatusPage::builder()
             .icon_name("network-vpn-symbolic")
             .title(gettext("No VPN Connections"))
-            .description(gettext("Add a new connection using the buttons above to get started."))
+            .description(gettext(
+                "Add a new connection using the buttons above to get started.",
+            ))
             .build();
         self.imp().keys_list.set_placeholder(Some(&status_page));
 
         // Привязываем модель к ListBox
         let page_weak = self.downgrade();
         self.imp().keys_list.bind_model(Some(&model), move |item| {
-            let key_obj = item.downcast_ref::<VpnKeyObject>().expect("Item should be a VpnKeyObject");
+            let key_obj = item
+                .downcast_ref::<VpnKeyObject>()
+                .expect("Item should be a VpnKeyObject");
             let row = VrxxVpnKeyRow::new();
             row.bind(key_obj);
 
@@ -213,12 +217,21 @@ impl VrxxVpnPage {
                 let item_clone = key_obj_ping.clone();
                 item_clone.set_ping(gettext("pinging..."));
                 item_clone.set_is_loading(true);
-                
+
                 // XXX: Извлекаем хост и порт из ключа для прямого TCP-пинга
                 let raw_url = item_clone.url();
-                let parsed = crate::domain::key_parser::parse_vpn_key(&raw_url).unwrap_or_else(|_| crate::domain::key_parser::ParsedKey {
-                    protocol: "".to_string(), name: "".to_string(), host: "127.0.0.1".to_string(), port: 0, uuid: "".to_string(), query_params: std::collections::HashMap::new(), raw_url: "".to_string()
-                });
+                let parsed =
+                    crate::domain::key_parser::parse_vpn_key(&raw_url).unwrap_or_else(|_| {
+                        crate::domain::key_parser::ParsedKey {
+                            protocol: "".to_string(),
+                            name: "".to_string(),
+                            host: "127.0.0.1".to_string(),
+                            port: 0,
+                            uuid: "".to_string(),
+                            query_params: std::collections::HashMap::new(),
+                            raw_url: "".to_string(),
+                        }
+                    });
                 let target_host = parsed.host.clone();
                 let target_port = parsed.port;
 
@@ -241,7 +254,7 @@ impl VrxxVpnPage {
                 // 3. Отправитель работает в фоне (БЕЗ объектов UI)
                 std::thread::spawn(move || {
                     use std::net::{TcpStream, ToSocketAddrs};
-                    use std::time::{Instant, Duration};
+                    use std::time::{Duration, Instant};
 
                     let start_ping = Instant::now();
                     let mut success = false;
@@ -257,7 +270,7 @@ impl VrxxVpnPage {
                             }
                         }
                     }
-                    
+
                     let _ = sender.send_blocking((success, start_ping.elapsed().as_millis()));
                 });
                 None
@@ -295,7 +308,10 @@ impl VrxxVpnPage {
                     // Find active key and reconnect
                     if let Some(model) = page.imp().model.borrow().as_ref() {
                         for i in 0..model.n_items() {
-                            if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                            if let Some(item) = model
+                                .item(i)
+                                .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                            {
                                 if item.is_active() {
                                     page.set_active_key(&item);
                                     break;
@@ -376,14 +392,17 @@ impl VrxxVpnPage {
     // --- Раздел: Управление состоянием соединения ---
     fn handle_daemon_status_change(&self, status: &str) {
         let imp = self.imp();
-        
+
         match status {
             "Connected" => {
                 imp.window_title.set_subtitle(&gettext("Connected"));
                 // Find and update the active item's time metrics
                 if let Some(model) = imp.model.borrow().as_ref() {
                     for i in 0..model.n_items() {
-                        if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                        if let Some(item) = model
+                            .item(i)
+                            .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                        {
                             if item.is_active() {
                                 item.set_is_loading(false);
                                 item.set_is_error(false);
@@ -397,11 +416,14 @@ impl VrxxVpnPage {
             "Disconnected" => {
                 imp.window_title.set_subtitle(&gettext("Disconnected"));
                 imp.start_time.replace(None);
-                
+
                 // Reset all items
                 if let Some(model) = imp.model.borrow().as_ref() {
                     for i in 0..model.n_items() {
-                        if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                        if let Some(item) = model
+                            .item(i)
+                            .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                        {
                             item.set_is_active(false);
                             item.set_is_loading(false);
                         }
@@ -420,7 +442,7 @@ impl VrxxVpnPage {
             }
             _ => {}
         }
-        
+
         self.update_disconnect_action_state();
     }
 
@@ -429,36 +451,53 @@ impl VrxxVpnPage {
         glib::timeout_add_seconds_local(1, move || {
             if let Some(page) = page_weak.upgrade() {
                 let imp = page.imp();
-                
+
                 if *imp.is_sleeping.borrow() {
                     return glib::ControlFlow::Continue;
                 }
 
                 let start_time = *imp.start_time.borrow();
-                
+
                 if let Some(start) = start_time {
                     // Обновляем активный элемент
                     if let Some(model) = imp.model.borrow().as_ref() {
                         for i in 0..model.n_items() {
-                            if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                            if let Some(item) = model
+                                .item(i)
+                                .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                            {
                                 if item.is_active() {
                                     // Проверка здоровья: если активно, но процесс мертв - это ошибка
                                     if !imp.backend.borrow().is_running() && !item.is_loading() {
-                                        tracing::error!("Core process crash detected! Disconnecting...");
+                                        tracing::error!(
+                                            "Core process crash detected! Disconnecting..."
+                                        );
                                         item.set_is_active(false);
                                         item.set_is_error(true);
                                         imp.start_time.replace(None);
                                         page.update_disconnect_action_state();
-                                        page.imp().window_title.set_subtitle(&gettext("Connection error"));
+                                        page.imp()
+                                            .window_title
+                                            .set_subtitle(&gettext("Connection error"));
 
                                         // Читаем последние строки лога для отображения пользователю
-                                        let mut error_details = String::from("Unknown error. Please check System logs.");
-                                        let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
+                                        let mut error_details = String::from(
+                                            "Unknown error. Please check System logs.",
+                                        );
+                                        let log_dir = dirs::config_dir()
+                                            .unwrap_or_else(|| std::path::PathBuf::from("."))
+                                            .join("vrxx")
+                                            .join("logs");
                                         let log_path = log_dir.join("core.log");
                                         if let Ok(content) = std::fs::read_to_string(&log_path) {
-                                            let lines: Vec<&str> = content.lines().rev().take(5).collect();
+                                            let lines: Vec<&str> =
+                                                content.lines().rev().take(5).collect();
                                             if !lines.is_empty() {
-                                                error_details = lines.into_iter().rev().collect::<Vec<&str>>().join("\n");
+                                                error_details = lines
+                                                    .into_iter()
+                                                    .rev()
+                                                    .collect::<Vec<&str>>()
+                                                    .join("\n");
                                             }
                                         }
 
@@ -467,7 +506,10 @@ impl VrxxVpnPage {
                                             .body(format!("Core process unexpectedly terminated. Log details:\n\n{error_details}"))
                                             .build();
                                         dialog.add_response("ok", &gettext("OK"));
-                                        if let Some(root) = page.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
+                                        if let Some(root) = page
+                                            .root()
+                                            .and_then(|r| r.downcast::<gtk::Window>().ok())
+                                        {
                                             dialog.present(Some(&root));
                                         }
 
@@ -478,13 +520,20 @@ impl VrxxVpnPage {
                                     let hours = elapsed / 3600;
                                     let mins = (elapsed % 3600) / 60;
                                     let secs = elapsed % 60;
-                                    item.set_time_connected(format!("{hours:02}:{mins:02}:{secs:02}"));
+                                    item.set_time_connected(format!(
+                                        "{hours:02}:{mins:02}:{secs:02}"
+                                    ));
 
                                     // Получение статистики трафика из Xray API (каждые 3 секунды)
                                     let item_clone_stats = item.clone();
-                                    let core_bin = crate::settings::SettingsManager::new().load().core;
-                                    let bin_name = if core_bin == "sing-box" { "sing-box" } else { "xray" };
-                                    
+                                    let core_bin =
+                                        crate::settings::SettingsManager::new().load().core;
+                                    let bin_name = if core_bin == "sing-box" {
+                                        "sing-box"
+                                    } else {
+                                        "xray"
+                                    };
+
                                     let should_stats = elapsed % 3 == 0;
                                     let page_clone = page.clone();
 
@@ -495,22 +544,40 @@ impl VrxxVpnPage {
                                                 args.push(std::ffi::OsStr::new("xray"));
                                                 args.push(std::ffi::OsStr::new("api"));
                                                 args.push(std::ffi::OsStr::new("statsquery"));
-                                                args.push(std::ffi::OsStr::new("-server=127.0.0.1:10085"));
+                                                args.push(std::ffi::OsStr::new(
+                                                    "-server=127.0.0.1:10085",
+                                                ));
                                             } else {
                                                 args.push(std::ffi::OsStr::new("curl"));
                                                 args.push(std::ffi::OsStr::new("-s"));
-                                                args.push(std::ffi::OsStr::new("http://127.0.0.1:9090/connections"));
+                                                args.push(std::ffi::OsStr::new(
+                                                    "http://127.0.0.1:9090/connections",
+                                                ));
                                             }
-                                            
-                                            if let Ok(subprocess) = gio::Subprocess::newv(&args, gio::SubprocessFlags::STDOUT_PIPE | gio::SubprocessFlags::STDERR_SILENCE) {
-                                                if let Ok((Some(stdout_bytes), _)) = subprocess.communicate_future(None).await {
-                                                    let stdout_str = String::from_utf8_lossy(&stdout_bytes);
-                                                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&stdout_str) {
+
+                                            if let Ok(subprocess) = gio::Subprocess::newv(
+                                                &args,
+                                                gio::SubprocessFlags::STDOUT_PIPE
+                                                    | gio::SubprocessFlags::STDERR_SILENCE,
+                                            ) {
+                                                if let Ok((Some(stdout_bytes), _)) =
+                                                    subprocess.communicate_future(None).await
+                                                {
+                                                    let stdout_str =
+                                                        String::from_utf8_lossy(&stdout_bytes);
+                                                    if let Ok(json) =
+                                                        serde_json::from_str::<serde_json::Value>(
+                                                            &stdout_str,
+                                                        )
+                                                    {
                                                         let mut total_down: u64 = 0;
                                                         let mut total_up: u64 = 0;
-                                                        
+
                                                         if bin_name == "xray" {
-                                                            if let Some(stats) = json.get("stat").and_then(|s| s.as_array()) {
+                                                            if let Some(stats) = json
+                                                                .get("stat")
+                                                                .and_then(|s| s.as_array())
+                                                            {
                                                                 for stat in stats {
                                                                     if let (Some(name), Some(value)) = (stat.get("name").and_then(|n| n.as_str()), stat.get("value").and_then(|v| {
                                                                         if v.is_string() { Some(v.as_str().unwrap_or("0").to_string()) }
@@ -528,10 +595,16 @@ impl VrxxVpnPage {
                                                                 }
                                                             }
                                                         } else {
-                                                            total_down = json.get("downloadTotal").and_then(|v| v.as_u64()).unwrap_or(0);
-                                                            total_up = json.get("uploadTotal").and_then(|v| v.as_u64()).unwrap_or(0);
+                                                            total_down = json
+                                                                .get("downloadTotal")
+                                                                .and_then(|v| v.as_u64())
+                                                                .unwrap_or(0);
+                                                            total_up = json
+                                                                .get("uploadTotal")
+                                                                .and_then(|v| v.as_u64())
+                                                                .unwrap_or(0);
                                                         }
-                                                        
+
                                                         if total_down > 0 || total_up > 0 {
                                                             let format_bytes = |b: u64| -> String {
                                                                 let tb = 1_099_511_627_776_f64;
@@ -539,18 +612,26 @@ impl VrxxVpnPage {
                                                                 let mb = 1_048_576_f64;
                                                                 let kb = 1_024_f64;
                                                                 let bf = b as f64;
-                                                                
-                                                                if bf >= tb { format!("{:.2} TB", bf / tb) }
-                                                                else if bf >= gb { format!("{:.2} GB", bf / gb) }
-                                                                else if bf >= mb { format!("{:.1} MB", bf / mb) }
-                                                                else if bf >= kb { format!("{:.0} KB", bf / kb) }
-                                                                else { format!("{b} B") }
+
+                                                                if bf >= tb {
+                                                                    format!("{:.2} TB", bf / tb)
+                                                                } else if bf >= gb {
+                                                                    format!("{:.2} GB", bf / gb)
+                                                                } else if bf >= mb {
+                                                                    format!("{:.1} MB", bf / mb)
+                                                                } else if bf >= kb {
+                                                                    format!("{:.0} KB", bf / kb)
+                                                                } else {
+                                                                    format!("{b} B")
+                                                                }
                                                             };
                                                             let down_str = format_bytes(total_down);
                                                             let up_str = format_bytes(total_up);
-                                                            item_clone_stats.set_traffic_down(down_str.clone());
-                                                            item_clone_stats.set_traffic_up(up_str.clone());
-                                                            
+                                                            item_clone_stats
+                                                                .set_traffic_down(down_str.clone());
+                                                            item_clone_stats
+                                                                .set_traffic_up(up_str.clone());
+
                                                             if let Some(w) = page_clone.root().and_downcast::<crate::window::VrxxWindow>() {
                                                                 w.update_stats(
                                                                     &item_clone_stats.time_connected(),
@@ -567,7 +648,7 @@ impl VrxxVpnPage {
 
                                     // Пинг и проверка соединения асинхронно
                                     let is_loading = item.is_loading();
-                                    
+
                                     // Улучшенная логика пинга: частые проверки при загрузке, редкие при работе
                                     let should_ping = if is_loading {
                                         // Пингуем на 2, 4, 6, 8, 10 секунде
@@ -582,17 +663,26 @@ impl VrxxVpnPage {
                                         item.set_is_active(false);
                                         item.set_is_loading(false);
                                         item.set_is_error(true);
-                                        
+
                                         imp.start_time.replace(None);
                                         page.update_disconnect_action_state();
-                                        page.imp().window_title.set_subtitle(&gettext("Connection failure"));
-                                        
-                                        if let Some(app) = gio::Application::default().and_downcast::<gtk::Application>() {
+                                        page.imp()
+                                            .window_title
+                                            .set_subtitle(&gettext("Connection failure"));
+
+                                        if let Some(app) = gio::Application::default()
+                                            .and_downcast::<gtk::Application>()
+                                        {
                                             if let Some(window) = app.active_window() {
                                                 if !window.is_active() {
-                                                    let notification = gio::Notification::new(&gettext("Connection failure"));
+                                                    let notification = gio::Notification::new(
+                                                        &gettext("Connection failure"),
+                                                    );
                                                     notification.set_body(Some(&gettext("Failed to connect to the selected VPN key.")));
-                                                    app.send_notification(Some("vpn_fail"), &notification);
+                                                    app.send_notification(
+                                                        Some("vpn_fail"),
+                                                        &notification,
+                                                    );
                                                 }
                                             }
                                         }
@@ -603,27 +693,50 @@ impl VrxxVpnPage {
                                         let item_clone = item.clone();
                                         let page_weak_ping = page_weak.clone();
                                         let is_currently_loading = item_clone.is_loading();
-                                        let socks_port = crate::settings::SettingsManager::new().load().socks_port;
-                                        
+                                        let socks_port = crate::settings::SettingsManager::new()
+                                            .load()
+                                            .socks_port;
+
                                         // 1. Создаем канал (ИСПРАВЛЕНО: Явное указание типов)
-                                        let (sender, receiver) = async_channel::unbounded::<(bool, u128, String, String, String)>();
+                                        let (sender, receiver) = async_channel::unbounded::<(
+                                            bool,
+                                            u128,
+                                            String,
+                                            String,
+                                            String,
+                                        )>(
+                                        );
 
                                         // 2. UI Поток ловит результаты и обновляет интерфейс
                                         let item_clone_ui = item_clone.clone();
                                         let page_weak_ui = page_weak_ping.clone();
                                         glib::spawn_future_local(async move {
-                                            if let Ok((success, ms, ip, country, tz)) = receiver.recv().await {
+                                            if let Ok((success, ms, ip, country, tz)) =
+                                                receiver.recv().await
+                                            {
                                                 if success {
                                                     item_clone_ui.set_ping(format!("{ms} ms"));
-                                                    if !ip.is_empty() { item_clone_ui.set_server_info(ip); }
-                                                    if !country.is_empty() { item_clone_ui.set_location(country); }
-                                                    if !tz.is_empty() { item_clone_ui.set_timezone(tz); }
+                                                    if !ip.is_empty() {
+                                                        item_clone_ui.set_server_info(ip);
+                                                    }
+                                                    if !country.is_empty() {
+                                                        item_clone_ui.set_location(country);
+                                                    }
+                                                    if !tz.is_empty() {
+                                                        item_clone_ui.set_timezone(tz);
+                                                    }
 
                                                     item_clone_ui.set_is_loading(false);
                                                     item_clone_ui.set_is_error(false);
                                                     if let Some(page) = page_weak_ui.upgrade() {
-                                                        let new_subtitle = format!("{} {}", item_clone_ui.name(), gettext("Connected"));
-                                                        page.imp().window_title.set_subtitle(&new_subtitle);
+                                                        let new_subtitle = format!(
+                                                            "{} {}",
+                                                            item_clone_ui.name(),
+                                                            gettext("Connected")
+                                                        );
+                                                        page.imp()
+                                                            .window_title
+                                                            .set_subtitle(&new_subtitle);
                                                     }
                                                 } else {
                                                     item_clone_ui.set_ping(gettext("timeout"));
@@ -631,7 +744,9 @@ impl VrxxVpnPage {
                                                     item_clone_ui.set_is_error(true);
                                                     if is_currently_loading {
                                                         if let Some(page) = page_weak_ui.upgrade() {
-                                                            page.imp().window_title.set_subtitle(&gettext("Connection timeout"));
+                                                            page.imp().window_title.set_subtitle(
+                                                                &gettext("Connection timeout"),
+                                                            );
                                                         }
                                                     }
                                                 }
@@ -649,9 +764,13 @@ impl VrxxVpnPage {
                                             let mut tz = String::new();
 
                                             if is_currently_loading {
-                                                let proxy_url = format!("socks5://127.0.0.1:{socks_port}");
+                                                let proxy_url =
+                                                    format!("socks5://127.0.0.1:{socks_port}");
                                                 let agent = match ureq::Proxy::new(&proxy_url) {
-                                                    Ok(proxy) => ureq::builder().proxy(proxy).timeout(std::time::Duration::from_secs(4)).build(),
+                                                    Ok(proxy) => ureq::builder()
+                                                        .proxy(proxy)
+                                                        .timeout(std::time::Duration::from_secs(4))
+                                                        .build(),
                                                     Err(_) => return,
                                                 };
                                                 if let Ok(resp) = agent.get("http://ip-api.com/json/?fields=status,country,timezone,query").call() {
@@ -667,25 +786,46 @@ impl VrxxVpnPage {
                                                 }
                                             } else {
                                                 use std::net::{TcpStream, ToSocketAddrs};
-                                                let parsed = crate::domain::key_parser::parse_vpn_key(&raw_url_bg).unwrap_or_else(|_| crate::domain::key_parser::ParsedKey {
-                                                    protocol: "".to_string(), name: "".to_string(), host: "127.0.0.1".to_string(), port: 0, uuid: "".to_string(), query_params: std::collections::HashMap::new(), raw_url: "".to_string()
-                                                });
-                                                
+                                                let parsed =
+                                                    crate::domain::key_parser::parse_vpn_key(
+                                                        &raw_url_bg,
+                                                    )
+                                                    .unwrap_or_else(|_| {
+                                                        crate::domain::key_parser::ParsedKey {
+                                                            protocol: "".to_string(),
+                                                            name: "".to_string(),
+                                                            host: "127.0.0.1".to_string(),
+                                                            port: 0,
+                                                            uuid: "".to_string(),
+                                                            query_params:
+                                                                std::collections::HashMap::new(),
+                                                            raw_url: "".to_string(),
+                                                        }
+                                                    });
+
                                                 let timeout = std::time::Duration::from_secs(2);
-                                                let addr = format!("{}:{}", parsed.host, parsed.port);
+                                                let addr =
+                                                    format!("{}:{}", parsed.host, parsed.port);
                                                 if let Ok(mut addrs) = addr.to_socket_addrs() {
                                                     if let Some(socket_addr) = addrs.next() {
-                                                        if let Ok(stream) = TcpStream::connect_timeout(&socket_addr, timeout) {
+                                                        if let Ok(stream) =
+                                                            TcpStream::connect_timeout(
+                                                                &socket_addr,
+                                                                timeout,
+                                                            )
+                                                        {
                                                             success = true;
                                                             ms = start_ping.elapsed().as_millis();
-                                                            let _ = stream.shutdown(std::net::Shutdown::Both);
+                                                            let _ = stream
+                                                                .shutdown(std::net::Shutdown::Both);
                                                         }
                                                     }
                                                 }
                                             }
 
                                             // Безопасно отправляем простые типы данных
-                                            let _ = sender.send_blocking((success, ms, ip, country, tz));
+                                            let _ = sender
+                                                .send_blocking((success, ms, ip, country, tz));
                                         });
                                     }
                                     break;
@@ -705,7 +845,10 @@ impl VrxxVpnPage {
     fn set_active_key(&self, active_item: &VpnKeyObject) {
         if let Some(model) = self.imp().model.borrow().as_ref() {
             for i in 0..model.n_items() {
-                if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                if let Some(item) = model
+                    .item(i)
+                    .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                {
                     if item.is_active() && item.name() != active_item.name() {
                         item.set_is_active(false);
                     }
@@ -714,36 +857,43 @@ impl VrxxVpnPage {
             active_item.set_is_active(true);
             active_item.set_is_loading(true);
             active_item.set_is_error(false);
-            
+
             // Синхронизация режима стримера
             let current_settings = SettingsManager::new().load();
             active_item.set_hide_ip(current_settings.streamer_mode);
-            
+
             self.save_current_keys();
             self.update_disconnect_action_state();
 
             // Сброс метрик
-            self.imp().start_time.replace(Some(std::time::Instant::now()));
+            self.imp()
+                .start_time
+                .replace(Some(std::time::Instant::now()));
             *self.imp().bytes_down.borrow_mut() = 0;
             *self.imp().bytes_up.borrow_mut() = 0;
-            
-            self.imp().window_title.set_subtitle(&gettext("Connecting..."));
+
+            self.imp()
+                .window_title
+                .set_subtitle(&gettext("Connecting..."));
 
             let app_settings = current_settings;
-            
-            let config_json = if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&active_item.url()) {
-                if app_settings.core == "sing-box" {
-                    crate::domain::singbox_config::build_singbox_config(&parsed, &app_settings)
+
+            let config_json =
+                if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&active_item.url()) {
+                    if app_settings.core == "sing-box" {
+                        crate::domain::singbox_config::build_singbox_config(&parsed, &app_settings)
+                    } else {
+                        crate::domain::xray_config::build_xray_config(&parsed, &app_settings)
+                    }
                 } else {
-                    crate::domain::xray_config::build_xray_config(&parsed, &app_settings)
-                }
-            } else {
-                tracing::error!("Failed to parse key for configuration generation");
-                active_item.set_is_loading(false);
-                active_item.set_is_error(true);
-                self.imp().window_title.set_subtitle(&gettext("Configuration error"));
-                return;
-            };
+                    tracing::error!("Failed to parse key for configuration generation");
+                    active_item.set_is_loading(false);
+                    active_item.set_is_error(true);
+                    self.imp()
+                        .window_title
+                        .set_subtitle(&gettext("Configuration error"));
+                    return;
+                };
 
             let core_type = app_settings.core.clone();
             let tun_mode = app_settings.tun_mode;
@@ -752,37 +902,42 @@ impl VrxxVpnPage {
 
             glib::spawn_future_local(async move {
                 match crate::ipc::get_system_connection().await {
-                    Ok(conn) => {
-                        match crate::ipc::DaemonProxy::new(&conn).await {
-                            Ok(proxy) => {
-                                tracing::info!("Connecting to VPN key via D-Bus: {}", item_clone.name());
-                                if let Err(e) = proxy.start_proxy(core_type, config_json, tun_mode).await {
-                                    tracing::error!("Failed to start backend via D-Bus: {}", e);
-                                    if let Some(page) = page_weak.upgrade() {
-                                        item_clone.set_is_active(false);
-                                        item_clone.set_is_loading(false);
-                                        item_clone.set_is_error(true);
-                                        page.imp().start_time.replace(None);
-                                        page.imp().window_title.set_subtitle(&gettext("Core startup error"));
-                                        page.save_current_keys();
-                                        page.update_disconnect_action_state();
-                                        
-                                        let dialog = adw::AlertDialog::builder()
-                                            .heading(gettext("Connection error"))
-                                            .body(e.to_string())
-                                            .build();
-                                        dialog.add_response("ok", &gettext("OK"));
-                                        if let Some(root) = page.root() {
-                                            dialog.present(Some(&root));
-                                        }
+                    Ok(conn) => match crate::ipc::DaemonProxy::new(&conn).await {
+                        Ok(proxy) => {
+                            tracing::info!(
+                                "Connecting to VPN key via D-Bus: {}",
+                                item_clone.name()
+                            );
+                            if let Err(e) =
+                                proxy.start_proxy(core_type, config_json, tun_mode).await
+                            {
+                                tracing::error!("Failed to start backend via D-Bus: {}", e);
+                                if let Some(page) = page_weak.upgrade() {
+                                    item_clone.set_is_active(false);
+                                    item_clone.set_is_loading(false);
+                                    item_clone.set_is_error(true);
+                                    page.imp().start_time.replace(None);
+                                    page.imp()
+                                        .window_title
+                                        .set_subtitle(&gettext("Core startup error"));
+                                    page.save_current_keys();
+                                    page.update_disconnect_action_state();
+
+                                    let dialog = adw::AlertDialog::builder()
+                                        .heading(gettext("Connection error"))
+                                        .body(e.to_string())
+                                        .build();
+                                    dialog.add_response("ok", &gettext("OK"));
+                                    if let Some(root) = page.root() {
+                                        dialog.present(Some(&root));
                                     }
-                                } else {
-                                    tracing::info!("Backend successfully started via D-Bus");
                                 }
+                            } else {
+                                tracing::info!("Backend successfully started via D-Bus");
                             }
-                            Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
                         }
-                    }
+                        Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
+                    },
                     Err(e) => tracing::error!("Failed to connect to D-Bus System Bus: {}", e),
                 }
             });
@@ -793,7 +948,10 @@ impl VrxxVpnPage {
         if let Some(model) = self.imp().model.borrow().as_ref() {
             let mut data = Vec::new();
             for i in 0..model.n_items() {
-                if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                if let Some(item) = model
+                    .item(i)
+                    .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                {
                     data.push(VpnKeyData {
                         name: item.name(),
                         protocol: item.protocol(),
@@ -819,24 +977,44 @@ impl VrxxVpnPage {
     fn handle_info_key(&self, key: &VpnKeyObject) {
         let current_settings = SettingsManager::new().load();
         key.set_hide_ip(current_settings.streamer_mode);
-        
+
         let hide = key.hide_ip();
-        let display_ip = if hide { "***.***.***.***".to_string() } else { key.server_info() };
-        let display_loc = if hide { "***".to_string() } else { key.location() };
-        let display_tz = if hide { "***".to_string() } else { key.timezone() };
+        let display_ip = if hide {
+            "***.***.***.***".to_string()
+        } else {
+            key.server_info()
+        };
+        let display_loc = if hide {
+            "***".to_string()
+        } else {
+            key.location()
+        };
+        let display_tz = if hide {
+            "***".to_string()
+        } else {
+            key.timezone()
+        };
 
         let mut body = format!(
             "<b>{}</b>: {}\n<b>{}</b>: {}\n<b>{}</b>: {}\n<b>{}</b>: {}",
-            gettext("Server address"), display_ip,
-            gettext("Location"), display_loc,
-            gettext("Timezone"), display_tz,
-            gettext("Protocol"), key.protocol()
+            gettext("Server address"),
+            display_ip,
+            gettext("Location"),
+            display_loc,
+            gettext("Timezone"),
+            display_tz,
+            gettext("Protocol"),
+            key.protocol()
         );
 
         if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&key.url()) {
-            let display_port = if hide { "***".to_string() } else { parsed.port.to_string() };
+            let display_port = if hide {
+                "***".to_string()
+            } else {
+                parsed.port.to_string()
+            };
             body.push_str(&format!("\n<b>{}</b>: {}", gettext("Port"), display_port));
-            
+
             if let Some(net) = parsed.query_params.get("type") {
                 body.push_str(&format!("\n<b>{}</b>: {}", gettext("Network"), net));
             }
@@ -852,7 +1030,11 @@ impl VrxxVpnPage {
             }
             if let Some(pbk) = parsed.query_params.get("pbk") {
                 let display_pbk = if hide { "***".to_string() } else { pbk.clone() };
-                body.push_str(&format!("\n<b>{}</b>: {}", gettext("Public key"), display_pbk));
+                body.push_str(&format!(
+                    "\n<b>{}</b>: {}",
+                    gettext("Public key"),
+                    display_pbk
+                ));
             }
             if let Some(flow) = parsed.query_params.get("flow") {
                 if !flow.is_empty() {
@@ -878,7 +1060,7 @@ impl VrxxVpnPage {
             .heading(key.name())
             .extra_child(&clamp)
             .build();
-        
+
         dialog.add_response("close", &gettext("Close"));
         dialog.set_close_response("close");
 
@@ -901,12 +1083,27 @@ impl VrxxVpnPage {
         let dialog = adw::AlertDialog::builder()
             .heading(gettext("Edit VPN key"))
             .build();
-        
-        let name_row = adw::EntryRow::builder().title(gettext("Name")).text(&parsed.name).build();
-        let protocol_row = adw::EntryRow::builder().title(gettext("Protocol")).text(&parsed.protocol).build();
-        let host_row = adw::EntryRow::builder().title(gettext("Server address")).text(&parsed.host).build();
-        let port_row = adw::EntryRow::builder().title(gettext("Port")).text(parsed.port.to_string()).build();
-        let uuid_row = adw::EntryRow::builder().title(gettext("UUID / Password")).text(&parsed.uuid).build();
+
+        let name_row = adw::EntryRow::builder()
+            .title(gettext("Name"))
+            .text(&parsed.name)
+            .build();
+        let protocol_row = adw::EntryRow::builder()
+            .title(gettext("Protocol"))
+            .text(&parsed.protocol)
+            .build();
+        let host_row = adw::EntryRow::builder()
+            .title(gettext("Server address"))
+            .text(&parsed.host)
+            .build();
+        let port_row = adw::EntryRow::builder()
+            .title(gettext("Port"))
+            .text(parsed.port.to_string())
+            .build();
+        let uuid_row = adw::EntryRow::builder()
+            .title(gettext("UUID / Password"))
+            .text(&parsed.uuid)
+            .build();
 
         let group_general = adw::PreferencesGroup::builder()
             .title(gettext("General"))
@@ -933,7 +1130,7 @@ impl VrxxVpnPage {
             .tightening_threshold(300)
             .child(&pref_page)
             .build();
-        
+
         clamp.set_margin_top(18);
         clamp.set_margin_bottom(18);
         clamp.set_margin_start(12);
@@ -945,7 +1142,7 @@ impl VrxxVpnPage {
         dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
         dialog.set_default_response(Some("save"));
         dialog.set_close_response("cancel");
-        
+
         let parsed_clone = parsed.clone();
         let name_row_clone = name_row.clone();
         let protocol_row_clone = protocol_row.clone();
@@ -982,16 +1179,16 @@ impl VrxxVpnPage {
     fn handle_delete_key(&self, key: &VpnKeyObject) {
         let page_weak = self.downgrade();
         let key_name = key.name();
-        
+
         let dialog = adw::AlertDialog::builder()
             .heading(gettext("Delete VPN key"))
             .body(format!("Are you sure you want to delete '{key_name}'?"))
             .build();
-            
+
         dialog.add_response("cancel", &gettext("Cancel"));
         dialog.add_response("delete", &gettext("Delete"));
         dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
-        
+
         let key_name_str = key_name.to_string();
         dialog.connect_response(None, move |_, response| {
             if response == "delete" {
@@ -999,7 +1196,10 @@ impl VrxxVpnPage {
                     if let Some(model) = page.imp().model.borrow().as_ref() {
                         let mut target_index = None;
                         for i in 0..model.n_items() {
-                            if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                            if let Some(item) = model
+                                .item(i)
+                                .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                            {
                                 if item.name() == key_name_str {
                                     target_index = Some(i);
                                     break;
@@ -1007,7 +1207,9 @@ impl VrxxVpnPage {
                             }
                         }
                         if let Some(index) = target_index {
-                            let item = model.item(index).and_then(|obj| obj.downcast::<VpnKeyObject>().ok());
+                            let item = model
+                                .item(index)
+                                .and_then(|obj| obj.downcast::<VpnKeyObject>().ok());
                             let was_active = item.is_some_and(|it| it.is_active());
                             model.remove(index);
                             page.save_current_keys();
@@ -1019,7 +1221,7 @@ impl VrxxVpnPage {
                 }
             }
         });
-        
+
         if let Some(root) = self.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
             dialog.present(Some(&root));
         }
@@ -1027,13 +1229,19 @@ impl VrxxVpnPage {
 
     fn update_disconnect_action_state(&self) {
         use gio::prelude::ActionMapExt;
-        
+
         if let Some(group) = self.imp().action_group.borrow().as_ref() {
-            if let Some(action) = group.lookup_action("disconnect").and_then(|a| a.downcast::<gio::SimpleAction>().ok()) {
+            if let Some(action) = group
+                .lookup_action("disconnect")
+                .and_then(|a| a.downcast::<gio::SimpleAction>().ok())
+            {
                 let mut has_active = false;
                 if let Some(model) = self.imp().model.borrow().as_ref() {
                     for i in 0..model.n_items() {
-                        if let Some(item) = model.item(i).and_then(|obj| obj.downcast::<VpnKeyObject>().ok()) {
+                        if let Some(item) = model
+                            .item(i)
+                            .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                        {
                             if item.is_active() {
                                 has_active = true;
                                 break;
@@ -1069,7 +1277,7 @@ impl VrxxVpnPage {
             let dialog = adw::AlertDialog::builder()
                 .heading(gettext("Add VPN key"))
                 .build();
-            
+
             let entry = gtk::Entry::builder()
                 .placeholder_text(gettext("VPN Link"))
                 .activates_default(true)
@@ -1079,8 +1287,11 @@ impl VrxxVpnPage {
                 .selection_mode(gtk::SelectionMode::None)
                 .css_classes(["boxed-list"])
                 .build();
-            
-            let row = gtk::ListBoxRow::builder().child(&entry).activatable(false).build();
+
+            let row = gtk::ListBoxRow::builder()
+                .child(&entry)
+                .activatable(false)
+                .build();
             list_box.append(&row);
 
             let clamp = adw::Clamp::builder()
@@ -1088,7 +1299,7 @@ impl VrxxVpnPage {
                 .tightening_threshold(300)
                 .child(&list_box)
                 .build();
-            
+
             clamp.set_margin_top(12);
             clamp.set_margin_bottom(12);
             clamp.set_margin_start(12);
@@ -1100,7 +1311,7 @@ impl VrxxVpnPage {
             dialog.set_response_appearance("add", adw::ResponseAppearance::Suggested);
             dialog.set_default_response(Some("add"));
             dialog.set_close_response("cancel");
-            
+
             let page_weak_dialog = page_weak.clone();
             let entry_clone = entry.clone();
             dialog.connect_response(None, move |_, response| {
@@ -1110,7 +1321,12 @@ impl VrxxVpnPage {
                         match crate::domain::key_parser::parse_vpn_key(&url_str) {
                             Ok(parsed) => {
                                 if let Some(model) = page.imp().model.borrow().as_ref() {
-                                    let new_key = VpnKeyObject::new(&parsed.name, &parsed.protocol, false, &parsed.raw_url);
+                                    let new_key = VpnKeyObject::new(
+                                        &parsed.name,
+                                        &parsed.protocol,
+                                        false,
+                                        &parsed.raw_url,
+                                    );
                                     model.append(&new_key);
                                     page.save_current_keys();
                                 }
@@ -1137,7 +1353,7 @@ impl VrxxVpnPage {
             if let Some(page) = page_weak_clip.upgrade() {
                 let display = gdk::Display::default().expect("No display");
                 let clipboard = display.clipboard();
-                
+
                 let p_weak = page.downgrade();
                 clipboard.read_text_async(gio::Cancellable::NONE, move |res| {
                     if let Ok(Some(text)) = res {
@@ -1145,13 +1361,21 @@ impl VrxxVpnPage {
                             match crate::domain::key_parser::parse_vpn_key(&text) {
                                 Ok(parsed) => {
                                     if let Some(model) = p.imp().model.borrow().as_ref() {
-                                        let new_key = VpnKeyObject::new(&parsed.name, &parsed.protocol, false, &parsed.raw_url);
+                                        let new_key = VpnKeyObject::new(
+                                            &parsed.name,
+                                            &parsed.protocol,
+                                            false,
+                                            &parsed.raw_url,
+                                        );
                                         model.append(&new_key);
                                         p.save_current_keys();
                                     }
                                 }
                                 Err(e) => {
-                                    tracing::error!("{}", &format!("Key parsing error from buffer: {e}"));
+                                    tracing::error!(
+                                        "{}",
+                                        &format!("Key parsing error from buffer: {e}")
+                                    );
                                 }
                             }
                         }
@@ -1167,16 +1391,14 @@ impl VrxxVpnPage {
             tracing::info!("Disconnecting VPN via D-Bus");
             glib::spawn_future_local(async move {
                 match crate::ipc::get_system_connection().await {
-                    Ok(conn) => {
-                        match crate::ipc::DaemonProxy::new(&conn).await {
-                            Ok(proxy) => {
-                                if let Err(e) = proxy.stop_proxy().await {
-                                    tracing::error!("Failed to stop backend via D-Bus: {}", e);
-                                }
+                    Ok(conn) => match crate::ipc::DaemonProxy::new(&conn).await {
+                        Ok(proxy) => {
+                            if let Err(e) = proxy.stop_proxy().await {
+                                tracing::error!("Failed to stop backend via D-Bus: {}", e);
                             }
-                            Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
                         }
-                    }
+                        Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
+                    },
                     Err(e) => tracing::error!("Failed to connect to D-Bus System Bus: {}", e),
                 }
             });
@@ -1184,7 +1406,7 @@ impl VrxxVpnPage {
         action_group.add_action(&disconnect_action);
 
         self.insert_action_group("vpn", Some(&action_group));
-        
+
         self.update_disconnect_action_state();
     }
 }

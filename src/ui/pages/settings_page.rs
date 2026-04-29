@@ -229,11 +229,7 @@ impl VrxxSettingsPage {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 let is_singbox = row.selected() == 1;
-                let core_name = if is_singbox {
-                    "sing-box"
-                } else {
-                    "xray"
-                };
+                let core_name = if is_singbox { "sing-box" } else { "xray" };
                 s.core = core_name.to_string();
                 manager.save(&s);
                 page.update_core_info(Some(core_name));
@@ -265,7 +261,7 @@ impl VrxxSettingsPage {
                 let mut s = manager.load();
                 s.autostart = row.is_active();
                 manager.save(&s);
-                
+
                 // NOTE: Настройка автозагрузки через создание .desktop файла
                 let autostart_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("autostart");
                 std::fs::create_dir_all(&autostart_dir).ok();
@@ -474,8 +470,9 @@ impl VrxxSettingsPage {
                 {
                     let notification =
                         gtk::gio::Notification::new(&gettextrs::gettext("Geo Data Updated"));
-                    notification
-                        .set_body(Some(&gettextrs::gettext("Latest geo-databases downloaded.")));
+                    notification.set_body(Some(&gettextrs::gettext(
+                        "Latest geo-databases downloaded.",
+                    )));
                     app.send_notification(Some("geo_updated"), &notification);
                 }
             }
@@ -507,7 +504,9 @@ impl VrxxSettingsPage {
         };
 
         // TODO: Использовать асинхронный вызов команды для получения версии
-        let output = std::process::Command::new(&bin_name).arg("version").output();
+        let output = std::process::Command::new(&bin_name)
+            .arg("version")
+            .output();
 
         let version_str = match output {
             Ok(out) => {

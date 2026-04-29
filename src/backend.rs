@@ -1,7 +1,7 @@
-use std::sync::Arc;
-use crate::settings::SettingsManager;
-use anyhow::{Result, Context};
 use crate::ipc::DaemonProxy;
+use crate::settings::SettingsManager;
+use anyhow::{Context, Result};
+use std::sync::Arc;
 use tokio::runtime::Runtime;
 
 pub trait VpnCore: Send + Sync + std::fmt::Debug {
@@ -15,7 +15,7 @@ pub trait VpnCore: Send + Sync + std::fmt::Debug {
 #[derive(Debug)]
 pub struct CoreBackend {
     rt: Arc<Runtime>,
-    conn: tokio::sync::OnceCell<zbus::Connection>,
+    proxy: tokio::sync::OnceCell<DaemonProxy<'static>>,
 }
 
 impl Default for CoreBackend {
@@ -27,7 +27,7 @@ impl Default for CoreBackend {
 impl CoreBackend {
     pub fn new() -> Self {
         let rt = Runtime::new().expect("Failed to create tokio runtime");
-        
+
         // --- Раздел: Проверка окружения ---
         // HACK: Фоновая проверка доступности демона при инициализации.
         // Это позволяет избежать подвисания UI, если D-Bus недоступен.
@@ -36,18 +36,25 @@ impl CoreBackend {
         std::thread::spawn(move || {
             rt_bg.block_on(async {
                 match crate::ipc::get_system_connection().await {
-                    Ok(conn) => {
-                        match DaemonProxy::new(&conn).await {
-                            Ok(proxy) => {
-                                match proxy.ping().await {
-                                    Ok(pong) => tracing::info!("D-Bus Daemon availability checked on initialization: {}", pong),
-                                    Err(e) => tracing::warn!("D-Bus Daemon not available on initialization: {}", e),
-                                }
-                            }
-                            Err(e) => tracing::warn!("Failed to create DaemonProxy on initialization: {}", e),
+                    Ok(conn) => match DaemonProxy::new(&conn).await {
+                        Ok(proxy) => match proxy.ping().await {
+                            Ok(pong) => tracing::info!(
+                                "D-Bus Daemon availability checked on initialization: {}",
+                                pong
+                            ),
+                            Err(e) => tracing::warn!(
+                                "D-Bus Daemon not available on initialization: {}",
+                                e
+                            ),
+                        },
+                        Err(e) => {
+                            tracing::warn!("Failed to create DaemonProxy on initialization: {}", e)
                         }
-                    }
-                    Err(e) => tracing::warn!("Failed to connect to D-Bus System Bus on initialization: {}", e),
+                    },
+                    Err(e) => tracing::warn!(
+                        "Failed to connect to D-Bus System Bus on initialization: {}",
+                        e
+                    ),
                 }
             });
         });
@@ -55,24 +62,32 @@ impl CoreBackend {
 
         Self {
             rt: rt_clone,
-            conn: tokio::sync::OnceCell::new(),
+            proxy: tokio::sync::OnceCell::new(),
         }
     }
 
     // --- Раздел: IPC Взаимодействие ---
+    // OPTIMIZE: Cache D-Bus DaemonProxy here instead of recreating it per proxy call (reduces D-Bus overhead during is_running polling)
     async fn get_proxy(&self) -> Result<DaemonProxy<'static>> {
-        let conn = self.conn.get_or_try_init(|| async { zbus::Connection::system().await })
-            .await
-            .context("Failed to connect to D-Bus System Bus")?
+        let proxy = self
+            .proxy
+            .get_or_try_init(|| async {
+                let conn = crate::ipc::get_system_connection()
+                    .await
+                    .context("Failed to connect to D-Bus System Bus")?;
+                DaemonProxy::new(&conn)
+                    .await
+                    .context("Failed to create DaemonProxy")
+            })
+            .await?
             .clone();
-        DaemonProxy::new(&conn).await
-            .context("Failed to create DaemonProxy")
+        Ok(proxy)
     }
 
     pub fn update_system_proxy(&self, enable: bool) {
         use gtk::gio::Settings;
         use gtk::prelude::SettingsExt;
-        
+
         let settings = Settings::new("org.gnome.system.proxy");
         let mode = if enable { "manual" } else { "none" };
         if let Err(e) = settings.set_string("mode", mode) {
@@ -94,7 +109,9 @@ impl VpnCore for CoreBackend {
 
         self.rt.block_on(async {
             let proxy = self.get_proxy().await?;
-            proxy.start_proxy(core_type, config_json.to_string(), tun_mode).await
+            proxy
+                .start_proxy(core_type, config_json.to_string(), tun_mode)
+                .await
                 .map_err(|e| anyhow::anyhow!("D-Bus error: {e}"))?;
             Ok(())
         })
@@ -106,7 +123,9 @@ impl VpnCore for CoreBackend {
 
         self.rt.block_on(async {
             let proxy = self.get_proxy().await?;
-            proxy.stop_proxy().await
+            proxy
+                .stop_proxy()
+                .await
                 .map_err(|e| anyhow::anyhow!("D-Bus error: {e}"))?;
             Ok(())
         })

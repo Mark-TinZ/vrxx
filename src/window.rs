@@ -2,7 +2,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
 
-use crate::ui::pages::{VrxxVpnPage, VrxxProxyPage, VrxxWhitelistPage, VrxxSettingsPage};
+use crate::ui::pages::{VrxxProxyPage, VrxxSettingsPage, VrxxVpnPage, VrxxWhitelistPage};
 
 mod imp {
     use super::*;
@@ -14,7 +14,7 @@ mod imp {
         pub navigation_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub view_stack: TemplateChild<gtk::Stack>,
-        
+
         #[template_child]
         pub active_connection_btn: TemplateChild<gtk::MenuButton>,
         #[template_child]
@@ -55,11 +55,11 @@ mod imp {
             obj.start_status_polling();
 
             if let Some(row) = self.navigation_list.row_at_index(0) {
-                 self.navigation_list.select_row(Some(&row));
-                 // Принудительная установка начальной страницы
-                 if let Some(name) = obj.get_page_name_from_row(&row) {
-                     self.view_stack.set_visible_child_name(name);
-                 }
+                self.navigation_list.select_row(Some(&row));
+                // Принудительная установка начальной страницы
+                if let Some(name) = obj.get_page_name_from_row(&row) {
+                    self.view_stack.set_visible_child_name(name);
+                }
             }
         }
     }
@@ -100,22 +100,20 @@ impl VrxxWindow {
 
         // ИСПОЛЬЗУЕМ connect_row_selected ВМЕСТО connect_row_activated
         let window_weak = self.downgrade();
-        imp.navigation_list.connect_row_selected(
-            move |_, row| {
-                // row здесь имеет тип Option<&gtk::ListBoxRow>
-                if let Some(row) = row {
-                    let window = match window_weak.upgrade() {
-                        Some(w) => w,
-                        None => return,
-                    };
-                    let imp = window.imp();
+        imp.navigation_list.connect_row_selected(move |_, row| {
+            // row здесь имеет тип Option<&gtk::ListBoxRow>
+            if let Some(row) = row {
+                let window = match window_weak.upgrade() {
+                    Some(w) => w,
+                    None => return,
+                };
+                let imp = window.imp();
 
-                    if let Some(page_name) = window.get_page_name_from_row(row) {
-                        imp.view_stack.set_visible_child_name(page_name);
-                    }
+                if let Some(page_name) = window.get_page_name_from_row(row) {
+                    imp.view_stack.set_visible_child_name(page_name);
                 }
-            },
-        );
+            }
+        });
     }
 
     fn start_status_polling(&self) {
@@ -129,13 +127,17 @@ impl VrxxWindow {
     fn update_active_connection_widget(&self) {
         use crate::settings::SettingsManager;
         let settings = SettingsManager::new().load();
-        
+
         let imp = self.imp();
-        
+
         if let Some(active_key) = settings.keys.iter().find(|k| k.is_active) {
             imp.active_connection_btn.set_visible(true);
             imp.active_server_name.set_label(&active_key.name);
-            imp.active_server_details.set_label(&format!("Protocol: {}\nIP: {}", active_key.protocol.to_uppercase(), active_key.location));
+            imp.active_server_details.set_label(&format!(
+                "Protocol: {}\nIP: {}",
+                active_key.protocol.to_uppercase(),
+                active_key.location
+            ));
         } else {
             imp.active_connection_btn.set_visible(false);
         }
@@ -144,6 +146,7 @@ impl VrxxWindow {
     pub fn update_stats(&self, time: &str, down: &str, up: &str) {
         let imp = self.imp();
         imp.active_connection_timer.set_label(time);
-        imp.active_server_traffic.set_label(&format!("↓ {} | ↑ {}", down, up));
+        imp.active_server_traffic
+            .set_label(&format!("↓ {} | ↑ {}", down, up));
     }
 }

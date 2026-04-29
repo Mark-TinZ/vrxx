@@ -1,9 +1,9 @@
+use crate::settings::{RoutingRule, SettingsManager};
+use crate::ui::models::RoutingRuleObject;
+use crate::ui::setup_primary_menu;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib, CompositeTemplate};
-use crate::ui::setup_primary_menu;
-use crate::settings::{SettingsManager, RoutingRule};
-use crate::ui::models::RoutingRuleObject;
 use std::cell::RefCell;
 
 mod imp {
@@ -64,10 +64,10 @@ mod imp {
     impl ObjectImpl for VrxxWhitelistPage {
         fn constructed(&self) {
             self.parent_constructed();
-            
+
             let store = gio::ListStore::new::<RoutingRuleObject>();
             self.model.replace(Some(store.clone()));
-            
+
             self.obj().setup_settings();
             self.obj().setup_rules_list();
             self.obj().setup_actions();
@@ -107,52 +107,62 @@ impl VrxxWhitelistPage {
         if let Some(store) = imp.model.borrow().clone() {
             let settings = SettingsManager::new().load();
             for rule in &settings.routing_rules {
-                let obj = RoutingRuleObject::new(&rule.name, &rule.type_, &rule.value, &rule.action);
+                let obj =
+                    RoutingRuleObject::new(&rule.name, &rule.type_, &rule.value, &rule.action);
                 store.append(&obj);
             }
 
             let selection_model = gtk::NoSelection::new(Some(store));
-            
+
             let page = self.clone();
-            imp.rules_list.bind_model(Some(&selection_model), move |item| {
-                if let Some(obj) = item.downcast_ref::<RoutingRuleObject>() {
-                    let row = adw::ActionRow::builder()
-                        .title(&obj.name())
-                        .subtitle(&format!("{} | {} -> {}", obj.rule_type(), obj.value(), obj.action()))
-                        .build();
-                    
-                    let btn_remove = gtk::Button::builder()
-                        .icon_name("user-trash-symbolic")
-                        .valign(gtk::Align::Center)
-                        .css_classes(["flat", "destructive-action"])
-                        .build();
-                        
-                    let obj_clone = obj.clone();
-                    let page_clone = page.clone();
-                    btn_remove.connect_clicked(move |_| {
-                        if let Some(store) = page_clone.imp().model.borrow().clone() {
-                            for i in 0..store.n_items() {
-                                if let Some(o) = store.item(i).and_downcast::<RoutingRuleObject>() {
-                                    if o.name() == obj_clone.name() {
-                                        store.remove(i);
-                                        page_clone.mark_changed();
-                                        break;
+            imp.rules_list
+                .bind_model(Some(&selection_model), move |item| {
+                    if let Some(obj) = item.downcast_ref::<RoutingRuleObject>() {
+                        let row = adw::ActionRow::builder()
+                            .title(obj.name())
+                            .subtitle(format!(
+                                "{} | {} -> {}",
+                                obj.rule_type(),
+                                obj.value(),
+                                obj.action()
+                            ))
+                            .build();
+
+                        let btn_remove = gtk::Button::builder()
+                            .icon_name("user-trash-symbolic")
+                            .valign(gtk::Align::Center)
+                            .css_classes(["flat", "destructive-action"])
+                            .build();
+
+                        let obj_clone = obj.clone();
+                        let page_clone = page.clone();
+                        btn_remove.connect_clicked(move |_| {
+                            if let Some(store) = page_clone.imp().model.borrow().clone() {
+                                for i in 0..store.n_items() {
+                                    if let Some(o) =
+                                        store.item(i).and_downcast::<RoutingRuleObject>()
+                                    {
+                                        if o.name() == obj_clone.name() {
+                                            store.remove(i);
+                                            page_clone.mark_changed();
+                                            break;
+                                        }
                                     }
                                 }
                             }
-                        }
-                    });
-                    
-                    row.add_suffix(&btn_remove);
-                    row.upcast::<gtk::Widget>()
-                } else {
-                    gtk::Box::new(gtk::Orientation::Horizontal, 0).upcast::<gtk::Widget>()
-                }
-            });
+                        });
+
+                        row.add_suffix(&btn_remove);
+                        row.upcast::<gtk::Widget>()
+                    } else {
+                        gtk::Box::new(gtk::Orientation::Horizontal, 0).upcast::<gtk::Widget>()
+                    }
+                });
         }
 
         imp.btn_add_rule.connect_clicked(glib::clone!(
-            #[weak(rename_to = page)] self,
+            #[weak(rename_to = page)]
+            self,
             move |_| {
                 page.show_add_rule_dialog();
             }
@@ -165,24 +175,28 @@ impl VrxxWhitelistPage {
                 .heading("Add Routing Rule")
                 .body("Create a new custom routing rule")
                 .build();
-                
+
             dialog.add_response("cancel", "Cancel");
             dialog.add_response("add", "Add");
             dialog.set_response_appearance("add", adw::ResponseAppearance::Suggested);
-            
+
             let vbox = gtk::Box::builder()
                 .orientation(gtk::Orientation::Vertical)
                 .spacing(12)
                 .margin_top(12)
                 .build();
-                
-            let entry_name = gtk::Entry::builder().placeholder_text("Rule Name (e.g. Work)").build();
-            
+
+            let entry_name = gtk::Entry::builder()
+                .placeholder_text("Rule Name (e.g. Work)")
+                .build();
+
             let combo_type = gtk::DropDown::from_strings(&["domain", "ip", "srs_url"]);
             let combo_action = gtk::DropDown::from_strings(&["proxy", "direct", "block"]);
-            
-            let entry_val = gtk::Entry::builder().placeholder_text("Value (e.g. google.com or .srs URL)").build();
-            
+
+            let entry_val = gtk::Entry::builder()
+                .placeholder_text("Value (e.g. google.com or .srs URL)")
+                .build();
+
             vbox.append(&gtk::Label::builder().label("Name:").xalign(0.0).build());
             vbox.append(&entry_name);
             vbox.append(&gtk::Label::builder().label("Type:").xalign(0.0).build());
@@ -191,17 +205,19 @@ impl VrxxWhitelistPage {
             vbox.append(&entry_val);
             vbox.append(&gtk::Label::builder().label("Action:").xalign(0.0).build());
             vbox.append(&combo_action);
-            
+
             dialog.set_extra_child(Some(&vbox));
-            
+
             let page = self.clone();
             gtk::glib::MainContext::default().spawn_local(async move {
                 let response = dialog.choose_future(&window).await;
                 if response == "add" {
                     let name = entry_name.text().to_string();
                     let val = entry_val.text().to_string();
-                    if name.is_empty() || val.is_empty() { return; }
-                    
+                    if name.is_empty() || val.is_empty() {
+                        return;
+                    }
+
                     let r_type = match combo_type.selected() {
                         1 => "ip",
                         2 => "srs_url",
@@ -212,7 +228,7 @@ impl VrxxWhitelistPage {
                         2 => "block",
                         _ => "proxy",
                     };
-                    
+
                     let obj = RoutingRuleObject::new(&name, r_type, &val, act);
                     if let Some(store) = page.imp().model.borrow().clone() {
                         store.append(&obj);
@@ -231,11 +247,12 @@ impl VrxxWhitelistPage {
         imp.btn_apply.set_visible(false);
 
         imp.btn_apply.connect_clicked(glib::clone!(
-            #[weak(rename_to = page)] self,
+            #[weak(rename_to = page)]
+            self,
             move |btn| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
-                
+
                 let imp = page.imp();
                 s.enable_routing = imp.enable_routing_row.is_active();
                 s.routing_mode = match imp.mode_row.selected() {
@@ -247,7 +264,7 @@ impl VrxxWhitelistPage {
                 s.route_ir = imp.route_ir_row.is_active();
                 s.route_antifilter = imp.route_antifilter_row.is_active();
                 s.disable_ipv6 = imp.disable_ipv6_row.is_active();
-                
+
                 let mut rules = vec![];
                 if let Some(store) = imp.model.borrow().clone() {
                     for i in 0..store.n_items() {
@@ -262,23 +279,28 @@ impl VrxxWhitelistPage {
                     }
                 }
                 s.routing_rules = rules;
-                
+
                 manager.save(&s);
-                
+
                 *imp.has_changes.borrow_mut() = false;
                 btn.set_visible(false);
 
                 let _ = crate::settings::core_restart_channel().0.send_blocking(());
-                if let Some(app) = gtk::gio::Application::default().and_downcast::<gtk::Application>() {
-                    let notification = gtk::gio::Notification::new(&gettextrs::gettext("Settings applied"));
-                    notification.set_body(Some(&gettextrs::gettext("Core was restarted to apply new settings.")));
+                if let Some(app) =
+                    gtk::gio::Application::default().and_downcast::<gtk::Application>()
+                {
+                    let notification =
+                        gtk::gio::Notification::new(&gettextrs::gettext("Settings applied"));
+                    notification.set_body(Some(&gettextrs::gettext(
+                        "Core was restarted to apply new settings.",
+                    )));
                     app.send_notification(Some("settings_applied"), &notification);
                 }
             }
         ));
 
         imp.enable_routing_row.set_active(settings.enable_routing);
-        
+
         let mode_idx = match settings.routing_mode.as_str() {
             "proxy" => 1,
             _ => 0,
@@ -288,17 +310,25 @@ impl VrxxWhitelistPage {
         imp.route_ru_row.set_active(settings.route_ru);
         imp.route_cn_row.set_active(settings.route_cn);
         imp.route_ir_row.set_active(settings.route_ir);
-        imp.route_antifilter_row.set_active(settings.route_antifilter);
+        imp.route_antifilter_row
+            .set_active(settings.route_antifilter);
         imp.disable_ipv6_row.set_active(settings.disable_ipv6);
 
         self.update_prr_timestamp();
     }
 
     fn update_prr_timestamp(&self) {
-        let config_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx");
+        let config_dir = dirs::config_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("vrxx");
         let mut last_updated = std::time::SystemTime::UNIX_EPOCH;
-        
-        for file in &["geosite.dat", "geosite_ru.dat", "geosite_cn.dat", "geosite_antifilter.dat"] {
+
+        for file in &[
+            "geosite.dat",
+            "geosite_ru.dat",
+            "geosite_cn.dat",
+            "geosite_antifilter.dat",
+        ] {
             if let Ok(metadata) = std::fs::metadata(config_dir.join(file)) {
                 if let Ok(modified) = metadata.modified() {
                     if modified > last_updated {
@@ -307,11 +337,14 @@ impl VrxxWhitelistPage {
                 }
             }
         }
-        
+
         if last_updated > std::time::SystemTime::UNIX_EPOCH {
             let datetime: chrono::DateTime<chrono::Local> = last_updated.into();
             let date_str = datetime.format("%Y-%m-%d %H:%M").to_string();
-            self.imp().classic_rules_expander.set_subtitle(&format!("Quick toggles for RU, CN, IR | Updated: {}", date_str));
+            self.imp().classic_rules_expander.set_subtitle(&format!(
+                "Quick toggles for RU, CN, IR | Updated: {}",
+                date_str
+            ));
         }
     }
 
@@ -319,25 +352,39 @@ impl VrxxWhitelistPage {
         let imp = self.imp();
 
         imp.enable_routing_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |_| page.mark_changed()
+            #[weak(rename_to = page)]
+            self,
+            move |_| page.mark_changed()
         ));
         imp.mode_row.connect_selected_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |_| page.mark_changed()
+            #[weak(rename_to = page)]
+            self,
+            move |_| page.mark_changed()
         ));
         imp.route_ru_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |_| page.mark_changed()
+            #[weak(rename_to = page)]
+            self,
+            move |_| page.mark_changed()
         ));
         imp.route_cn_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |_| page.mark_changed()
+            #[weak(rename_to = page)]
+            self,
+            move |_| page.mark_changed()
         ));
         imp.route_ir_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |_| page.mark_changed()
+            #[weak(rename_to = page)]
+            self,
+            move |_| page.mark_changed()
         ));
         imp.route_antifilter_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |_| page.mark_changed()
+            #[weak(rename_to = page)]
+            self,
+            move |_| page.mark_changed()
         ));
         imp.disable_ipv6_row.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self, move |_| page.mark_changed()
+            #[weak(rename_to = page)]
+            self,
+            move |_| page.mark_changed()
         ));
     }
 }

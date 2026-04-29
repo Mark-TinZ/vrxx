@@ -1,10 +1,10 @@
-use adw::subclass::prelude::*;
-use adw::prelude::*;
-use gtk::{glib, CompositeTemplate};
-use crate::ui::setup_primary_menu;
 use crate::settings::SettingsManager;
-use std::cell::RefCell;
+use crate::ui::setup_primary_menu;
+use adw::prelude::*;
+use adw::subclass::prelude::*;
 use gettextrs::gettext;
+use gtk::{glib, CompositeTemplate};
+use std::cell::RefCell;
 
 mod imp {
     use super::*;
@@ -89,18 +89,25 @@ impl VrxxProxyPage {
         let manager = SettingsManager::new();
         let settings = manager.load();
 
-        imp.allow_lan_switch.set_title(&gettext("Allow connections from LAN"));
-        imp.allow_lan_switch.set_subtitle(&gettext("Proxy will be available for other devices in your local network"));
+        imp.allow_lan_switch
+            .set_title(&gettext("Allow connections from LAN"));
+        imp.allow_lan_switch.set_subtitle(&gettext(
+            "Proxy will be available for other devices in your local network",
+        ));
 
         imp.btn_apply.set_visible(false);
 
         imp.btn_apply.connect_clicked(glib::clone!(
-            #[weak(rename_to = page)] self,
+            #[weak(rename_to = page)]
+            self,
             move |btn| {
                 let _ = crate::settings::core_restart_channel().0.send_blocking(());
-                if let Some(app) = gtk::gio::Application::default().and_downcast::<gtk::Application>() {
+                if let Some(app) =
+                    gtk::gio::Application::default().and_downcast::<gtk::Application>()
+                {
                     let notification = gtk::gio::Notification::new(&gettext("Settings applied"));
-                    notification.set_body(Some(&gettext("Core was restarted to apply new settings.")));
+                    notification
+                        .set_body(Some(&gettext("Core was restarted to apply new settings.")));
                     app.send_notification(Some("settings_applied"), &notification);
                 }
                 *page.imp().has_changes.borrow_mut() = false;
@@ -109,7 +116,8 @@ impl VrxxProxyPage {
         ));
 
         // Load values
-        imp.system_proxy_switch.set_active(settings.set_system_proxy);
+        imp.system_proxy_switch
+            .set_active(settings.set_system_proxy);
         imp.tun_mode_switch.set_active(settings.tun_mode);
         imp.socks_port_row.set_value(settings.socks_port as f64);
         imp.http_port_row.set_value(settings.http_port as f64);
@@ -118,7 +126,8 @@ impl VrxxProxyPage {
         // --- Раздел: Привязка настроек ---
         // REVIEW: Возможно стоит объединить сохранение всех полей в один метод.
         imp.system_proxy_switch.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self,
+            #[weak(rename_to = page)]
+            self,
             move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
@@ -130,7 +139,8 @@ impl VrxxProxyPage {
         ));
 
         imp.tun_mode_switch.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self,
+            #[weak(rename_to = page)]
+            self,
             move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
@@ -141,7 +151,8 @@ impl VrxxProxyPage {
         ));
 
         imp.socks_port_row.connect_value_notify(glib::clone!(
-            #[weak(rename_to = page)] self,
+            #[weak(rename_to = page)]
+            self,
             move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
@@ -152,7 +163,8 @@ impl VrxxProxyPage {
         ));
 
         imp.http_port_row.connect_value_notify(glib::clone!(
-            #[weak(rename_to = page)] self,
+            #[weak(rename_to = page)]
+            self,
             move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
@@ -163,7 +175,8 @@ impl VrxxProxyPage {
         ));
 
         imp.allow_lan_switch.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)] self,
+            #[weak(rename_to = page)]
+            self,
             move |row| {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();

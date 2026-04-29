@@ -10,23 +10,22 @@
  */
 
 mod application;
-mod config;
-mod window;
-mod ui;
 mod backend;
-mod settings;
-mod protocol;
-pub mod domain;
-pub mod services;
+mod config;
 pub mod daemon;
+pub mod domain;
 pub mod ipc;
+mod protocol;
+pub mod services;
+mod settings;
+mod ui;
+mod window;
 
 use self::application::VrxxApplication;
 use config::{GETTEXT_PACKAGE, LOCALEDIR};
-use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain, setlocale, LocaleCategory};
-use gtk::{gio, glib};
+use gettextrs::{bind_textdomain_codeset, bindtextdomain, setlocale, textdomain, LocaleCategory};
 use gtk::prelude::*;
-
+use gtk::{gio, glib};
 
 struct MultiWriter {
     app_log: std::fs::File,
@@ -50,9 +49,12 @@ fn main() -> glib::ExitCode {
     let args: Vec<String> = std::env::args().collect();
 
     // --- Раздел: Логирование ---
-    let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
+    let log_dir = dirs::config_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("vrxx")
+        .join("logs");
     std::fs::create_dir_all(&log_dir).ok();
-    
+
     let is_daemon = args.iter().any(|arg| arg == "--daemon");
     let log_suffix = if is_daemon { "daemon" } else { "app" };
 
@@ -69,10 +71,16 @@ fn main() -> glib::ExitCode {
             #[cfg(unix)]
             let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
             file
-        },
+        }
         Err(e) => {
-            eprintln!("Warning: Failed to open {}.log: {}. Using /dev/null", log_suffix, e);
-            std::fs::OpenOptions::new().write(true).open("/dev/null").unwrap_or_else(|_| std::process::exit(1))
+            eprintln!(
+                "Warning: Failed to open {}.log: {}. Using /dev/null",
+                log_suffix, e
+            );
+            std::fs::OpenOptions::new()
+                .write(true)
+                .open("/dev/null")
+                .unwrap_or_else(|_| std::process::exit(1))
         }
     };
 
@@ -86,10 +94,13 @@ fn main() -> glib::ExitCode {
             #[cfg(unix)]
             let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
             file
-        },
+        }
         Err(e) => {
             eprintln!("Warning: Failed to open all.log: {}. Using /dev/null", e);
-            std::fs::OpenOptions::new().write(true).open("/dev/null").unwrap_or_else(|_| std::process::exit(1))
+            std::fs::OpenOptions::new()
+                .write(true)
+                .open("/dev/null")
+                .unwrap_or_else(|_| std::process::exit(1))
         }
     };
 
@@ -114,7 +125,7 @@ fn main() -> glib::ExitCode {
                     std::process::exit(1);
                 }
                 std::process::exit(0);
-            },
+            }
             Err(e) => {
                 eprintln!("Failed to initialize tokio runtime: {e}");
                 std::process::exit(1);
@@ -128,7 +139,11 @@ fn main() -> glib::ExitCode {
     let manager = settings::SettingsManager::new();
     let app_settings = manager.load();
     if app_settings.language != "system" {
-        let lang = if app_settings.language == "ru" { "ru_RU.UTF-8" } else { &app_settings.language };
+        let lang = if app_settings.language == "ru" {
+            "ru_RU.UTF-8"
+        } else {
+            &app_settings.language
+        };
         std::env::set_var("LANGUAGE", lang);
         std::env::set_var("LC_ALL", lang);
         std::env::set_var("LANG", lang);
@@ -190,4 +205,3 @@ fn main() -> glib::ExitCode {
     let app = VrxxApplication::new("ru.mark.vrxx", &gio::ApplicationFlags::empty());
     app.run()
 }
-

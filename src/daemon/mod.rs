@@ -1,17 +1,17 @@
-pub mod network;
 pub mod dns;
+pub mod network;
 
 use crate::ipc::{VrxxDaemon, VrxxDaemonSignals};
-use zbus::connection::Builder;
-use std::future::pending;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::process::{Child, Command};
-use std::process::Stdio;
-use tokio::io::{AsyncWriteExt, AsyncBufReadExt, BufReader};
 use nix::sys::signal::{self, Signal};
 use nix::unistd::Pid;
+use std::future::pending;
+use std::process::Stdio;
+use std::sync::Arc;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::process::{Child, Command};
+use tokio::sync::Mutex;
 use tokio::time::{timeout, Duration};
+use zbus::connection::Builder;
 
 pub enum DaemonEvent {
     StatusChanged(String),
@@ -45,10 +45,18 @@ impl ProxyManager {
     async fn set_status(&self, new_status: &str) {
         let mut status = self.status.lock().await;
         *status = new_status.to_string();
-        let _ = self.event_sender.send(DaemonEvent::StatusChanged(new_status.to_string())).await;
+        let _ = self
+            .event_sender
+            .send(DaemonEvent::StatusChanged(new_status.to_string()))
+            .await;
     }
 
-    pub async fn start_proxy(&self, core_type: &str, config_json: &str, tun_mode: bool) -> anyhow::Result<()> {
+    pub async fn start_proxy(
+        &self,
+        core_type: &str,
+        config_json: &str,
+        tun_mode: bool,
+    ) -> anyhow::Result<()> {
         // Stop previous if running
         self.stop_proxy().await?;
 
@@ -66,19 +74,25 @@ impl ProxyManager {
                 *tun_guard = Some(tun_mgr);
 
                 let dns_mgr = dns::DnsManager::new().await?;
-                dns_mgr.set_dns(if_index as i32, vec!["172.19.0.1".to_string()]).await?;
+                dns_mgr
+                    .set_dns(if_index as i32, vec!["172.19.0.1".to_string()])
+                    .await?;
                 let mut dns_guard = self.dns_manager.lock().await;
                 *dns_guard = Some(dns_mgr);
                 Ok::<(), anyhow::Error>(())
-            }.await;
+            }
+            .await;
 
             if let Err(e) = setup_res {
                 let err_msg = format!("Network setup failed: {}", e);
                 tracing::error!("{}", err_msg);
-                let _ = self.event_sender.send(DaemonEvent::Log {
-                    level: "error".to_string(),
-                    message: err_msg,
-                }).await;
+                let _ = self
+                    .event_sender
+                    .send(DaemonEvent::Log {
+                        level: "error".to_string(),
+                        message: err_msg,
+                    })
+                    .await;
                 self.set_status("Error").await;
                 return Err(e);
             }
@@ -93,7 +107,7 @@ impl ProxyManager {
         tracing::info!("Daemon starting core {} via tokio...", bin_name);
 
         let mut cmd = Command::new(bin_name);
-        
+
         // --- Раздел: Конфигурация запуска ---
         // Pass config via stdin
         if bin_name == "xray" {
@@ -127,11 +141,15 @@ impl ProxyManager {
                     async move {
                         let mut status_guard = status.lock().await;
                         *status_guard = "Error".to_string();
-                        let _ = event_sender.send(DaemonEvent::StatusChanged("Error".to_string())).await;
-                        let _ = event_sender.send(DaemonEvent::Log {
-                            level: "error".to_string(),
-                            message: err_msg,
-                        }).await;
+                        let _ = event_sender
+                            .send(DaemonEvent::StatusChanged("Error".to_string()))
+                            .await;
+                        let _ = event_sender
+                            .send(DaemonEvent::Log {
+                                level: "error".to_string(),
+                                message: err_msg,
+                            })
+                            .await;
                     }
                 });
                 anyhow::anyhow!(err_msg)
@@ -147,8 +165,11 @@ impl ProxyManager {
         let stderr = child.stderr.take().unwrap();
 
         let event_sender = self.event_sender.clone();
-        
-        let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
+
+        let log_dir = dirs::config_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("vrxx")
+            .join("logs");
         std::fs::create_dir_all(&log_dir).ok();
         let core_log_path = log_dir.join("core.log");
 
@@ -180,10 +201,12 @@ impl ProxyManager {
                         let _ = writeln!(f, "{}", line);
                     }
 
-                    let _ = event_sender.send(DaemonEvent::Log {
-                        level: "info".to_string(),
-                        message: line,
-                    }).await;
+                    let _ = event_sender
+                        .send(DaemonEvent::Log {
+                            level: "info".to_string(),
+                            message: line,
+                        })
+                        .await;
                 }
             }
         });
@@ -215,10 +238,12 @@ impl ProxyManager {
                         let _ = writeln!(f, "{}", line);
                     }
 
-                    let _ = event_sender.send(DaemonEvent::Log {
-                        level: "error".to_string(),
-                        message: line,
-                    }).await;
+                    let _ = event_sender
+                        .send(DaemonEvent::Log {
+                            level: "error".to_string(),
+                            message: line,
+                        })
+                        .await;
                 }
             }
         });
@@ -238,13 +263,23 @@ impl ProxyManager {
                     Ok(exit_status) => {
                         let mut status = status_arc.lock().await;
                         if *status != "Disconnecting" && *status != "Disconnected" {
-                            tracing::warn!("Proxy exited unexpectedly with status: {}", exit_status);
+                            tracing::warn!(
+                                "Proxy exited unexpectedly with status: {}",
+                                exit_status
+                            );
                             *status = "Error".to_string();
-                            let _ = event_sender_clone.send(DaemonEvent::StatusChanged("Error".to_string())).await;
-                            let _ = event_sender_clone.send(DaemonEvent::Log {
-                                level: "error".to_string(),
-                                message: format!("Proxy exited unexpectedly with status: {}", exit_status),
-                            }).await;
+                            let _ = event_sender_clone
+                                .send(DaemonEvent::StatusChanged("Error".to_string()))
+                                .await;
+                            let _ = event_sender_clone
+                                .send(DaemonEvent::Log {
+                                    level: "error".to_string(),
+                                    message: format!(
+                                        "Proxy exited unexpectedly with status: {}",
+                                        exit_status
+                                    ),
+                                })
+                                .await;
                         }
                     }
                     Err(e) => {
@@ -278,10 +313,10 @@ impl ProxyManager {
             if let Some(pid_u32) = child.id() {
                 let pid = Pid::from_raw(pid_u32 as i32);
                 tracing::info!("Stopping proxy process (PID {})...", pid_u32);
-                
+
                 // Send SIGTERM
                 let _ = signal::kill(pid, Signal::SIGTERM);
-                
+
                 // Wait with timeout
                 match timeout(Duration::from_secs(5), child.wait()).await {
                     Ok(_) => {
@@ -305,7 +340,7 @@ impl ProxyManager {
                 let _ = dns_mgr.reset_dns(tun_mgr.if_index as i32).await;
             }
         }
-        
+
         if let Some(mut tun_mgr) = self.tun_manager.lock().await.take() {
             tracing::info!("Tearing down TUN interface");
             let _ = tun_mgr.teardown().await;
@@ -335,7 +370,9 @@ pub async fn run() -> anyhow::Result<()> {
     tracing::info!("Daemon is now registered on the system bus.");
 
     let object_server = connection.object_server();
-    let iface_ref = object_server.interface::<_, VrxxDaemon>("/ru/mark/vrxx/Daemon").await?;
+    let iface_ref = object_server
+        .interface::<_, VrxxDaemon>("/ru/mark/vrxx/Daemon")
+        .await?;
 
     // Event processing loop
     tokio::spawn(async move {

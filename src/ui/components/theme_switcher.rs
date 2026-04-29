@@ -44,4 +44,3 @@ impl VrxxThemeSwitcher {
         glib::Object::builder().build()
     }
 }
-

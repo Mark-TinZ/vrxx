@@ -6,7 +6,7 @@ use std::process::Command;
 fn main() {
     println!("cargo::rustc-check-cfg=cfg(meson_build)");
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    
+
     // Compile GResource for cargo run
     let res_path = PathBuf::from("src/vrxx.gresource.xml");
     if res_path.exists() {
@@ -55,7 +55,8 @@ fn main() {
     let fallback_path = out_dir.join("config_fallback.rs");
 
     if let Ok(config_path) = env::var("VRXX_CONFIG_RS_PATH") {
-        let content = fs::read_to_string(&config_path).expect("Failed to read config.rs from meson");
+        let content =
+            fs::read_to_string(&config_path).expect("Failed to read config.rs from meson");
         fs::write(&fallback_path, content).expect("Failed to write fallback config.rs");
         println!("cargo:rustc-cfg=meson_build");
     } else {

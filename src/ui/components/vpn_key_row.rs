@@ -1,5 +1,5 @@
-use gtk::{gio, glib, prelude::*, subclass::prelude::*, CompositeTemplate};
 use crate::ui::models::VpnKeyObject;
+use gtk::{gio, glib, prelude::*, subclass::prelude::*, CompositeTemplate};
 
 mod imp {
     use super::*;
@@ -91,14 +91,24 @@ impl VrxxVpnKeyRow {
         imp.item.replace(Some(item.clone()));
 
         item.bind_property("name", &*imp.header_row, "title")
-            .sync_create().build();
+            .sync_create()
+            .build();
         item.bind_property("protocol", &*imp.header_row, "subtitle")
-            .sync_create().build();
+            .sync_create()
+            .build();
 
-        item.bind_property("traffic-down", &*imp.lbl_down, "label").sync_create().build();
-        item.bind_property("traffic-up", &*imp.lbl_up, "label").sync_create().build();
-        item.bind_property("time-connected", &*imp.lbl_time, "label").sync_create().build();
-        item.bind_property("ping", &*imp.lbl_ping, "label").sync_create().build();
+        item.bind_property("traffic-down", &*imp.lbl_down, "label")
+            .sync_create()
+            .build();
+        item.bind_property("traffic-up", &*imp.lbl_up, "label")
+            .sync_create()
+            .build();
+        item.bind_property("time-connected", &*imp.lbl_time, "label")
+            .sync_create()
+            .build();
+        item.bind_property("ping", &*imp.lbl_ping, "label")
+            .sync_create()
+            .build();
 
         let row_weak = self.downgrade();
         item.connect_is_active_notify(move |item| {
@@ -146,7 +156,7 @@ impl VrxxVpnKeyRow {
     fn update_visual_state(&self, is_active: bool, is_loading: bool, is_error: bool) {
         let imp = self.imp();
         imp.details_revealer.set_reveal_child(is_active);
-        
+
         if is_loading {
             imp.icon_stack.set_visible_child_name("loading");
         } else if is_error {
@@ -214,4 +224,3 @@ impl VrxxVpnKeyRow {
         self.insert_action_group("row", Some(&action_group));
     }
 }
-

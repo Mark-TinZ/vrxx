@@ -9,12 +9,12 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-use gettextrs::gettext;
-use adw::prelude::*;
-use adw::subclass::prelude::*;
-use gtk::{gio, glib, gdk};
 use crate::config::VERSION;
 use crate::window::VrxxWindow;
+use adw::prelude::*;
+use adw::subclass::prelude::*;
+use gettextrs::gettext;
+use gtk::{gdk, gio, glib};
 
 mod imp {
     use super::*;
@@ -44,7 +44,7 @@ mod imp {
             self.parent_startup();
 
             let manager = adw::StyleManager::default();
-            
+
             // Загрузка темы при старте
             let settings = crate::settings::SettingsManager::new();
             let app_settings = settings.load();
@@ -107,7 +107,7 @@ impl VrxxApplication {
         let about_action = gio::ActionEntry::builder("about")
             .activate(move |app: &Self, _, _| app.show_about())
             .build();
-        
+
         let color_scheme_action = gio::ActionEntry::builder("set-color-scheme")
             .parameter_type(Some(glib::VariantTy::STRING))
             .state(glib::Variant::from("default"))
@@ -135,14 +135,16 @@ impl VrxxApplication {
         let import_config_action = gio::ActionEntry::builder("import_config")
             .activate(move |app: &Self, _, _| {
                 if let Some(window) = app.active_window() {
-                    let dialog = gtk::FileDialog::builder()
-                        .title("Import Settings")
-                        .build();
+                    let dialog = gtk::FileDialog::builder().title("Import Settings").build();
                     dialog.open(Some(&window), gio::Cancellable::NONE, move |res| {
                         if let Ok(file) = res {
                             if let Some(path) = file.path() {
                                 if let Ok(content) = std::fs::read_to_string(path) {
-                                    if let Ok(settings) = serde_json::from_str::<crate::settings::AppSettings>(&content) {
+                                    if let Ok(settings) =
+                                        serde_json::from_str::<crate::settings::AppSettings>(
+                                            &content,
+                                        )
+                                    {
                                         crate::settings::SettingsManager::new().save(&settings);
                                         // TODO: reload settings in UI or require restart
                                     }
@@ -168,12 +170,14 @@ impl VrxxApplication {
                                 if let Ok(content) = serde_json::to_string_pretty(&settings) {
                                     #[cfg(unix)]
                                     {
-                                        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
                                         use std::io::Write;
+                                        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
                                         let mut opts = std::fs::OpenOptions::new();
                                         opts.create(true).write(true).truncate(true).mode(0o600);
                                         if let Ok(mut file) = opts.open(&path) {
-                                            let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+                                            let _ = file.set_permissions(
+                                                std::fs::Permissions::from_mode(0o600),
+                                            );
                                             let _ = file.write_all(content.as_bytes());
                                         }
                                     }
@@ -201,7 +205,8 @@ impl VrxxApplication {
                 let log_window = crate::ui::components::log_window::VrxxLogWindow::new();
                 if let Some(parent) = app.active_window() {
                     // Убеждаемся, что мы не пытаемся привязать окно к самому себе
-                    if parent.upcast_ref::<gtk::Widget>() != log_window.upcast_ref::<gtk::Widget>() {
+                    if parent.upcast_ref::<gtk::Widget>() != log_window.upcast_ref::<gtk::Widget>()
+                    {
                         log_window.set_transient_for(Some(&parent));
                     }
                 }
@@ -212,10 +217,14 @@ impl VrxxApplication {
 
         let open_log_dir_action = gio::ActionEntry::builder("open_log_dir")
             .activate(move |_, _, _| {
-                let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
+                let log_dir = dirs::config_dir()
+                    .unwrap_or_else(|| std::path::PathBuf::from("."))
+                    .join("vrxx")
+                    .join("logs");
                 std::fs::create_dir_all(&log_dir).ok();
                 if let Ok(uri) = glib::filename_to_uri(&log_dir, None) {
-                    let _ = gio::AppInfo::launch_default_for_uri(&uri, None::<&gio::AppLaunchContext>);
+                    let _ =
+                        gio::AppInfo::launch_default_for_uri(&uri, None::<&gio::AppLaunchContext>);
                 }
             })
             .build();
@@ -230,7 +239,7 @@ impl VrxxApplication {
                     dialog.add_response("cancel", "Cancel");
                     dialog.add_response("reset", "Reset");
                     dialog.set_response_appearance("reset", adw::ResponseAppearance::Destructive);
-                    
+
                     dialog.connect_response(None, move |_, response| {
                         if response == "reset" {
                             let manager = crate::settings::SettingsManager::new();
@@ -245,9 +254,14 @@ impl VrxxApplication {
             .build();
 
         self.add_action_entries([
-            quit_action, about_action, color_scheme_action, 
-            import_config_action, export_config_action,
-            view_logs_action, open_log_dir_action, reset_settings_action
+            quit_action,
+            about_action,
+            color_scheme_action,
+            import_config_action,
+            export_config_action,
+            view_logs_action,
+            open_log_dir_action,
+            reset_settings_action,
         ]);
     }
 

@@ -1,15 +1,16 @@
-use zbus::{interface, proxy};
+use crate::daemon::ProxyManager;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
-use crate::daemon::ProxyManager;
 use zbus::Connection;
+use zbus::{interface, proxy};
 
 static SYSTEM_CONNECTION: OnceCell<Connection> = OnceCell::const_new();
 
 pub async fn get_system_connection() -> zbus::Result<Connection> {
-    SYSTEM_CONNECTION.get_or_try_init(|| async {
-        Connection::system().await
-    }).await.cloned()
+    SYSTEM_CONNECTION
+        .get_or_try_init(|| async { Connection::system().await })
+        .await
+        .cloned()
 }
 
 pub struct VrxxDaemon {
@@ -22,8 +23,17 @@ impl VrxxDaemon {
         Ok("pong".to_string())
     }
 
-    async fn start_proxy(&self, core_type: String, config_json: String, tun_mode: bool) -> zbus::fdo::Result<String> {
-        match self.proxy_manager.start_proxy(&core_type, &config_json, tun_mode).await {
+    async fn start_proxy(
+        &self,
+        core_type: String,
+        config_json: String,
+        tun_mode: bool,
+    ) -> zbus::fdo::Result<String> {
+        match self
+            .proxy_manager
+            .start_proxy(&core_type, &config_json, tun_mode)
+            .await
+        {
             Ok(_) => Ok("Proxy started successfully".to_string()),
             Err(e) => Err(zbus::fdo::Error::Failed(e.to_string())),
         }
@@ -60,7 +70,12 @@ impl VrxxDaemon {
 )]
 pub trait Daemon {
     async fn ping(&self) -> zbus::Result<String>;
-    async fn start_proxy(&self, core_type: String, config_json: String, tun_mode: bool) -> zbus::Result<String>;
+    async fn start_proxy(
+        &self,
+        core_type: String,
+        config_json: String,
+        tun_mode: bool,
+    ) -> zbus::Result<String>;
     async fn stop_proxy(&self) -> zbus::Result<String>;
     async fn is_running(&self) -> zbus::Result<bool>;
 

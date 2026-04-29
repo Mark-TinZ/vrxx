@@ -1,23 +1,55 @@
-use std::path::PathBuf;
 use anyhow::Result;
 use std::fs;
 use std::io::Write;
+use std::path::PathBuf;
 
 // --- Раздел: Работа с гео-базами ---
-pub async fn update_geo_databases(force: bool, progress_tx: Option<async_channel::Sender<f64>>) -> Result<()> {
-    let config_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx");
+pub async fn update_geo_databases(
+    force: bool,
+    progress_tx: Option<async_channel::Sender<f64>>,
+) -> Result<()> {
+    let config_dir = dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("vrxx");
     fs::create_dir_all(&config_dir)?;
 
     let files_to_download = [
-        ("geosite.dat", "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat"),
-        ("geoip.dat", "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat"),
-        ("geosite_ru.dat", "https://github.com/runet-geodata/runet-geodata/releases/latest/download/geosite.dat"),
-        ("geoip_ru.dat", "https://github.com/runet-geodata/runet-geodata/releases/latest/download/geoip.dat"),
-        ("geosite_cn.dat", "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat"),
-        ("geoip_cn.dat", "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat"),
-        ("geosite_antifilter.dat", "https://github.com/1andrevich/antifilter-domain/releases/latest/download/geosite.dat"),
-        ("geosite_ir.dat", "https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/geosite.dat"),
-        ("geoip_ir.dat", "https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/geoip.dat"),
+        (
+            "geosite.dat",
+            "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat",
+        ),
+        (
+            "geoip.dat",
+            "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat",
+        ),
+        (
+            "geosite_ru.dat",
+            "https://github.com/runet-geodata/runet-geodata/releases/latest/download/geosite.dat",
+        ),
+        (
+            "geoip_ru.dat",
+            "https://github.com/runet-geodata/runet-geodata/releases/latest/download/geoip.dat",
+        ),
+        (
+            "geosite_cn.dat",
+            "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat",
+        ),
+        (
+            "geoip_cn.dat",
+            "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat",
+        ),
+        (
+            "geosite_antifilter.dat",
+            "https://github.com/1andrevich/antifilter-domain/releases/latest/download/geosite.dat",
+        ),
+        (
+            "geosite_ir.dat",
+            "https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/geosite.dat",
+        ),
+        (
+            "geoip_ir.dat",
+            "https://github.com/Chocolate4U/Iran-v2ray-rules/releases/latest/download/geoip.dat",
+        ),
     ];
 
     let client = reqwest::Client::new();
@@ -27,7 +59,7 @@ pub async fn update_geo_databases(force: bool, progress_tx: Option<async_channel
     for (filename, url) in files_to_download {
         let file_path = config_dir.join(filename);
         let mut should_download = true;
-        
+
         if !force {
             if let Ok(metadata) = fs::metadata(&file_path) {
                 if let Ok(modified) = metadata.modified() {
@@ -55,7 +87,8 @@ pub async fn update_geo_databases(force: bool, progress_tx: Option<async_channel
                                 let mut opts = std::fs::OpenOptions::new();
                                 opts.create(true).write(true).truncate(true).mode(0o600);
                                 if let Ok(mut file) = opts.open(&file_path) {
-                                    let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+                                    let _ = file
+                                        .set_permissions(std::fs::Permissions::from_mode(0o600));
                                     let _ = file.write_all(&bytes);
                                     tracing::info!("{} updated successfully.", filename);
                                 }
@@ -70,7 +103,11 @@ pub async fn update_geo_databases(force: bool, progress_tx: Option<async_channel
                             // ============================================
                         }
                     } else {
-                        tracing::warn!("Failed to download {}: HTTP {}", filename, response.status());
+                        tracing::warn!(
+                            "Failed to download {}: HTTP {}",
+                            filename,
+                            response.status()
+                        );
                     }
                 }
                 Err(e) => {
@@ -90,16 +127,22 @@ pub async fn update_geo_databases(force: bool, progress_tx: Option<async_channel
 }
 
 pub fn get_geo_status() -> String {
-    let config_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx");
+    let config_dir = dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("vrxx");
     let mut last_updated = std::time::SystemTime::UNIX_EPOCH;
     let mut found = false;
 
     let files = [
-        "geosite.dat", "geoip.dat",
-        "geosite_ru.dat", "geoip_ru.dat",
-        "geosite_cn.dat", "geoip_cn.dat",
+        "geosite.dat",
+        "geoip.dat",
+        "geosite_ru.dat",
+        "geoip_ru.dat",
+        "geosite_cn.dat",
+        "geoip_cn.dat",
         "geosite_antifilter.dat",
-        "geosite_ir.dat", "geoip_ir.dat",
+        "geosite_ir.dat",
+        "geoip_ir.dat",
     ];
 
     for file in files {
@@ -130,8 +173,9 @@ pub fn spawn_background_updater() {
             rt.block_on(async {
                 // FIXME: При первом запуске может возникнуть гонка, если ядро стартует раньше скачивания баз.
                 let _ = update_geo_databases(false, None).await;
-                
-                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(24 * 3600));
+
+                let mut interval =
+                    tokio::time::interval(tokio::time::Duration::from_secs(24 * 3600));
                 loop {
                     interval.tick().await;
                     let _ = update_geo_databases(false, None).await;

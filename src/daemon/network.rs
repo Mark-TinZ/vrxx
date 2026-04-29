@@ -35,8 +35,16 @@ impl TunManager {
         self.tun = Some(tun);
 
         // 2. Get interface index
-        let mut links = self.handle.link().get().match_name("vrxx-tun".to_string()).execute();
-        let link = links.try_next().await?.context("Interface vrxx-tun not found")?;
+        let mut links = self
+            .handle
+            .link()
+            .get()
+            .match_name("vrxx-tun".to_string())
+            .execute();
+        let link = links
+            .try_next()
+            .await?
+            .context("Interface vrxx-tun not found")?;
         self.if_index = link.header.index;
 
         // 3. Set IPv4 172.19.0.1/30
@@ -73,7 +81,7 @@ impl TunManager {
         // 6. Add ip rule to direct traffic to table 100 (except marked)
         // NOTE: Используем одну команду для настройки правил, соблюдая паттерн минимизации привилегированных вызовов
         let status = tokio::process::Command::new("ip")
-            .args(&["rule", "add", "not", "fwmark", "0x255", "table", "100"])
+            .args(["rule", "add", "not", "fwmark", "0x255", "table", "100"])
             .status()
             .await?;
         if !status.success() {
@@ -87,10 +95,10 @@ impl TunManager {
         if self.if_index != 0 {
             // Delete ip rule
             let _ = tokio::process::Command::new("ip")
-                .args(&["rule", "del", "not", "fwmark", "0x255", "table", "100"])
+                .args(["rule", "del", "not", "fwmark", "0x255", "table", "100"])
                 .status()
                 .await;
-            
+
             // Delete routing table entries
             let route_msg = RouteMessageBuilder::<Ipv4Addr>::new()
                 .destination_prefix(Ipv4Addr::new(0, 0, 0, 0), 0)

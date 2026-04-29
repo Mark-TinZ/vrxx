@@ -1,5 +1,5 @@
-use adw::subclass::prelude::*;
 use adw::prelude::*;
+use adw::subclass::prelude::*;
 use gtk::glib;
 use std::path::PathBuf;
 
@@ -212,7 +212,7 @@ impl VrxxLogWindow {
         *self.imp().font_size.borrow_mut() = 12;
 
         let window_weak = self.downgrade();
-        
+
         self.imp().btn_copy.connect_clicked(move |_| {
             if let Some(window) = window_weak.upgrade() {
                 let buffer = window.imp().text_view.buffer();
@@ -225,7 +225,10 @@ impl VrxxLogWindow {
         let window_weak_clear = self.downgrade();
         self.imp().btn_clear.connect_clicked(move |_| {
             if let Some(window) = window_weak_clear.upgrade() {
-                let log_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx").join("logs");
+                let log_dir = dirs::config_dir()
+                    .unwrap_or_else(|| PathBuf::from("."))
+                    .join("vrxx")
+                    .join("logs");
                 let filter_index = window.imp().dropdown_filter.selected();
                 let file_name = match filter_index {
                     1 => "core.log",
@@ -262,7 +265,7 @@ impl VrxxLogWindow {
                 let size = *imp.font_size.borrow();
                 let percent = (size as f32 / 12.0 * 100.0) as i32;
                 imp.lbl_zoom_percent.set_label(&format!("{percent}%"));
-                
+
                 let provider = gtk::CssProvider::new();
                 provider.load_from_string(&format!("textview {{ font-size: {size}pt; }}"));
                 if let Some(display) = gdk::Display::default() {
@@ -285,7 +288,7 @@ impl VrxxLogWindow {
                     *imp.font_size.borrow_mut() = size;
                     let percent = (size as f32 / 12.0 * 100.0) as i32;
                     imp.lbl_zoom_percent.set_label(&format!("{percent}%"));
-                    
+
                     let provider = gtk::CssProvider::new();
                     provider.load_from_string(&format!("textview {{ font-size: {size}pt; }}"));
                     if let Some(display) = gdk::Display::default() {
@@ -300,15 +303,17 @@ impl VrxxLogWindow {
         });
 
         let window_weak_filter = self.downgrade();
-        self.imp().dropdown_filter.connect_selected_notify(move |_| {
-            if let Some(window) = window_weak_filter.upgrade() {
-                // --- Раздел: Смена фильтра ---
-                // REVIEW: При смене фильтра очищаем экран и читаем всё заново из соответствующего файла
-                window.imp().text_view.buffer().set_text("");
-                *window.imp().last_pos.borrow_mut() = 0;
-                window.load_logs_from_file();
-            }
-        });
+        self.imp()
+            .dropdown_filter
+            .connect_selected_notify(move |_| {
+                if let Some(window) = window_weak_filter.upgrade() {
+                    // --- Раздел: Смена фильтра ---
+                    // REVIEW: При смене фильтра очищаем экран и читаем всё заново из соответствующего файла
+                    window.imp().text_view.buffer().set_text("");
+                    *window.imp().last_pos.borrow_mut() = 0;
+                    window.load_logs_from_file();
+                }
+            });
 
         let window_weak_scroll = self.downgrade();
         self.imp().btn_autoscroll.connect_toggled(move |btn| {
@@ -328,36 +333,37 @@ impl VrxxLogWindow {
         let window_weak = self.downgrade();
         glib::spawn_future_local(async move {
             match crate::ipc::get_system_connection().await {
-                Ok(conn) => {
-                    match crate::ipc::DaemonProxy::new(&conn).await {
-                        Ok(proxy) => {
-                            use futures_util::StreamExt;
-                            let mut logs = match proxy.receive_log_message().await {
-                                Ok(stream) => stream,
-                                Err(e) => {
-                                    tracing::error!("Failed to receive log messages: {}", e);
-                                    return;
-                                }
-                            };
+                Ok(conn) => match crate::ipc::DaemonProxy::new(&conn).await {
+                    Ok(proxy) => {
+                        use futures_util::StreamExt;
+                        let mut logs = match proxy.receive_log_message().await {
+                            Ok(stream) => stream,
+                            Err(e) => {
+                                tracing::error!("Failed to receive log messages: {}", e);
+                                return;
+                            }
+                        };
 
-                            while let Some(signal) = logs.next().await {
-                                if let Ok(args) = signal.args() {
-                                    if let Some(window) = window_weak.upgrade() {
-                                        window.append_log(args.level(), args.message());
-                                    }
+                        while let Some(signal) = logs.next().await {
+                            if let Ok(args) = signal.args() {
+                                if let Some(window) = window_weak.upgrade() {
+                                    window.append_log(args.level(), args.message());
                                 }
                             }
                         }
-                        Err(e) => tracing::error!("Failed to create DaemonProxy for logs: {}", e),
                     }
-                }
+                    Err(e) => tracing::error!("Failed to create DaemonProxy for logs: {}", e),
+                },
                 Err(e) => tracing::error!("Failed to connect to D-Bus System Bus for logs: {}", e),
             }
         });
     }
 
     fn load_logs_from_file(&self) {
-        let log_dir = dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("vrxx").join("logs");
+        let log_dir = dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("vrxx")
+            .join("logs");
         let filter_index = self.imp().dropdown_filter.selected();
         let file_name = match filter_index {
             1 => "core.log",
@@ -374,10 +380,10 @@ impl VrxxLogWindow {
             let file_size = metadata.len();
             let read_size = 128 * 1024; // Читаем последние 128 КБ
 
-            let start_pos = if file_size > read_size { file_size - read_size } else { 0 };
+            let start_pos = file_size.saturating_sub(read_size);
             let mut buffer = Vec::new();
 
-            use std::io::{Seek, SeekFrom, Read};
+            use std::io::{Read, Seek, SeekFrom};
             if file.seek(SeekFrom::Start(start_pos)).is_ok() {
                 let _ = file.read_to_end(&mut buffer);
                 let content = String::from_utf8_lossy(&buffer);
@@ -387,12 +393,19 @@ impl VrxxLogWindow {
                 let start_idx = if start_pos > 0 { 1 } else { 0 };
 
                 for line in &lines[start_idx..] {
-                    let level = if line.contains("ERROR") || line.contains("error") { "error" }
-                                else if line.contains("WARN") || line.contains("warning") { "warning" }
-                                else if line.contains("DEBUG") || line.contains("debug") { "debug" }
-                                else if line.contains("INFO") || line.contains("info") { "info" }
-                                else if line.contains("[Vrxx]") { "app" }
-                                else { "info" };
+                    let level = if line.contains("ERROR") || line.contains("error") {
+                        "error"
+                    } else if line.contains("WARN") || line.contains("warning") {
+                        "warning"
+                    } else if line.contains("DEBUG") || line.contains("debug") {
+                        "debug"
+                    } else if line.contains("INFO") || line.contains("info") {
+                        "info"
+                    } else if line.contains("[Vrxx]") {
+                        "app"
+                    } else {
+                        "info"
+                    };
 
                     // REVIEW: При загрузке из файла мы также применяем фильтрацию
                     self.append_log(level, line);
@@ -409,7 +422,8 @@ impl VrxxLogWindow {
         // XXX: Мы фильтруем логи в зависимости от выбранного раздела в DropDown
         let filter_index = imp.dropdown_filter.selected();
         let is_app_log = level == "app" || message.contains("[Vrxx]") || message.contains("vrxx::");
-        let is_access_log = message.contains("accepted") || message.contains("proxying") || message.contains("->");
+        let is_access_log =
+            message.contains("accepted") || message.contains("proxying") || message.contains("->");
         let is_core_log = !is_app_log && !is_access_log;
 
         match filter_index {
@@ -421,7 +435,7 @@ impl VrxxLogWindow {
         // ================================
 
         let mut iter = buffer.end_iter();
-        
+
         let tag_name = match level {
             "error" => Some("error"),
             "warning" => Some("warning"),
@@ -456,7 +470,7 @@ mod tests {
     #[ignore = "Requires main thread for GTK initialization"]
     fn test_log_window_append() {
         let _ = gtk::init();
-        
+
         // Load resources for templates
         let res_data = include_bytes!(concat!(env!("OUT_DIR"), "/vrxx.gresource"));
         if let Ok(res) = gtk::gio::Resource::from_data(&glib::Bytes::from(res_data)) {
@@ -465,13 +479,13 @@ mod tests {
 
         let log_window = VrxxLogWindow::new();
         let buffer = log_window.imp().text_view.buffer();
-        
+
         log_window.append_log("error", "Test error message");
         log_window.append_log("app", "Test app message");
-        
+
         let (start, end) = buffer.bounds();
         let text = buffer.text(&start, &end, false);
-        
+
         assert!(text.contains("Test error message"));
         assert!(text.contains("Test app message"));
     }
