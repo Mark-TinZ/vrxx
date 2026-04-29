@@ -6,7 +6,7 @@ mod tests {
     // Need to initialize GTK before creating widgets.
     fn init_gtk() {
         let _ = gtk::init();
-        
+
         // Load resources for templates
         let res_data = include_bytes!(concat!(env!("OUT_DIR"), "/vrxx.gresource"));
         if let Ok(res) = gio::Resource::from_data(&glib::Bytes::from(res_data)) {

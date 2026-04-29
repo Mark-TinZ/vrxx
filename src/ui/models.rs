@@ -1,5 +1,5 @@
-use gtk::{glib, prelude::*};
 use adw::subclass::prelude::*;
+use gtk::{glib, prelude::*};
 
 // === VPN KEY OBJECT ===
 mod imp_vpn {
@@ -136,9 +136,7 @@ glib::wrapper! {
 
 impl DomainObject {
     pub fn new(domain: &str) -> Self {
-        glib::Object::builder()
-            .property("domain", domain)
-            .build()
+        glib::Object::builder().property("domain", domain).build()
     }
 }
 
@@ -152,4 +150,3 @@ impl RoutingRuleObject {
             .build()
     }
 }
-

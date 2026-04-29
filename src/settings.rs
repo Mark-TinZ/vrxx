@@ -1,8 +1,8 @@
+use async_channel::{Receiver, Sender};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
-use async_channel::{Sender, Receiver};
 
 pub fn core_restart_channel() -> (Sender<()>, Receiver<()>) {
     static CHANNEL: OnceLock<(Sender<()>, Receiver<()>)> = OnceLock::new();
@@ -48,7 +48,7 @@ pub struct AppSettings {
     pub core: String,
     #[serde(default)]
     pub tun_mode: bool,
-    
+
     // App Settings
     #[serde(default = "default_autostart")]
     pub autostart: bool,
@@ -116,18 +116,42 @@ pub struct AppSettings {
     pub routing_rules: Vec<RoutingRule>,
 }
 
-fn default_language() -> String { "system".to_string() }
-fn default_core() -> String { "xray".to_string() }
-fn default_system_proxy() -> bool { true }
-fn default_socks_port() -> u16 { 10808 }
-fn default_http_port() -> u16 { 10809 }
-fn default_autostart() -> bool { true }
-fn default_connect_startup() -> bool { false }
-fn default_notifications() -> bool { true }
-fn default_streamer_mode() -> bool { false }
-fn default_log_level() -> String { "info".to_string() }
-fn default_domain_strategy() -> String { "AsIs".to_string() }
-fn default_mux_concurrency() -> i32 { 8 }
+fn default_language() -> String {
+    "system".to_string()
+}
+fn default_core() -> String {
+    "xray".to_string()
+}
+fn default_system_proxy() -> bool {
+    true
+}
+fn default_socks_port() -> u16 {
+    10808
+}
+fn default_http_port() -> u16 {
+    10809
+}
+fn default_autostart() -> bool {
+    true
+}
+fn default_connect_startup() -> bool {
+    false
+}
+fn default_notifications() -> bool {
+    true
+}
+fn default_streamer_mode() -> bool {
+    false
+}
+fn default_log_level() -> String {
+    "info".to_string()
+}
+fn default_domain_strategy() -> String {
+    "AsIs".to_string()
+}
+fn default_mux_concurrency() -> i32 {
+    8
+}
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -205,8 +229,8 @@ impl SettingsManager {
                 // так как он содержит конфиденциальные данные (UUID, пароли).
                 #[cfg(unix)]
                 {
-                    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
                     use std::io::Write;
+                    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
                     let mut opts = std::fs::OpenOptions::new();
                     opts.create(true).write(true).truncate(true).mode(0o600);
 

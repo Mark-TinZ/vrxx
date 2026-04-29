@@ -1,5 +1,5 @@
-use crate::settings::AppSettings;
 use crate::domain::key_parser::ParsedKey;
+use crate::settings::AppSettings;
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -84,7 +84,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
             "port": actual_http_port,
             "listen": if settings.allow_lan { "0.0.0.0" } else { "127.0.0.1" },
             "protocol": "http"
-        })
+        }),
     ];
 
     inbounds.push(json!({
@@ -116,12 +116,12 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
     }
 
     let mut stream_settings = json!({});
-    
+
     // Разбор параметров строки запроса для транспорта и безопасности
     let qp = &parsed_key.query_params;
     let net = qp.get("type").map(|s| s.as_str()).unwrap_or("tcp");
     let security = qp.get("security").map(|s| s.as_str()).unwrap_or("none");
-    
+
     stream_settings["network"] = json!(net);
     stream_settings["security"] = json!(security);
 
@@ -209,7 +209,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
             }]
         })
     } else if parsed_key.protocol.to_lowercase() == "vmess" {
-         json!({
+        json!({
             "vnext": [{
                 "address": parsed_key.host,
                 "port": parsed_key.port,
@@ -245,7 +245,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
             "tag": "block",
             "protocol": "blackhole",
             "settings": {}
-        })
+        }),
     ];
 
     if settings.enable_fragment {
@@ -266,7 +266,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
                 }
             }
         });
-        
+
         let mut frag_proxy = first_outbound;
         frag_proxy["tag"] = json!("fragment-proxy");
         outbounds.push(frag_proxy);
@@ -307,7 +307,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
     if settings.enable_routing {
         let mut domains = vec![];
         let mut ips = vec![];
-        
+
         // --- Раздел: Региональная маршрутизация ---
         // XXX: Мы используем локальные .dat файлы через ext: или встроенные базы
         if settings.route_ru {
@@ -337,12 +337,16 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
             // --- Раздел: Логика маршрутизации (Whitelist/Blacklist) ---
             // REVIEW: Если режим "proxy", то это Whitelist (только регионы через прокси).
             // Если "bypass", то это Blacklist (регионы напрямую, остальное через прокси).
-            let target_tag = if settings.routing_mode == "proxy" { "proxy" } else { "direct" };
+            let target_tag = if settings.routing_mode == "proxy" {
+                "proxy"
+            } else {
+                "direct"
+            };
             let mut rule = json!({
                 "type": "field",
                 "outboundTag": target_tag,
             });
-            
+
             if !domains.is_empty() {
                 rule["domain"] = json!(domains);
             }
@@ -350,7 +354,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
                 rule["ip"] = json!(ips);
             }
             rules.push(rule);
-            
+
             // Если режим proxy (Whitelist), то ТОЛЬКО указанные домены/IP идут через proxy.
             // Остальной трафик должен идти напрямую (direct).
             if settings.routing_mode == "proxy" {
@@ -408,7 +412,10 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         }));
     }
 
-    let log_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("vrxx").join("logs");
+    let log_dir = dirs::config_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("vrxx")
+        .join("logs");
     let _ = std::fs::create_dir_all(&log_dir);
 
     let access_log_path = log_dir.join("access.log");
@@ -433,7 +440,10 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
     #[cfg(not(unix))]
     {
         for path in [&access_log_path, &error_log_path] {
-            let _ = std::fs::OpenOptions::new().create(true).append(true).open(path);
+            let _ = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(path);
         }
     }
 
@@ -450,7 +460,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
             services: vec![
                 "HandlerService".to_string(),
                 "LoggerService".to_string(),
-                "StatsService".to_string()
+                "StatsService".to_string(),
             ],
             tag: "api".to_string(),
         },
@@ -474,7 +484,11 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         inbounds,
         outbounds,
         routing: RoutingConfig {
-            domainStrategy: if settings.disable_ipv6 { "UseIPv4".to_string() } else { settings.domain_strategy.clone() },
+            domainStrategy: if settings.disable_ipv6 {
+                "UseIPv4".to_string()
+            } else {
+                settings.domain_strategy.clone()
+            },
             rules,
         },
     };
@@ -485,8 +499,8 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::settings::AppSettings;
     use crate::domain::key_parser::ParsedKey;
+    use crate::settings::AppSettings;
     use std::collections::HashMap;
 
     #[test]
@@ -502,10 +516,11 @@ mod tests {
         };
         let mut settings = AppSettings::new();
         settings.socks_port = 1080;
-        
+
         let json_str = build_xray_config(&key, &settings);
-        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Should be valid JSON for Xray");
-        
+        let parsed: serde_json::Value =
+            serde_json::from_str(&json_str).expect("Should be valid JSON for Xray");
+
         let proxy_outbound = parsed["outbounds"].as_array().unwrap().first().unwrap();
         assert_eq!(proxy_outbound["protocol"], "vless");
     }
@@ -526,7 +541,8 @@ mod tests {
         settings.disable_ipv6 = true;
 
         let json_str = build_xray_config(&key, &settings);
-        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Valid JSON for Xray");
+        let parsed: serde_json::Value =
+            serde_json::from_str(&json_str).expect("Valid JSON for Xray");
 
         // Проверка domainStrategy
         assert_eq!(parsed["routing"]["domainStrategy"], "UseIPv4");
@@ -534,16 +550,18 @@ mod tests {
         // Проверка блокировки IPv6
         let rules = parsed["routing"]["rules"].as_array().unwrap();
         let has_ipv6_block = rules.iter().any(|r| {
-            r["ip"].as_array().map_or(false, |ips| ips.contains(&json!("::/0"))) &&
-            r["outboundTag"] == json!("block")
+            r["ip"]
+                .as_array()
+                .map_or(false, |ips| ips.contains(&json!("::/0")))
+                && r["outboundTag"] == json!("block")
         });
         assert!(has_ipv6_block, "Xray IPv6 block rule missing");
     }
 
     #[test]
     fn test_xray_config_validity_permutations() {
-        use std::process::{Command, Stdio};
         use std::io::Write;
+        use std::process::{Command, Stdio};
 
         // Skip test if xray is not installed
         if Command::new("xray").arg("version").output().is_err() {
@@ -574,9 +592,9 @@ mod tests {
             settings.enable_mux = mux;
             // Disable routing for this test to avoid dependency on geoip/geosite assets
             settings.enable_routing = false;
-            
+
             let json_str = build_xray_config(&key, &settings);
-            
+
             // Xray supports reading from stdin via -c /dev/stdin and -format json
             let mut child = Command::new("xray")
                 .args(["run", "-test", "-format", "json", "-c", "/dev/stdin"])
@@ -585,15 +603,17 @@ mod tests {
                 .stderr(Stdio::piped())
                 .spawn()
                 .expect("Failed to execute xray check");
-            
+
             let mut stdin = child.stdin.take().expect("Failed to open stdin");
             stdin.write_all(json_str.as_bytes()).unwrap();
             drop(stdin);
-            
-            let output = child.wait_with_output().expect("Failed to wait on xray check");
+
+            let output = child
+                .wait_with_output()
+                .expect("Failed to wait on xray check");
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
-            
+
             assert!(output.status.success(), "Xray check failed for toggles (IPv6: {}, Frag: {}, Mux: {}):\nSTDOUT:\n{}\nSTDERR:\n{}", ipv6, frag, mux, stdout, stderr);
         }
     }

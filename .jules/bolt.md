@@ -6,3 +6,6 @@
 ## 2024-05-30 - Optimize D-Bus Connection Caching
 **Learning:** Re-establishing the D-Bus connection for `is_running` polling and other backend operations introduces unnecessary IPC overhead.
 **Action:** The backend connection `zbus::Connection` can be cached instead of recreating it upon every `get_proxy()` request.
+## 2024-05-30 - Optimize D-Bus Proxy Caching
+**Learning:** Re-establishing the D-Bus `DaemonProxy` per operation (e.g. `is_running`) even when using a cached connection still introduces significant runtime overhead due to proxy object recreation.
+**Action:** The backend connection `DaemonProxy` itself can be cached entirely via `tokio::sync::OnceCell` in `CoreBackend`, completely eliminating repeated creation overhead for standard IPC calls.

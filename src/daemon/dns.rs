@@ -24,7 +24,7 @@ impl DnsManager {
 
     pub async fn set_dns(&self, iface_index: i32, dns_servers: Vec<String>) -> Result<()> {
         let proxy = Resolve1ManagerProxy::new(&self.connection).await?;
-        
+
         let mut addrs = Vec::new();
         for server in dns_servers {
             if let Ok(ip) = server.parse::<IpAddr>() {
@@ -38,7 +38,7 @@ impl DnsManager {
                 }
             }
         }
-        
+
         proxy.set_link_dns(iface_index, &addrs).await?;
         proxy.set_link_domains(iface_index, &[("~.", true)]).await?;
 

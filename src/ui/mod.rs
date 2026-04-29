@@ -1,6 +1,6 @@
-pub mod pages;
 pub mod components;
 pub mod models;
+pub mod pages;
 
 use gtk::prelude::*;
 
@@ -15,10 +15,13 @@ pub fn setup_primary_menu(menu_button: &gtk::MenuButton) {
 
     // 2. Add the custom theme switcher widget to the popover
     // Note: set_menu_model automatically creates a GtkPopoverMenu if one doesn't exist
-    if let Some(popover) = menu_button.popover().and_then(|p| p.downcast::<gtk::PopoverMenu>().ok()) {
+    if let Some(popover) = menu_button
+        .popover()
+        .and_then(|p| p.downcast::<gtk::PopoverMenu>().ok())
+    {
         let switcher = components::theme_switcher::VrxxThemeSwitcher::new();
         popover.add_child(&switcher, "theme_switcher");
     }
 }
-mod tests;
 mod proxy_tests;
+mod tests;
