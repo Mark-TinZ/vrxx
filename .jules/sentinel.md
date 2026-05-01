@@ -10,3 +10,7 @@
 **Vulnerability:** Xray-core generated its `access.log` and `error.log` files with default system permissions (e.g., 0644), exposing users' VPN browsing history and IP addresses to other local users.
 **Learning:** Even if the application strictly enforces `0600` permissions for its own files, external core binaries orchestrated by the application will use the system's default `umask` when creating new files like logs.
 **Prevention:** Always pre-create sensitive log/config files with restricted permissions (`0o600`) from within the parent application before passing their paths to external binaries. The binaries will then append to the existing files and preserve their strict permissions.
+## 2026-06-25 - [UI Plaintext Password Exposure in Edit Dialog]
+**Vulnerability:** The UUID/password field in the VPN key edit dialog used a standard `adw::EntryRow`, exposing sensitive credential data in plaintext on the user's screen.
+**Learning:** Default text entry widgets do not obscure input. When designing user interfaces that display or edit sensitive data like VPN keys, passwords, or UUIDs, it's critical to use widgets specifically designed for passwords to prevent visual leakage (e.g., shoulder surfing or screen sharing).
+**Prevention:** Always utilize `adw::PasswordEntryRow` (or equivalent password-masking widgets) for any UI field that handles secrets, passwords, or sensitive UUIDs.
