@@ -9,3 +9,6 @@
 ## 2024-05-30 - Optimize D-Bus Proxy Caching
 **Learning:** Re-establishing the D-Bus `DaemonProxy` per operation (e.g. `is_running`) even when using a cached connection still introduces significant runtime overhead due to proxy object recreation.
 **Action:** The backend connection `DaemonProxy` itself can be cached entirely via `tokio::sync::OnceCell` in `CoreBackend`, completely eliminating repeated creation overhead for standard IPC calls.
+## 2025-02-12 - GTK4 GtkTextView Bulk Insertion Thrashing
+**Learning:** Performing layout-triggering operations like `scroll_to_mark` inside a bulk text insertion loop on a `GtkTextView` causes severe O(n²) layout thrashing. This blocks the main thread, especially when loading logs or large files initially.
+**Action:** When inserting multiple lines or chunks into a `GtkTextView`, pass a flag to disable immediate scrolling during the loop, and defer the scroll operation until after the bulk insertion is completely finished.
