@@ -1100,7 +1100,8 @@ impl VrxxVpnPage {
             .title(gettext("Port"))
             .text(parsed.port.to_string())
             .build();
-        let uuid_row = adw::EntryRow::builder()
+        // SENTINEL: Use PasswordEntryRow to mask sensitive credentials in the UI
+        let uuid_row = adw::PasswordEntryRow::builder()
             .title(gettext("UUID / Password"))
             .text(&parsed.uuid)
             .build();
