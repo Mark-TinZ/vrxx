@@ -332,29 +332,26 @@ impl VrxxLogWindow {
     fn setup_daemon_logs(&self) {
         let window_weak = self.downgrade();
         glib::spawn_future_local(async move {
-            match crate::ipc::get_system_connection().await {
-                Ok(conn) => match crate::ipc::DaemonProxy::new(&conn).await {
-                    Ok(proxy) => {
-                        use futures_util::StreamExt;
-                        let mut logs = match proxy.receive_log_message().await {
-                            Ok(stream) => stream,
-                            Err(e) => {
-                                tracing::error!("Failed to receive log messages: {}", e);
-                                return;
-                            }
-                        };
+            match crate::ipc::get_daemon_proxy().await {
+                Ok(proxy) => {
+                    use futures_util::StreamExt;
+                    let mut logs = match proxy.receive_log_message().await {
+                        Ok(stream) => stream,
+                        Err(e) => {
+                            tracing::error!("Failed to receive log messages: {}", e);
+                            return;
+                        }
+                    };
 
-                        while let Some(signal) = logs.next().await {
-                            if let Ok(args) = signal.args() {
-                                if let Some(window) = window_weak.upgrade() {
-                                    window.append_log(args.level(), args.message());
-                                }
+                    while let Some(signal) = logs.next().await {
+                        if let Ok(args) = signal.args() {
+                            if let Some(window) = window_weak.upgrade() {
+                                window.append_log(args.level(), args.message());
                             }
                         }
                     }
-                    Err(e) => tracing::error!("Failed to create DaemonProxy for logs: {}", e),
-                },
-                Err(e) => tracing::error!("Failed to connect to D-Bus System Bus for logs: {}", e),
+                }
+                Err(e) => tracing::error!("Failed to create DaemonProxy for logs: {}", e),
             }
         });
     }

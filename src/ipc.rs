@@ -2,9 +2,21 @@ use crate::daemon::ProxyManager;
 use std::sync::Arc;
 use tokio::sync::OnceCell;
 use zbus::Connection;
+
 use zbus::{interface, proxy};
 
 static SYSTEM_CONNECTION: OnceCell<Connection> = OnceCell::const_new();
+static DAEMON_PROXY: OnceCell<DaemonProxy<'static>> = OnceCell::const_new();
+
+pub async fn get_daemon_proxy() -> zbus::Result<DaemonProxy<'static>> {
+    DAEMON_PROXY
+        .get_or_try_init(|| async {
+            let conn = get_system_connection().await?;
+            DaemonProxy::new(&conn).await
+        })
+        .await
+        .cloned()
+}
 
 pub async fn get_system_connection() -> zbus::Result<Connection> {
     SYSTEM_CONNECTION

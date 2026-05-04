@@ -35,26 +35,20 @@ impl CoreBackend {
         let rt_bg = rt_clone.clone();
         std::thread::spawn(move || {
             rt_bg.block_on(async {
-                match crate::ipc::get_system_connection().await {
-                    Ok(conn) => match DaemonProxy::new(&conn).await {
-                        Ok(proxy) => match proxy.ping().await {
-                            Ok(pong) => tracing::info!(
-                                "D-Bus Daemon availability checked on initialization: {}",
-                                pong
-                            ),
-                            Err(e) => tracing::warn!(
-                                "D-Bus Daemon not available on initialization: {}",
-                                e
-                            ),
-                        },
-                        Err(e) => {
-                            tracing::warn!("Failed to create DaemonProxy on initialization: {}", e)
-                        }
+                match crate::ipc::get_daemon_proxy().await {
+                    Ok(proxy) => match proxy.ping().await {
+                        Ok(pong) => tracing::info!(
+                            "D-Bus Daemon availability checked on initialization: {}",
+                            pong
+                        ),
+                        Err(e) => tracing::warn!(
+                            "D-Bus Daemon not available on initialization: {}",
+                            e
+                        ),
                     },
-                    Err(e) => tracing::warn!(
-                        "Failed to connect to D-Bus System Bus on initialization: {}",
-                        e
-                    ),
+                    Err(e) => {
+                        tracing::warn!("Failed to create DaemonProxy on initialization: {}", e)
+                    }
                 }
             });
         });
@@ -72,10 +66,7 @@ impl CoreBackend {
         let proxy = self
             .proxy
             .get_or_try_init(|| async {
-                let conn = crate::ipc::get_system_connection()
-                    .await
-                    .context("Failed to connect to D-Bus System Bus")?;
-                DaemonProxy::new(&conn)
+                crate::ipc::get_daemon_proxy()
                     .await
                     .context("Failed to create DaemonProxy")
             })
