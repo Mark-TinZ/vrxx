@@ -15,7 +15,6 @@ pub trait VpnCore: Send + Sync + std::fmt::Debug {
 #[derive(Debug)]
 pub struct CoreBackend {
     rt: Arc<Runtime>,
-    proxy: tokio::sync::OnceCell<DaemonProxy<'static>>,
 }
 
 impl Default for CoreBackend {
@@ -35,26 +34,20 @@ impl CoreBackend {
         let rt_bg = rt_clone.clone();
         std::thread::spawn(move || {
             rt_bg.block_on(async {
-                match crate::ipc::get_system_connection().await {
-                    Ok(conn) => match DaemonProxy::new(&conn).await {
-                        Ok(proxy) => match proxy.ping().await {
-                            Ok(pong) => tracing::info!(
-                                "D-Bus Daemon availability checked on initialization: {}",
-                                pong
-                            ),
-                            Err(e) => tracing::warn!(
-                                "D-Bus Daemon not available on initialization: {}",
-                                e
-                            ),
-                        },
-                        Err(e) => {
-                            tracing::warn!("Failed to create DaemonProxy on initialization: {}", e)
-                        }
+                match crate::ipc::get_daemon_proxy().await {
+                    Ok(proxy) => match proxy.ping().await {
+                        Ok(pong) => tracing::info!(
+                            "D-Bus Daemon availability checked on initialization: {}",
+                            pong
+                        ),
+                        Err(e) => tracing::warn!(
+                            "D-Bus Daemon not available on initialization: {}",
+                            e
+                        ),
                     },
-                    Err(e) => tracing::warn!(
-                        "Failed to connect to D-Bus System Bus on initialization: {}",
-                        e
-                    ),
+                    Err(e) => {
+                        tracing::warn!("Failed to get DaemonProxy on initialization: {}", e)
+                    }
                 }
             });
         });
@@ -62,26 +55,15 @@ impl CoreBackend {
 
         Self {
             rt: rt_clone,
-            proxy: tokio::sync::OnceCell::new(),
         }
     }
 
     // --- Раздел: IPC Взаимодействие ---
     // OPTIMIZE: Cache D-Bus DaemonProxy here instead of recreating it per proxy call (reduces D-Bus overhead during is_running polling)
     async fn get_proxy(&self) -> Result<DaemonProxy<'static>> {
-        let proxy = self
-            .proxy
-            .get_or_try_init(|| async {
-                let conn = crate::ipc::get_system_connection()
-                    .await
-                    .context("Failed to connect to D-Bus System Bus")?;
-                DaemonProxy::new(&conn)
-                    .await
-                    .context("Failed to create DaemonProxy")
-            })
-            .await?
-            .clone();
-        Ok(proxy)
+        crate::ipc::get_daemon_proxy()
+            .await
+            .context("Failed to get DaemonProxy")
     }
 
     pub fn update_system_proxy(&self, enable: bool) {

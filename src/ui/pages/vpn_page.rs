@@ -356,33 +356,28 @@ impl VrxxVpnPage {
     fn setup_daemon_listener(&self) {
         let page_weak = self.downgrade();
         glib::spawn_future_local(async move {
-            match crate::ipc::get_system_connection().await {
-                Ok(conn) => {
-                    match crate::ipc::DaemonProxy::new(&conn).await {
-                        Ok(proxy) => {
-                            use futures_util::StreamExt;
-                            // Initial status
-                            if let Ok(status) = proxy.status().await {
-                                if let Some(page) = page_weak.upgrade() {
-                                    page.handle_daemon_status_change(&status);
-                                }
-                            }
+            match crate::ipc::get_daemon_proxy().await {
+                Ok(proxy) => {
+                    use futures_util::StreamExt;
+                    // Initial status
+                    if let Ok(status) = proxy.status().await {
+                        if let Some(page) = page_weak.upgrade() {
+                            page.handle_daemon_status_change(&status);
+                        }
+                    }
 
-                            // Watch for changes
-                            let mut status_changes = proxy.receive_status_changed().await;
+                    // Watch for changes
+                    let mut status_changes = proxy.receive_status_changed().await;
 
-                            while let Some(_) = status_changes.next().await {
-                                if let Ok(status) = proxy.status().await {
-                                    if let Some(page) = page_weak.upgrade() {
-                                        page.handle_daemon_status_change(&status);
-                                    }
-                                }
+                    while let Some(_) = status_changes.next().await {
+                        if let Ok(status) = proxy.status().await {
+                            if let Some(page) = page_weak.upgrade() {
+                                page.handle_daemon_status_change(&status);
                             }
                         }
-                        Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
                     }
                 }
-                Err(e) => tracing::error!("Failed to connect to D-Bus System Bus: {}", e),
+                Err(e) => tracing::error!("Failed to get DaemonProxy: {}", e),
             }
         });
     }
@@ -901,44 +896,41 @@ impl VrxxVpnPage {
             let item_clone = active_item.clone();
 
             glib::spawn_future_local(async move {
-                match crate::ipc::get_system_connection().await {
-                    Ok(conn) => match crate::ipc::DaemonProxy::new(&conn).await {
-                        Ok(proxy) => {
-                            tracing::info!(
-                                "Connecting to VPN key via D-Bus: {}",
-                                item_clone.name()
-                            );
-                            if let Err(e) =
-                                proxy.start_proxy(core_type, config_json, tun_mode).await
-                            {
-                                tracing::error!("Failed to start backend via D-Bus: {}", e);
-                                if let Some(page) = page_weak.upgrade() {
-                                    item_clone.set_is_active(false);
-                                    item_clone.set_is_loading(false);
-                                    item_clone.set_is_error(true);
-                                    page.imp().start_time.replace(None);
-                                    page.imp()
-                                        .window_title
-                                        .set_subtitle(&gettext("Core startup error"));
-                                    page.save_current_keys();
-                                    page.update_disconnect_action_state();
+                match crate::ipc::get_daemon_proxy().await {
+                    Ok(proxy) => {
+                        tracing::info!(
+                            "Connecting to VPN key via D-Bus: {}",
+                            item_clone.name()
+                        );
+                        if let Err(e) =
+                            proxy.start_proxy(core_type, config_json, tun_mode).await
+                        {
+                            tracing::error!("Failed to start backend via D-Bus: {}", e);
+                            if let Some(page) = page_weak.upgrade() {
+                                item_clone.set_is_active(false);
+                                item_clone.set_is_loading(false);
+                                item_clone.set_is_error(true);
+                                page.imp().start_time.replace(None);
+                                page.imp()
+                                    .window_title
+                                    .set_subtitle(&gettext("Core startup error"));
+                                page.save_current_keys();
+                                page.update_disconnect_action_state();
 
-                                    let dialog = adw::AlertDialog::builder()
-                                        .heading(gettext("Connection error"))
-                                        .body(e.to_string())
-                                        .build();
-                                    dialog.add_response("ok", &gettext("OK"));
-                                    if let Some(root) = page.root() {
-                                        dialog.present(Some(&root));
-                                    }
+                                let dialog = adw::AlertDialog::builder()
+                                    .heading(gettext("Connection error"))
+                                    .body(e.to_string())
+                                    .build();
+                                dialog.add_response("ok", &gettext("OK"));
+                                if let Some(root) = page.root() {
+                                    dialog.present(Some(&root));
                                 }
-                            } else {
-                                tracing::info!("Backend successfully started via D-Bus");
                             }
+                        } else {
+                            tracing::info!("Backend successfully started via D-Bus");
                         }
-                        Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
-                    },
-                    Err(e) => tracing::error!("Failed to connect to D-Bus System Bus: {}", e),
+                    }
+                    Err(e) => tracing::error!("Failed to get DaemonProxy: {}", e),
                 }
             });
         }
@@ -1390,16 +1382,13 @@ impl VrxxVpnPage {
         disconnect_action.connect_activate(move |_, _| {
             tracing::info!("Disconnecting VPN via D-Bus");
             glib::spawn_future_local(async move {
-                match crate::ipc::get_system_connection().await {
-                    Ok(conn) => match crate::ipc::DaemonProxy::new(&conn).await {
-                        Ok(proxy) => {
-                            if let Err(e) = proxy.stop_proxy().await {
-                                tracing::error!("Failed to stop backend via D-Bus: {}", e);
-                            }
+                match crate::ipc::get_daemon_proxy().await {
+                    Ok(proxy) => {
+                        if let Err(e) = proxy.stop_proxy().await {
+                            tracing::error!("Failed to stop backend via D-Bus: {}", e);
                         }
-                        Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
-                    },
-                    Err(e) => tracing::error!("Failed to connect to D-Bus System Bus: {}", e),
+                    }
+                    Err(e) => tracing::error!("Failed to get DaemonProxy: {}", e),
                 }
             });
         });
