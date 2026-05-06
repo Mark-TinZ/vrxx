@@ -10,3 +10,7 @@
 **Vulnerability:** Xray-core generated its `access.log` and `error.log` files with default system permissions (e.g., 0644), exposing users' VPN browsing history and IP addresses to other local users.
 **Learning:** Even if the application strictly enforces `0600` permissions for its own files, external core binaries orchestrated by the application will use the system's default `umask` when creating new files like logs.
 **Prevention:** Always pre-create sensitive log/config files with restricted permissions (`0o600`) from within the parent application before passing their paths to external binaries. The binaries will then append to the existing files and preserve their strict permissions.
+## 2024-05-24 - [Visual Password Leakage Prevention]
+**Vulnerability:** The UUID/Password field in the VPN key edit dialog used a standard `adw::EntryRow`, making sensitive authentication tokens visible on screen to over-the-shoulder observation or screen sharing.
+**Learning:** Libadwaita provides `adw::PasswordEntryRow` specifically to mask sensitive inputs visually. Memory notes explicitly call this out.
+**Prevention:** Always use `adw::PasswordEntryRow` for any token, UUID, or password input in Libadwaita UIs.
