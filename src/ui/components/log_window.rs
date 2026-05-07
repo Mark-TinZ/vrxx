@@ -408,13 +408,16 @@ impl VrxxLogWindow {
                     };
 
                     // REVIEW: При загрузке из файла мы также применяем фильтрацию
-                    self.append_log(level, line);
+                    self.append_log_no_scroll(level, line);
                 }
+
+                self.scroll_to_bottom();
             }
         }
     }
 
-    pub fn append_log(&self, level: &str, message: &str) {
+    // OPTIMIZE: Separated insertion from scrolling to prevent O(n²) layout thrashing during bulk load
+    pub fn append_log_no_scroll(&self, level: &str, message: &str) {
         let imp = self.imp();
         let buffer = imp.text_view.buffer();
 
@@ -453,12 +456,21 @@ impl VrxxLogWindow {
         } else {
             buffer.insert(&mut iter, &line);
         }
+    }
 
+    pub fn scroll_to_bottom(&self) {
+        let imp = self.imp();
         if imp.btn_autoscroll.is_active() {
+            let buffer = imp.text_view.buffer();
             let mark = buffer.create_mark(None, &buffer.end_iter(), false);
             imp.text_view.scroll_to_mark(&mark, 0.0, false, 0.0, 1.0);
             buffer.delete_mark(&mark);
         }
+    }
+
+    pub fn append_log(&self, level: &str, message: &str) {
+        self.append_log_no_scroll(level, message);
+        self.scroll_to_bottom();
     }
 }
 
