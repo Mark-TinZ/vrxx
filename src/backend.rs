@@ -15,7 +15,6 @@ pub trait VpnCore: Send + Sync + std::fmt::Debug {
 #[derive(Debug)]
 pub struct CoreBackend {
     rt: Arc<Runtime>,
-    proxy: tokio::sync::OnceCell<DaemonProxy<'static>>,
 }
 
 impl Default for CoreBackend {
@@ -60,28 +59,15 @@ impl CoreBackend {
         });
         // ================================
 
-        Self {
-            rt: rt_clone,
-            proxy: tokio::sync::OnceCell::new(),
-        }
+        Self { rt: rt_clone }
     }
 
     // --- Раздел: IPC Взаимодействие ---
     // OPTIMIZE: Cache D-Bus DaemonProxy here instead of recreating it per proxy call (reduces D-Bus overhead during is_running polling)
     async fn get_proxy(&self) -> Result<DaemonProxy<'static>> {
-        let proxy = self
-            .proxy
-            .get_or_try_init(|| async {
-                let conn = crate::ipc::get_system_connection()
-                    .await
-                    .context("Failed to connect to D-Bus System Bus")?;
-                DaemonProxy::new(&conn)
-                    .await
-                    .context("Failed to create DaemonProxy")
-            })
-            .await?
-            .clone();
-        Ok(proxy)
+        crate::ipc::get_daemon_proxy()
+            .await
+            .context("Failed to get DaemonProxy")
     }
 
     pub fn update_system_proxy(&self, enable: bool) {
