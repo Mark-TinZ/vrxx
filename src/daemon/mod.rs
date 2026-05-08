@@ -170,7 +170,15 @@ impl ProxyManager {
             .unwrap_or_else(|| std::path::PathBuf::from("."))
             .join("vrxx")
             .join("logs");
-        std::fs::create_dir_all(&log_dir).ok();
+
+        #[cfg(unix)]
+        use std::os::unix::fs::DirBuilderExt;
+        let mut builder = std::fs::DirBuilder::new();
+        builder.recursive(true);
+        #[cfg(unix)]
+        builder.mode(0o700);
+        builder.create(&log_dir).ok();
+
         let core_log_path = log_dir.join("core.log");
 
         // --- Раздел: Обработка логов ядра ---

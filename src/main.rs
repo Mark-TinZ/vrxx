@@ -53,7 +53,14 @@ fn main() -> glib::ExitCode {
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("vrxx")
         .join("logs");
-    std::fs::create_dir_all(&log_dir).ok();
+
+    #[cfg(unix)]
+    use std::os::unix::fs::DirBuilderExt;
+    let mut builder = std::fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    builder.mode(0o700);
+    builder.create(&log_dir).ok();
 
     let is_daemon = args.iter().any(|arg| arg == "--daemon");
     let log_suffix = if is_daemon { "daemon" } else { "app" };

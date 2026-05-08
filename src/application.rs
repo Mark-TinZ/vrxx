@@ -221,7 +221,15 @@ impl VrxxApplication {
                     .unwrap_or_else(|| std::path::PathBuf::from("."))
                     .join("vrxx")
                     .join("logs");
-                std::fs::create_dir_all(&log_dir).ok();
+
+                #[cfg(unix)]
+                use std::os::unix::fs::DirBuilderExt;
+                let mut builder = std::fs::DirBuilder::new();
+                builder.recursive(true);
+                #[cfg(unix)]
+                builder.mode(0o700);
+                builder.create(&log_dir).ok();
+
                 if let Ok(uri) = glib::filename_to_uri(&log_dir, None) {
                     let _ =
                         gio::AppInfo::launch_default_for_uri(&uri, None::<&gio::AppLaunchContext>);

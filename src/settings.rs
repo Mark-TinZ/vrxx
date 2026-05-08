@@ -206,7 +206,15 @@ impl SettingsManager {
     pub fn new() -> Self {
         let mut path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
         path.push("vrxx");
-        fs::create_dir_all(&path).ok();
+
+        #[cfg(unix)]
+        use std::os::unix::fs::DirBuilderExt;
+        let mut builder = fs::DirBuilder::new();
+        builder.recursive(true);
+        #[cfg(unix)]
+        builder.mode(0o700);
+        builder.create(&path).ok();
+
         path.push("settings.json");
         Self { config_path: path }
     }

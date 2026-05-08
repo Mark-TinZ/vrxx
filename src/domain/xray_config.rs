@@ -416,7 +416,14 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("vrxx")
         .join("logs");
-    let _ = std::fs::create_dir_all(&log_dir);
+
+    #[cfg(unix)]
+    use std::os::unix::fs::DirBuilderExt;
+    let mut builder = std::fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    builder.mode(0o700);
+    let _ = builder.create(&log_dir);
 
     let access_log_path = log_dir.join("access.log");
     let error_log_path = log_dir.join("error.log");

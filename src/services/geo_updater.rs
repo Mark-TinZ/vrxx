@@ -11,7 +11,14 @@ pub async fn update_geo_databases(
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("vrxx");
-    fs::create_dir_all(&config_dir)?;
+
+    #[cfg(unix)]
+    use std::os::unix::fs::DirBuilderExt;
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    builder.mode(0o700);
+    builder.create(&config_dir)?;
 
     let files_to_download = [
         (
