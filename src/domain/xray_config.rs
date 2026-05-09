@@ -416,7 +416,7 @@ pub fn build_xray_config(parsed_key: &ParsedKey, settings: &AppSettings) -> Stri
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("vrxx")
         .join("logs");
-    let _ = std::fs::create_dir_all(&log_dir);
+    let _ = crate::utils::secure_create_dir_all(&log_dir);
 
     let access_log_path = log_dir.join("access.log");
     let error_log_path = log_dir.join("error.log");
