@@ -111,16 +111,26 @@ fn main() -> glib::ExitCode {
 
     let (non_blocking, _guard) = tracing_appender::non_blocking(multi_writer);
 
-    tracing_subscriber::fmt()
+    // --- Раздел: Архитектурное логирование (Tracing Layers) ---
+    use tracing_subscriber::prelude::*;
+    let fmt_layer = tracing_subscriber::fmt::layer()
         .with_writer(non_blocking)
-        .with_ansi(false)
-        .init();
-    // ================================
+        .with_ansi(false);
 
     if is_daemon {
+        // Для демона создаем менеджер событий заранее, чтобы подключить его к tracing
+        let (event_manager, _) = daemon::events::EventManager::new(100);
+        let event_manager = std::sync::Arc::new(event_manager);
+        let sse_layer = daemon::events::SseTracingLayer::new(event_manager.clone());
+
+        tracing_subscriber::registry()
+            .with(fmt_layer)
+            .with(sse_layer)
+            .init();
+
         match tokio::runtime::Runtime::new() {
             Ok(rt) => {
-                if let Err(e) = rt.block_on(daemon::run()) {
+                if let Err(e) = rt.block_on(daemon::run_with_manager(event_manager)) {
                     tracing::error!("Daemon failed: {e}");
                     std::process::exit(1);
                 }
@@ -131,7 +141,10 @@ fn main() -> glib::ExitCode {
                 std::process::exit(1);
             }
         }
+    } else {
+        tracing_subscriber::registry().with(fmt_layer).init();
     }
+    // ================================
 
     crate::services::geo_updater::spawn_background_updater();
 
@@ -154,6 +167,11 @@ fn main() -> glib::ExitCode {
 
     // Инициализируем Gettext
     setlocale(LocaleCategory::LcAll, "");
+
+    // --- Раздел: Локализация ---
+    // Указываем GTK/GLib использовать локализацию и настраиваем gettext
+    gtk::glib::set_application_name("Vrxx");
+
     if let Err(e) = bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR) {
         eprintln!("Unable to bind the text domain: {}", e);
     }

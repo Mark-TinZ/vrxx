@@ -303,7 +303,7 @@ impl VrxxVpnPage {
         let page_weak_restart = self.downgrade();
         glib::spawn_future_local(async move {
             let (_, receiver) = crate::settings::core_restart_channel();
-            while let Ok(_) = receiver.recv().await {
+            while receiver.recv().await.is_ok() {
                 if let Some(page) = page_weak_restart.upgrade() {
                     // Find active key and reconnect
                     if let Some(model) = page.imp().model.borrow().as_ref() {
@@ -356,33 +356,20 @@ impl VrxxVpnPage {
     fn setup_daemon_listener(&self) {
         let page_weak = self.downgrade();
         glib::spawn_future_local(async move {
-            match crate::ipc::get_system_connection().await {
-                Ok(conn) => {
-                    match crate::ipc::DaemonProxy::new(&conn).await {
-                        Ok(proxy) => {
-                            use futures_util::StreamExt;
-                            // Initial status
-                            if let Ok(status) = proxy.status().await {
-                                if let Some(page) = page_weak.upgrade() {
-                                    page.handle_daemon_status_change(&status);
-                                }
-                            }
+            let client = crate::ipc::DaemonClient::new();
+            if let Ok(status) = client.status().await {
+                if let Some(page) = page_weak.upgrade() {
+                    page.handle_daemon_status_change(&status);
+                }
+            }
 
-                            // Watch for changes
-                            let mut status_changes = proxy.receive_status_changed().await;
-
-                            while let Some(_) = status_changes.next().await {
-                                if let Ok(status) = proxy.status().await {
-                                    if let Some(page) = page_weak.upgrade() {
-                                        page.handle_daemon_status_change(&status);
-                                    }
-                                }
-                            }
-                        }
-                        Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
+            let events = client.subscribe_events();
+            while let Ok(event) = events.recv().await {
+                if let crate::daemon::DaemonEvent::StatusChanged(status) = event {
+                    if let Some(page) = page_weak.upgrade() {
+                        page.handle_daemon_status_change(&status);
                     }
                 }
-                Err(e) => tracing::error!("Failed to connect to D-Bus System Bus: {}", e),
             }
         });
     }
@@ -481,9 +468,8 @@ impl VrxxVpnPage {
                                             .set_subtitle(&gettext("Connection error"));
 
                                         // Читаем последние строки лога для отображения пользователю
-                                        let mut error_details = String::from(
-                                            "Unknown error. Please check System logs.",
-                                        );
+                                        let mut error_details =
+                                            gettext("Unknown error. Please check System logs.");
                                         let log_dir = dirs::config_dir()
                                             .unwrap_or_else(|| std::path::PathBuf::from("."))
                                             .join("vrxx")
@@ -503,7 +489,7 @@ impl VrxxVpnPage {
 
                                         let dialog = adw::AlertDialog::builder()
                                             .heading(gettext("Connection failure"))
-                                            .body(format!("Core process unexpectedly terminated. Log details:\n\n{error_details}"))
+                                            .body(format!("{}:\n\n{error_details}", gettext("Core process unexpectedly terminated. Log details")))
                                             .build();
                                         dialog.add_response("ok", &gettext("OK"));
                                         if let Some(root) = page
@@ -880,11 +866,7 @@ impl VrxxVpnPage {
 
             let config_json =
                 if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&active_item.url()) {
-                    if app_settings.core == "sing-box" {
-                        crate::domain::singbox_config::build_singbox_config(&parsed, &app_settings)
-                    } else {
-                        crate::domain::xray_config::build_xray_config(&parsed, &app_settings)
-                    }
+                    crate::domain::singbox_config::build_singbox_config(&parsed, &app_settings)
                 } else {
                     tracing::error!("Failed to parse key for configuration generation");
                     active_item.set_is_loading(false);
@@ -895,50 +877,38 @@ impl VrxxVpnPage {
                     return;
                 };
 
-            let core_type = app_settings.core.clone();
+            let core_type = "sing-box".to_string();
             let tun_mode = app_settings.tun_mode;
             let page_weak = self.downgrade();
             let item_clone = active_item.clone();
 
             glib::spawn_future_local(async move {
-                match crate::ipc::get_system_connection().await {
-                    Ok(conn) => match crate::ipc::DaemonProxy::new(&conn).await {
-                        Ok(proxy) => {
-                            tracing::info!(
-                                "Connecting to VPN key via D-Bus: {}",
-                                item_clone.name()
-                            );
-                            if let Err(e) =
-                                proxy.start_proxy(core_type, config_json, tun_mode).await
-                            {
-                                tracing::error!("Failed to start backend via D-Bus: {}", e);
-                                if let Some(page) = page_weak.upgrade() {
-                                    item_clone.set_is_active(false);
-                                    item_clone.set_is_loading(false);
-                                    item_clone.set_is_error(true);
-                                    page.imp().start_time.replace(None);
-                                    page.imp()
-                                        .window_title
-                                        .set_subtitle(&gettext("Core startup error"));
-                                    page.save_current_keys();
-                                    page.update_disconnect_action_state();
+                let proxy = crate::ipc::DaemonClient::new();
+                tracing::info!("Connecting to VPN key via REST API: {}", item_clone.name());
+                if let Err(e) = proxy.start_proxy(core_type, config_json, tun_mode).await {
+                    tracing::error!("Failed to start backend via REST API: {}", e);
+                    if let Some(page) = page_weak.upgrade() {
+                        item_clone.set_is_active(false);
+                        item_clone.set_is_loading(false);
+                        item_clone.set_is_error(true);
+                        page.imp().start_time.replace(None);
+                        page.imp()
+                            .window_title
+                            .set_subtitle(&gettext("Core startup error"));
+                        page.save_current_keys();
+                        page.update_disconnect_action_state();
 
-                                    let dialog = adw::AlertDialog::builder()
-                                        .heading(gettext("Connection error"))
-                                        .body(e.to_string())
-                                        .build();
-                                    dialog.add_response("ok", &gettext("OK"));
-                                    if let Some(root) = page.root() {
-                                        dialog.present(Some(&root));
-                                    }
-                                }
-                            } else {
-                                tracing::info!("Backend successfully started via D-Bus");
-                            }
+                        let dialog = adw::AlertDialog::builder()
+                            .heading(gettext("Connection error"))
+                            .body(e.to_string())
+                            .build();
+                        dialog.add_response("ok", &gettext("OK"));
+                        if let Some(root) = page.root() {
+                            dialog.present(Some(&root));
                         }
-                        Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
-                    },
-                    Err(e) => tracing::error!("Failed to connect to D-Bus System Bus: {}", e),
+                    }
+                } else {
+                    tracing::info!("Backend successfully started via REST API");
                 }
             });
         }
@@ -1182,7 +1152,11 @@ impl VrxxVpnPage {
 
         let dialog = adw::AlertDialog::builder()
             .heading(gettext("Delete VPN key"))
-            .body(format!("Are you sure you want to delete '{key_name}'?"))
+            .body(format!(
+                "{} '{}'?",
+                gettext("Are you sure you want to delete"),
+                key_name
+            ))
             .build();
 
         dialog.add_response("cancel", &gettext("Cancel"));
@@ -1388,18 +1362,11 @@ impl VrxxVpnPage {
         // Действие: Disconnect
         let disconnect_action = gio::SimpleAction::new("disconnect", None);
         disconnect_action.connect_activate(move |_, _| {
-            tracing::info!("Disconnecting VPN via D-Bus");
+            tracing::info!("Disconnecting VPN via REST API");
             glib::spawn_future_local(async move {
-                match crate::ipc::get_system_connection().await {
-                    Ok(conn) => match crate::ipc::DaemonProxy::new(&conn).await {
-                        Ok(proxy) => {
-                            if let Err(e) = proxy.stop_proxy().await {
-                                tracing::error!("Failed to stop backend via D-Bus: {}", e);
-                            }
-                        }
-                        Err(e) => tracing::error!("Failed to create DaemonProxy: {}", e),
-                    },
-                    Err(e) => tracing::error!("Failed to connect to D-Bus System Bus: {}", e),
+                let proxy = crate::ipc::DaemonClient::new();
+                if let Err(e) = proxy.stop_proxy().await {
+                    tracing::error!("Failed to stop backend via REST API: {}", e);
                 }
             });
         });

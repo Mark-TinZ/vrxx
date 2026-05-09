@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod tests {
+mod proxy_testing {
     use crate::backend::CoreBackend;
     use gtk::gio::Settings;
     use gtk::prelude::SettingsExt;

@@ -9,10 +9,9 @@
           <object class="AdwHeaderBar">
             <!-- Заголовок -->
             <property name="title-widget">
-            <object class="AdwWindowTitle" id="window_title">
-              <property name="title" translatable="yes">VPN Keys</property>
-              <property name="subtitle" translatable="yes">Mark-Vless Connected</property>
-            </object>
+                <object class="AdwWindowTitle" id="window_title">
+                    <property name="title" translatable="yes">VPN</property>
+                </object>
             </property>
 
             <!-- Кнопки импорта ключей -->

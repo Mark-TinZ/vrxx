@@ -1081,3 +1081,57 @@ msgstr "Нет VPN-подключений"
 
 msgid "Add a new connection using the buttons above to get started."
 msgstr "Добавьте новое подключение с помощью кнопок выше, чтобы начать."
+
+msgid "Restart Required"
+msgstr "Требуется перезапуск"
+
+msgid "You have changed the language. The application needs to restart to apply the new language. Restart now?"
+msgstr "Вы изменили язык. Приложению требуется перезапуск для применения нового языка. Перезапустить сейчас?"
+
+msgid "Last update"
+msgstr "Последнее обновление"
+
+msgid "Unknown Version"
+msgstr "Неизвестная версия"
+
+msgid "not found"
+msgstr "не найден"
+
+msgid "Are you sure you want to delete"
+msgstr "Вы уверены, что хотите удалить"
+
+msgid "Core process unexpectedly terminated. Log details"
+msgstr "Процесс ядра неожиданно завершился. Детали лога"
+
+msgid "Never updated"
+msgstr "Никогда не обновлялось"
+
+msgid "Downloading..."
+msgstr "Загрузка..."
+
+msgid "Geo Data Updated"
+msgstr "Geo-данные обновлены"
+
+msgid "Latest geo-databases downloaded."
+msgstr "Последние версии geo-баз загружены."
+
+msgid "Save Logs"
+msgstr "Сохранить логи"
+
+msgid "Search Logs (Ctrl+F)"
+msgstr "Поиск логов (Ctrl+F)"
+
+msgid "Search logs…"
+msgstr "Поиск логов…"
+
+msgid "Reset Zoom"
+msgstr "Сбросить масштаб"
+
+msgid "Zoom In"
+msgstr "Увеличить"
+
+msgid "Zoom Out"
+msgstr "Уменьшить"
+
+msgid "Save Logs…"
+msgstr "Сохранить логи…"

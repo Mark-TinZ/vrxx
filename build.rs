@@ -27,6 +27,7 @@ fn main() {
         println!("cargo:rerun-if-changed=src/ui/pages/settings_page.ui");
         println!("cargo:rerun-if-changed=src/ui/components/vpn_key_row.ui");
         println!("cargo:rerun-if-changed=src/ui/components/theme_switcher.ui");
+        println!("cargo:rerun-if-changed=src/ui/components/log_window.ui");
         println!("cargo:rerun-if-changed=src/ui/menus.ui");
     }
 

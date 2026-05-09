@@ -36,6 +36,9 @@ mod imp {
             obj.setup_gactions();
             obj.set_accels_for_action("app.quit", &["<control>q"]);
             obj.set_accels_for_action("vpn.disconnect", &["<control>d"]);
+            obj.set_accels_for_action("win.zoom_in", &["<Primary>plus", "<Primary>equal"]);
+            obj.set_accels_for_action("win.zoom_out", &["<Primary>minus"]);
+            obj.set_accels_for_action("win.zoom_normal", &["<Primary>0"]);
         }
     }
 
@@ -78,6 +81,11 @@ mod imp {
             if !is_hidden {
                 window.present();
             }
+
+            // Check if core is installed, if not prompt the user
+            crate::ui::components::core_installer::check_and_prompt(
+                window.downcast_ref::<gtk::Window>().unwrap(),
+            );
         }
     }
 
@@ -207,11 +215,11 @@ impl VrxxApplication {
                     // Убеждаемся, что мы не пытаемся привязать окно к самому себе
                     if parent.upcast_ref::<gtk::Widget>() != log_window.upcast_ref::<gtk::Widget>()
                     {
-                        log_window.set_transient_for(Some(&parent));
+                        gtk::prelude::GtkWindowExt::set_transient_for(&log_window, Some(&parent));
                     }
                 }
                 app.add_window(&log_window);
-                log_window.present();
+                gtk::prelude::GtkWindowExt::present(&log_window);
             })
             .build();
 

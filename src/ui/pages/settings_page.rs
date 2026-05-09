@@ -16,8 +16,6 @@ mod imp {
         #[template_child]
         pub primary_menu_btn: TemplateChild<gtk::MenuButton>,
         #[template_child]
-        pub core_selector: TemplateChild<adw::ComboRow>,
-        #[template_child]
         pub core_info_row: TemplateChild<adw::ActionRow>,
         #[template_child]
         pub language_row: TemplateChild<adw::ComboRow>,
@@ -40,7 +38,11 @@ mod imp {
         #[template_child]
         pub btn_update_geo: TemplateChild<gtk::Button>,
         #[template_child]
-        pub geo_progress_bar: TemplateChild<gtk::ProgressBar>,
+        pub geo_update_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
+        pub geo_update_spinner: TemplateChild<gtk::Spinner>,
+        #[template_child]
+        pub tun_mode_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub bypass_lan_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
@@ -68,6 +70,8 @@ mod imp {
             adw::ExpanderRow::static_type();
             adw::SpinRow::static_type();
             adw::ActionRow::static_type();
+            gtk::Stack::static_type();
+            gtk::Spinner::static_type();
             klass.bind_template();
         }
 
@@ -129,12 +133,12 @@ impl VrxxSettingsPage {
         if lang_changed {
             if let Some(window) = self.root().and_downcast::<gtk::Window>() {
                 let dialog = adw::AlertDialog::builder()
-                    .heading("Restart Required")
-                    .body("You have changed the language. The application needs to restart to apply the new language. Restart now?")
+                    .heading(&gettextrs::gettext("Restart Required"))
+                    .body(&gettextrs::gettext("You have changed the language. The application needs to restart to apply the new language. Restart now?"))
                     .build();
 
-                dialog.add_response("cancel", "Cancel");
-                dialog.add_response("restart", "Restart");
+                dialog.add_response("cancel", &gettextrs::gettext("Cancel"));
+                dialog.add_response("restart", &gettextrs::gettext("Restart"));
                 dialog.set_response_appearance("restart", adw::ResponseAppearance::Destructive);
 
                 gtk::glib::MainContext::default().spawn_local(async move {
@@ -176,12 +180,6 @@ impl VrxxSettingsPage {
             }
         ));
 
-        let selected_idx = match settings.core.as_str() {
-            "sing-box" => 1,
-            _ => 0, // xray default
-        };
-        imp.core_selector.set_selected(selected_idx);
-
         let lang_idx = match settings.language.as_str() {
             "en" => 1,
             "ru" => 2,
@@ -195,6 +193,7 @@ impl VrxxSettingsPage {
         imp.notifications_row.set_active(settings.notifications);
         imp.streamer_mode_row.set_active(settings.streamer_mode);
 
+        imp.tun_mode_row.set_active(settings.tun_mode);
         imp.sniffing_row.set_active(settings.enable_sniffing);
         imp.bypass_lan_row.set_active(settings.bypass_lan);
         imp.fake_dns_row.set_active(settings.enable_fake_dns);
@@ -222,22 +221,6 @@ impl VrxxSettingsPage {
         self.refresh_geo_status();
 
         // Connect signals
-        imp.core_selector.connect_selected_notify(glib::clone!(
-            #[weak(rename_to = page)]
-            self,
-            move |row| {
-                let manager = SettingsManager::new();
-                let mut s = manager.load();
-                let is_singbox = row.selected() == 1;
-                let core_name = if is_singbox { "sing-box" } else { "xray" };
-                s.core = core_name.to_string();
-                manager.save(&s);
-                page.update_core_info(Some(core_name));
-                page.imp().fragment_row.set_visible(!is_singbox);
-                page.mark_changed(false);
-            }
-        ));
-
         imp.language_row.connect_selected_notify(glib::clone!(
             #[weak(rename_to = page)]
             self,
@@ -316,6 +299,18 @@ impl VrxxSettingsPage {
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
                 s.streamer_mode = row.is_active();
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.tun_mode_row.connect_active_notify(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.tun_mode = row.is_active();
                 manager.save(&s);
                 page.mark_changed(false);
             }
@@ -442,28 +437,33 @@ impl VrxxSettingsPage {
     // --- Раздел: Диагностика ---
     fn refresh_geo_status(&self) {
         let status = crate::services::geo_updater::get_geo_status();
-        self.imp()
-            .update_geo_row
-            .set_subtitle(&format!("Last update: {}", status));
+        self.imp().update_geo_row.set_subtitle(&format!(
+            "{}: {}",
+            gettextrs::gettext("Last update"),
+            status
+        ));
     }
 
     fn update_geo_data(&self) {
         let imp = self.imp();
-        imp.btn_update_geo.set_sensitive(false);
-        imp.update_geo_row.set_subtitle("Updating...");
-        imp.geo_progress_bar.set_visible(true);
-        imp.geo_progress_bar.set_fraction(0.0);
 
-        let (tx, rx) = async_channel::unbounded();
+        // Переключаем на спиннер и меняем подзаголовок
+        imp.geo_update_stack.set_visible_child_name("spinner_page");
+        imp.update_geo_row
+            .set_subtitle(&gettextrs::gettext("Downloading..."));
 
         gtk::glib::MainContext::default().spawn_local(glib::clone!(
             #[weak(rename_to = page)]
             self,
             async move {
-                let _ = crate::services::geo_updater::update_geo_databases(true, Some(tx)).await;
+                // Выполняем обновление без передачи канала прогресса (он больше не нужен)
+                let _ = crate::services::geo_updater::update_geo_databases(true, None).await;
+
+                // Возвращаем UI в исходное состояние
                 page.refresh_geo_status();
-                page.imp().btn_update_geo.set_sensitive(true);
-                page.imp().geo_progress_bar.set_visible(false);
+                page.imp()
+                    .geo_update_stack
+                    .set_visible_child_name("button_page");
 
                 if let Some(app) =
                     gtk::gio::Application::default().and_downcast::<gtk::Application>()
@@ -477,46 +477,29 @@ impl VrxxSettingsPage {
                 }
             }
         ));
-
-        gtk::glib::MainContext::default().spawn_local(glib::clone!(
-            #[weak(rename_to = page)]
-            self,
-            async move {
-                while let Ok(progress) = rx.recv().await {
-                    page.imp().geo_progress_bar.set_fraction(progress);
-                }
-            }
-        ));
     }
 
     fn update_core_info(&self, name: Option<&str>) {
         // --- Раздел: Диагностика ядер ---
-        // XXX: Мы используем переданное имя или загружаем из настроек, если оно не указано
-        let bin_name = if let Some(n) = name {
-            n.to_string()
-        } else {
-            let settings = SettingsManager::new().load();
-            if settings.core == "sing-box" {
-                "sing-box".to_string()
-            } else {
-                "xray".to_string()
-            }
-        };
+        // XXX: Мы всегда используем sing-box теперь
+        let bin_name = name.unwrap_or("sing-box");
 
         // TODO: Использовать асинхронный вызов команды для получения версии
-        let output = std::process::Command::new(&bin_name)
-            .arg("version")
-            .output();
+        let output = std::process::Command::new(bin_name).arg("version").output();
 
         let version_str = match output {
             Ok(out) => {
                 let s = String::from_utf8_lossy(&out.stdout);
-                s.lines().next().unwrap_or("Unknown Version").to_string()
+                s.lines()
+                    .next()
+                    .unwrap_or(&gettextrs::gettext("Unknown Version"))
+                    .to_string()
             }
-            Err(_) => format!("{bin_name} not found"),
+            Err(_) => format!("{} {}", bin_name, gettextrs::gettext("not found")),
         };
 
         self.imp().core_info_row.set_subtitle(&version_str);
+        self.imp().fragment_row.set_visible(false);
     }
     // ================================
 }

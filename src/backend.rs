@@ -1,21 +1,26 @@
-use crate::ipc::DaemonProxy;
+use crate::ipc::DaemonClient;
 use crate::settings::SettingsManager;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 
+/// Интерфейс для управления ядром VPN.
 pub trait VpnCore: Send + Sync + std::fmt::Debug {
+    /// Запуск ядра с заданной конфигурацией.
     #[allow(dead_code)]
     fn start(&self, config_json: &str) -> Result<()>;
+    /// Остановка ядра.
     #[allow(dead_code)]
     fn stop(&self) -> Result<()>;
+    /// Проверка, запущено ли ядро.
     fn is_running(&self) -> bool;
 }
 
+/// Высокоуровневый бэкенд, взаимодействующий с привилегированным демоном.
 #[derive(Debug)]
 pub struct CoreBackend {
     rt: Arc<Runtime>,
-    proxy: tokio::sync::OnceCell<DaemonProxy<'static>>,
+    client: DaemonClient,
 }
 
 impl Default for CoreBackend {
@@ -27,34 +32,22 @@ impl Default for CoreBackend {
 impl CoreBackend {
     pub fn new() -> Self {
         let rt = Runtime::new().expect("Failed to create tokio runtime");
+        let client = DaemonClient::new();
 
         // --- Раздел: Проверка окружения ---
-        // HACK: Фоновая проверка доступности демона при инициализации.
-        // Это позволяет избежать подвисания UI, если D-Bus недоступен.
         let rt_clone = Arc::new(rt);
         let rt_bg = rt_clone.clone();
+        let client_bg = client.clone();
         std::thread::spawn(move || {
             rt_bg.block_on(async {
-                match crate::ipc::get_system_connection().await {
-                    Ok(conn) => match DaemonProxy::new(&conn).await {
-                        Ok(proxy) => match proxy.ping().await {
-                            Ok(pong) => tracing::info!(
-                                "D-Bus Daemon availability checked on initialization: {}",
-                                pong
-                            ),
-                            Err(e) => tracing::warn!(
-                                "D-Bus Daemon not available on initialization: {}",
-                                e
-                            ),
-                        },
-                        Err(e) => {
-                            tracing::warn!("Failed to create DaemonProxy on initialization: {}", e)
-                        }
-                    },
-                    Err(e) => tracing::warn!(
-                        "Failed to connect to D-Bus System Bus on initialization: {}",
-                        e
+                match client_bg.ping().await {
+                    Ok(pong) => tracing::info!(
+                        "REST API Daemon availability checked on initialization: {}",
+                        pong
                     ),
+                    Err(e) => {
+                        tracing::warn!("REST API Daemon not available on initialization: {}", e)
+                    }
                 }
             });
         });
@@ -62,26 +55,8 @@ impl CoreBackend {
 
         Self {
             rt: rt_clone,
-            proxy: tokio::sync::OnceCell::new(),
+            client,
         }
-    }
-
-    // --- Раздел: IPC Взаимодействие ---
-    // OPTIMIZE: Cache D-Bus DaemonProxy here instead of recreating it per proxy call (reduces D-Bus overhead during is_running polling)
-    async fn get_proxy(&self) -> Result<DaemonProxy<'static>> {
-        let proxy = self
-            .proxy
-            .get_or_try_init(|| async {
-                let conn = crate::ipc::get_system_connection()
-                    .await
-                    .context("Failed to connect to D-Bus System Bus")?;
-                DaemonProxy::new(&conn)
-                    .await
-                    .context("Failed to create DaemonProxy")
-            })
-            .await?
-            .clone();
-        Ok(proxy)
     }
 
     pub fn update_system_proxy(&self, enable: bool) {
@@ -99,45 +74,49 @@ impl CoreBackend {
 }
 
 impl VpnCore for CoreBackend {
-    /// Запускает ядро через привилегированный демон
+    /// Запускает ядро через REST API демон
     fn start(&self, config_json: &str) -> Result<()> {
         let settings = SettingsManager::new().load();
-        let core_type = settings.core.clone();
         let tun_mode = settings.tun_mode;
 
-        tracing::info!("Requesting daemon to start proxy (core: {})...", core_type);
+        // --- Раздел: Логирование для отладки (God Tier Backend) ---
+        // Эти логи помогут детально отслеживать старт ядра в консоли.
+        tracing::debug!(
+            "Preparing to start proxy. Core Type: sing-box, TUN Mode: {}",
+            tun_mode
+        );
+        tracing::debug!("Generated sing-box config:\n{}", config_json);
+
+        tracing::info!("Requesting daemon to start proxy (core: sing-box)...");
 
         self.rt.block_on(async {
-            let proxy = self.get_proxy().await?;
-            proxy
-                .start_proxy(core_type, config_json.to_string(), tun_mode)
+            self.client
+                .start_proxy("sing-box".to_string(), config_json.to_string(), tun_mode)
                 .await
-                .map_err(|e| anyhow::anyhow!("D-Bus error: {e}"))?;
+                .map_err(|e| {
+                    tracing::error!("Failed to start proxy via Daemon REST API: {}", e);
+                    anyhow::anyhow!("REST API error: {e}")
+                })?;
+            tracing::debug!("Proxy started successfully via Daemon");
             Ok(())
         })
     }
 
-    /// Останавливает ядро через привилегированный демон
+    /// Останавливает ядро через REST API демон
     fn stop(&self) -> Result<()> {
         tracing::info!("Requesting daemon to stop proxy...");
 
         self.rt.block_on(async {
-            let proxy = self.get_proxy().await?;
-            proxy
+            self.client
                 .stop_proxy()
                 .await
-                .map_err(|e| anyhow::anyhow!("D-Bus error: {e}"))?;
+                .map_err(|e| anyhow::anyhow!("REST API error: {e}"))?;
             Ok(())
         })
     }
 
     fn is_running(&self) -> bool {
-        self.rt.block_on(async {
-            if let Ok(proxy) = self.get_proxy().await {
-                proxy.is_running().await.unwrap_or(false)
-            } else {
-                false
-            }
-        })
+        self.rt
+            .block_on(async { self.client.is_running().await.unwrap_or(false) })
     }
 }

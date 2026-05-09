@@ -1,6 +1,5 @@
 #[cfg(test)]
-mod tests {
-    use gtk::prelude::*;
+mod ui_testing {
     use gtk::{gio, glib};
 
     // Need to initialize GTK before creating widgets.

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<interface>
+<interface domain="vrxx">
   <menu id="primary_menu">
     <section>
       <!-- Custom widget slot for Theme Switcher -->

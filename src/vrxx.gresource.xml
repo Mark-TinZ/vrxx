@@ -14,6 +14,7 @@
     <!-- Компоненты -->
     <file preprocess="xml-stripblanks">ui/components/vpn_key_row.ui</file>
     <file preprocess="xml-stripblanks">ui/components/theme_switcher.ui</file>
+    <file preprocess="xml-stripblanks">ui/components/log_window.ui</file>
 
      <!-- Иконки -->
     <file alias="icons/scalable/apps/ru.mark.vrxx.svg">../data/icons/hicolor/scalable/apps/ru.mark.vrxx.svg</file>

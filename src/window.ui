@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<interface>
+<interface domain="vrxx">
   <requires lib="gtk" version="4.0"/>
   <requires lib="Adw" version="1.0"/>
 
   <template class="VrxxWindow" parent="AdwApplicationWindow">
     <property name="title" translatable="yes">Vrxx</property>
+    <property name="icon-name">ru.mark.vrxx</property>
     <property name="default-width">960</property>
     <property name="default-height">650</property>
 

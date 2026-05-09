@@ -6,7 +6,8 @@
 - [x] **Phase 3: Networking & Routing** - System traffic is securely routed through the proxy with essential rules applied.
 - [x] **Phase 4: User Workflows & Polish** - Users can easily import keys, view status, and learn how to use the client.
 - [x] **Phase 5: UI Cleanup & Core Fixes** - Stable UI with descriptive tooltips and reliable core selection logic.
-- [ ] **Phase 6: Core Stability & Sing-box Refactor** - Transition to Sing-box only, fix proxy/TUN bugs, and improve logging.
+- [x] **Phase 6: Core Stability & Sing-box Refactor** - Transition to Sing-box only, fix proxy/TUN bugs, and improve logging.
+- [x] **Phase 7: Log Window Refactor** - Refactor VrxxLogWindow for GNOME HIG compliance, fix autoscroll, and stabilize SSE logs.
 
 ## Phase Details
 
@@ -81,7 +82,7 @@
 **UI hint**: yes
 
 ### Phase 6: Core Stability & Sing-box Refactor
-**Goal**: Transition to Sing-box only, fix proxy/TUN bugs, update version, and improve logging.
+**Goal**: Transition to Sing-box only, fix proxy/TUN bugs, and improve logging.
 **Depends on**: Phase 5
 **Requirements**: CORE-01, UI-01, UI-02, CORE-02, NET-01
 **Success Criteria**:
@@ -90,10 +91,36 @@
   3. Log rotation is implemented and UI console displays real-time backend logs.
   4. Import logic is consolidated and prepared for QR-code inputs.
 **Plans**: 3 plans
-- [ ] 06-01-PLAN.md — Version Update & UI Refinement
-- [ ] 06-02-PLAN.md — Core Removal & Sing-box Refactor
-- [ ] 06-03-PLAN.md — Sing-box Stability & Logging
-**UI hint**: yes
+- [x] 06-01-PLAN.md — Version Update & UI Refinement
+- [x] **Phase 7: Log Window Refactor** - Refactor VrxxLogWindow for GNOME HIG compliance, fix autoscroll, and stabilize SSE logs.
+- [x] **Phase 9: Quality and Localization** - Полная локализация на русский язык, документирование кода и UX-полировка.
+- [ ] **Phase 10: Decoupling and Logging Overhaul** - Рефакторинг архитектуры для уменьшения связанности и модернизация системы логирования.
+
+## Phase Details
+...
+### Phase 9: Quality and Localization
+**Goal**: Довести приложение до полной готовности для русскоязычных пользователей и улучшить качество кода
+**Depends on**: Phase 8
+**Requirements**: UI-02, QUALITY-01
+**Success Criteria**:
+  1. [x] 100% покрытие интерфейса и кода локализацией (gettext)
+  2. [x] Подробные русскоязычные комментарии в ключевых модулях бэкенда
+  3. [x] Устранение дублирования настроек TUN Mode (перенос в Settings)
+  4. [x] Реализация автоматического обновления Geo-ресурсов
+- [x] **Phase 10: Decoupling and Logging Overhaul** - Рефакторинг архитектуры для уменьшения связанности и модернизация системы логирования.
+
+## Phase Details
+...
+### Phase 10: Decoupling and Logging Overhaul
+**Goal**: Ослабить зависимости между UI и Core, внедрить масштабируемую систему логирования
+**Depends on**: Phase 9
+**Success Criteria**:
+  1. [x] Выделение логики IPC в отдельный сервисный слой (Service Pattern)
+  2. [x] Переход на асинхронное логирование через кастомный Tracing Layer
+  3. [x] Внедрение кольцевого буфера в демоне для хранения истории логов
+  4. [x] Оптимизация потребления памяти в окне логов (лимит строк)
+**Plans**: 1 plan
+- [x] phase-10-decoupling-logging.md — Архитектурная декомпозиция и логирование
 
 ## Progress
 
@@ -104,4 +131,9 @@
 | 3. Networking & Routing | 3/3 | Completed | Today |
 | 4. User Workflows & Polish | 3/3 | Completed | Today |
 | 5. UI Cleanup & Core Fixes | 3/3 | Completed | Today |
-| 6. Core Stability & Sing-box Refactor | 0/3 | In Progress | - |
+| 6. Core Stability & Sing-box Refactor | 3/3 | Completed | Today |
+| 7. Log Window Refactor | 1/1 | Completed | Today |
+| 8. Log Window Enhancements | 1/1 | Completed | Today |
+| 9. Quality and Localization | 1/1 | Completed | Today |
+| 10. Decoupling and Logging Overhaul | 1/1 | Completed | Today |
+| 11. Interactive Core Installation Dialog | 1/1 | Completed | Today |

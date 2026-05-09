@@ -14,8 +14,8 @@
             </property>
             <child type="start">
               <object class="GtkButton" id="btn_apply">
-                <property name="icon-name">document-save-symbolic</property>
-                <property name="tooltip-text" translatable="yes">Apply and Restart Core</property>
+                <property name="label" translatable="yes">Apply and Restart</property>
+                <property name="tooltip-text" translatable="yes">Apply settings and restart core</property>
                 <style>
                   <class name="suggested-action"/>
                 </style>
@@ -43,21 +43,6 @@
                   <object class="AdwSwitchRow" id="system_proxy_switch">
                     <property name="title" translatable="yes">Set system proxy</property>
                     <property name="subtitle" translatable="yes">When connected, application traffic will go through the proxy</property>
-                  </object>
-                </child>
-              </object>
-            </child>
-
-            <!-- Группа: TUN Mode -->
-            <child>
-              <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">TUN Mode</property>
-                <property name="description" translatable="yes">Route all traffic through a virtual network interface</property>
-                <child>
-                  <object class="AdwSwitchRow" id="tun_mode_switch">
-                    <property name="title" translatable="yes">Enable TUN Mode</property>
-                    <property name="subtitle" translatable="yes">Requires root privileges</property>
-                    <property name="tooltip-text" translatable="yes">Creates a virtual network interface to route all system traffic transparently, bypassing application-specific proxy settings.</property>
                   </object>
                 </child>
               </object>
