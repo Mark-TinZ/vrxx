@@ -379,8 +379,11 @@ impl VrxxLogWindow {
                 if let Some(window) = window_weak.upgrade() {
                     for event in history {
                         if let crate::daemon::events::DaemonEvent::Log { level, message } = event {
-                            window.append_log(&level, &message);
+                            window.append_log_internal(&level, &message, false);
                         }
+                    }
+                    if window.imp().btn_autoscroll.is_active() {
+                        window.scroll_to_bottom();
                     }
                 }
             }
@@ -432,13 +435,21 @@ impl VrxxLogWindow {
                         "info"
                     };
 
-                    self.append_log(level, line);
+                    self.append_log_internal(level, line, false);
+                }
+
+                if self.imp().btn_autoscroll.is_active() {
+                    self.scroll_to_bottom();
                 }
             }
         }
     }
 
     pub fn append_log(&self, level: &str, message: &str) {
+        self.append_log_internal(level, message, true);
+    }
+
+    pub fn append_log_internal(&self, level: &str, message: &str, auto_scroll: bool) {
         let imp = self.imp();
         let buffer = imp.text_view.buffer();
 
@@ -494,7 +505,7 @@ impl VrxxLogWindow {
             buffer.apply_tag_by_name("hidden", &start_iter, &end_iter);
         }
 
-        if imp.btn_autoscroll.is_active() {
+        if auto_scroll && imp.btn_autoscroll.is_active() {
             let window_weak = self.downgrade();
             glib::idle_add_local_once(move || {
                 if let Some(window) = window_weak.upgrade() {
