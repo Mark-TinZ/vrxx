@@ -10,3 +10,8 @@
 **Vulnerability:** Xray-core generated its `access.log` and `error.log` files with default system permissions (e.g., 0644), exposing users' VPN browsing history and IP addresses to other local users.
 **Learning:** Even if the application strictly enforces `0600` permissions for its own files, external core binaries orchestrated by the application will use the system's default `umask` when creating new files like logs.
 **Prevention:** Always pre-create sensitive log/config files with restricted permissions (`0o600`) from within the parent application before passing their paths to external binaries. The binaries will then append to the existing files and preserve their strict permissions.
+
+## 2025-05-10 - Insecure Default Directory Permissions
+**Vulnerability:** System-default unrestrictive umask was applied to directories containing sensitive files when using `std::fs::create_dir_all`. This allowed files like credentials, API keys, and logs to be potentially readable by other users.
+**Learning:** Rust's standard `fs::create_dir_all` respects the process `umask`, which is often overly permissive (e.g., 022, creating 0755 directories). Sensitive application data directories require explicit mode locking on Unix systems.
+**Prevention:** Always use a custom helper function (like `crate::utils::secure_create_dir_all`) that utilizes `std::fs::DirBuilder` with an explicitly restricted `0o700` mode on Unix instead of default `create_dir_all` when dealing with sensitive configuration or logs.

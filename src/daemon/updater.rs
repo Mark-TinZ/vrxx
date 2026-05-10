@@ -120,7 +120,7 @@ pub async fn download_core(progress_tx: Option<async_channel::Sender<f64>>) -> R
     tracing::info!("Downloading sing-box from {}", download_url);
 
     let data_dir = get_local_bin_dir();
-    std::fs::create_dir_all(&data_dir)?;
+    crate::utils::secure_create_dir_all(&data_dir)?;
     let archive_path = data_dir.join(&archive_name);
 
     let response = reqwest::Client::new().get(&download_url).send().await?;
@@ -160,7 +160,7 @@ pub async fn download_core(progress_tx: Option<async_channel::Sender<f64>>) -> R
 
 pub fn install_from_archive(archive_path: &Path) -> Result<String> {
     let data_dir = get_local_bin_dir();
-    std::fs::create_dir_all(&data_dir)?;
+    crate::utils::secure_create_dir_all(&data_dir)?;
     extract_and_install(archive_path, &data_dir)
 }
 

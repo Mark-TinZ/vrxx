@@ -15,7 +15,7 @@ pub async fn update_geo_databases(
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("vrxx");
-    fs::create_dir_all(&config_dir)?;
+    crate::utils::secure_create_dir_all(&config_dir)?;
 
     // Список ресурсов для скачивания.
     // Используются актуальные источники для глобальных и региональных правил.
