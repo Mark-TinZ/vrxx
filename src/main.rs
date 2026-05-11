@@ -20,6 +20,7 @@ pub mod services;
 mod settings;
 mod ui;
 mod window;
+pub mod utils;
 
 use self::application::VrxxApplication;
 use config::{GETTEXT_PACKAGE, LOCALEDIR};
@@ -53,7 +54,7 @@ fn main() -> glib::ExitCode {
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("vrxx")
         .join("logs");
-    std::fs::create_dir_all(&log_dir).ok();
+    utils::secure_create_dir_all(&log_dir).ok();
 
     let is_daemon = args.iter().any(|arg| arg == "--daemon");
     let log_suffix = if is_daemon { "daemon" } else { "app" };
