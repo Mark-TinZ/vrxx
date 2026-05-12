@@ -247,7 +247,7 @@ impl VrxxSettingsPage {
 
                 // NOTE: Настройка автозагрузки через создание .desktop файла
                 let autostart_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("autostart");
-                std::fs::create_dir_all(&autostart_dir).ok();
+                crate::utils::secure_create_dir_all(&autostart_dir).ok();
                 let desktop_file_path = autostart_dir.join("ru.mark.vrxx.desktop");
 
                 if s.autostart {

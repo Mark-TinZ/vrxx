@@ -10,3 +10,7 @@
 **Vulnerability:** Xray-core generated its `access.log` and `error.log` files with default system permissions (e.g., 0644), exposing users' VPN browsing history and IP addresses to other local users.
 **Learning:** Even if the application strictly enforces `0600` permissions for its own files, external core binaries orchestrated by the application will use the system's default `umask` when creating new files like logs.
 **Prevention:** Always pre-create sensitive log/config files with restricted permissions (`0o600`) from within the parent application before passing their paths to external binaries. The binaries will then append to the existing files and preserve their strict permissions.
+## 2025-02-20 - [Secure Directory Creation]
+**Vulnerability:** Directories meant to house sensitive data such as application logs and configuration (`~/.config/vrxx/`, `~/.config/vrxx/logs/`) were created using standard `std::fs::create_dir_all`. This defaults to system umask which can expose these files to unauthorized users.
+**Learning:** `std::fs::create_dir_all` respects umask on UNIX systems which might result in overly permissive directories.
+**Prevention:** Always use the wrapper helper `crate::utils::secure_create_dir_all` to enforce restricted `0o700` permissions on UNIX systems when dealing with sensitive directories.
