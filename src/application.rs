@@ -229,7 +229,7 @@ impl VrxxApplication {
                     .unwrap_or_else(|| std::path::PathBuf::from("."))
                     .join("vrxx")
                     .join("logs");
-                std::fs::create_dir_all(&log_dir).ok();
+            crate::utils::secure_create_dir_all(&log_dir).ok();
                 if let Ok(uri) = glib::filename_to_uri(&log_dir, None) {
                     let _ =
                         gio::AppInfo::launch_default_for_uri(&uri, None::<&gio::AppLaunchContext>);
