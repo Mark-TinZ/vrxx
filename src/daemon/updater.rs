@@ -103,7 +103,7 @@ pub async fn download_core(progress_tx: Option<async_channel::Sender<f64>>) -> R
     if res.status().is_redirection() {
         if let Some(loc) = res.headers().get(reqwest::header::LOCATION) {
             let loc_str = loc.to_str().unwrap_or("");
-            if let Some(tag) = loc_str.split('/').last() {
+            if let Some(tag) = loc_str.split('/').next_back() {
                 version = tag.trim_start_matches('v').to_string();
             }
         }
@@ -245,10 +245,10 @@ fn extract_and_install(archive_path: &Path, dest_dir: &Path) -> Result<String> {
     }
 
     // Verify it works
-    if !std::process::Command::new(&bin_path)
+    if std::process::Command::new(&bin_path)
         .arg("version")
         .output()
-        .is_ok()
+        .is_err()
     {
         return Err(anyhow::anyhow!(
             "Installed binary fails to run (maybe wrong architecture?)"

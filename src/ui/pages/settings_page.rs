@@ -133,8 +133,8 @@ impl VrxxSettingsPage {
         if lang_changed {
             if let Some(window) = self.root().and_downcast::<gtk::Window>() {
                 let dialog = adw::AlertDialog::builder()
-                    .heading(&gettextrs::gettext("Restart Required"))
-                    .body(&gettextrs::gettext("You have changed the language. The application needs to restart to apply the new language. Restart now?"))
+                    .heading(gettextrs::gettext("Restart Required"))
+                    .body(gettextrs::gettext("You have changed the language. The application needs to restart to apply the new language. Restart now?"))
                     .build();
 
                 dialog.add_response("cancel", &gettextrs::gettext("Cancel"));
