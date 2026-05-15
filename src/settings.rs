@@ -206,7 +206,7 @@ impl SettingsManager {
     pub fn new() -> Self {
         let mut path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
         path.push("vrxx");
-        fs::create_dir_all(&path).ok();
+        crate::utils::secure_create_dir_all(&path).ok();
         path.push("settings.json");
         Self { config_path: path }
     }
