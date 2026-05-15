@@ -16,15 +16,21 @@ impl Default for DaemonClient {
     }
 }
 
+static CLIENT: std::sync::OnceLock<Client> = std::sync::OnceLock::new();
+
 impl DaemonClient {
     /// Создает новый экземпляр клиента.
     pub fn new() -> Self {
         // Явно отключаем системные прокси, чтобы локальный трафик до демона
         // не маршрутизировался через VPN и не блокировался ядром.
-        let client = Client::builder()
-            .no_proxy()
-            .build()
-            .unwrap_or_else(|_| Client::new());
+        // Используем глобальное кэширование клиента для сохранения пула соединений
+        // и уменьшения накладных расходов при частом вызове (например, из UI).
+        let client = CLIENT.get_or_init(|| {
+            Client::builder()
+                .no_proxy()
+                .build()
+                .unwrap_or_else(|_| Client::new())
+        }).clone();
 
         Self {
             client,
