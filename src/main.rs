@@ -12,6 +12,7 @@
 mod application;
 mod backend;
 mod config;
+pub mod utils;
 pub mod daemon;
 pub mod domain;
 pub mod ipc;
@@ -53,7 +54,7 @@ fn main() -> glib::ExitCode {
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("vrxx")
         .join("logs");
-    std::fs::create_dir_all(&log_dir).ok();
+    crate::utils::secure_create_dir_all(&log_dir).ok();
 
     let is_daemon = args.iter().any(|arg| arg == "--daemon");
     let log_suffix = if is_daemon { "daemon" } else { "app" };
