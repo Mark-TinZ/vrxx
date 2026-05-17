@@ -10,3 +10,7 @@
 **Vulnerability:** Xray-core generated its `access.log` and `error.log` files with default system permissions (e.g., 0644), exposing users' VPN browsing history and IP addresses to other local users.
 **Learning:** Even if the application strictly enforces `0600` permissions for its own files, external core binaries orchestrated by the application will use the system's default `umask` when creating new files like logs.
 **Prevention:** Always pre-create sensitive log/config files with restricted permissions (`0o600`) from within the parent application before passing their paths to external binaries. The binaries will then append to the existing files and preserve their strict permissions.
+## 2024-05-17 - [Visual Masking of Sensitive Configuration Data in GUI Components]
+**Vulnerability:** The application stored and displayed VPN credentials (specifically UUIDs/passwords in the VPN key edit dialog) using `adw::EntryRow`, leaving the secrets visually exposed in plaintext to screen recorders, shoulder surfing, and standard observation.
+**Learning:** Even though secrets may be transmitted/stored securely, visual data leakage in a GUI is a significant vulnerability. Sensitive configuration data (passwords, UUIDs) MUST be visually masked when presented in editable form or displayed for configuration.
+**Prevention:** In Libadwaita/GTK4 interfaces, always utilize `adw::PasswordEntryRow` for UI fields handling authentication secrets, passwords, or UUIDs instead of standard entry widgets.

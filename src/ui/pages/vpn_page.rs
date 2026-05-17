@@ -1070,7 +1070,7 @@ impl VrxxVpnPage {
             .title(gettext("Port"))
             .text(parsed.port.to_string())
             .build();
-        let uuid_row = adw::EntryRow::builder()
+        let uuid_row = adw::PasswordEntryRow::builder()
             .title(gettext("UUID / Password"))
             .text(&parsed.uuid)
             .build();
