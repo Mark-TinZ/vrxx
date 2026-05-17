@@ -27,6 +27,7 @@ mod imp {
         pub last_pos: RefCell<u64>,
         pub font_size: RefCell<i32>,
         pub scroll_accum: RefCell<f64>,
+        pub scroll_pending: RefCell<bool>,
     }
 
     #[glib::object_subclass]
@@ -52,6 +53,7 @@ mod imp {
             obj.imp().text_view.add_css_class("log-view");
             *obj.imp().font_size.borrow_mut() = 10;
             *obj.imp().scroll_accum.borrow_mut() = 0.0;
+            *obj.imp().scroll_pending.borrow_mut() = false;
 
             let strings = gtk::StringList::new(&[
                 gettextrs::gettext("All logs").as_str(),
@@ -495,12 +497,17 @@ impl VrxxLogWindow {
         }
 
         if imp.btn_autoscroll.is_active() {
-            let window_weak = self.downgrade();
-            glib::idle_add_local_once(move || {
-                if let Some(window) = window_weak.upgrade() {
-                    window.scroll_to_bottom();
-                }
-            });
+            let mut pending = imp.scroll_pending.borrow_mut();
+            if !*pending {
+                *pending = true;
+                let window_weak = self.downgrade();
+                glib::idle_add_local_once(move || {
+                    if let Some(window) = window_weak.upgrade() {
+                        *window.imp().scroll_pending.borrow_mut() = false;
+                        window.scroll_to_bottom();
+                    }
+                });
+            }
         }
     }
 
