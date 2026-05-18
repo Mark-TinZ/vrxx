@@ -345,7 +345,7 @@ impl VrxxLogWindow {
     fn setup_daemon_logs(&self) {
         let window_weak = self.downgrade();
         glib::spawn_future_local(async move {
-            let client = crate::ipc::DaemonClient::new();
+            let client = crate::ipc::DaemonClient::global();
             let logs = client.subscribe_events();
 
             loop {
@@ -371,7 +371,7 @@ impl VrxxLogWindow {
     }
 
     fn load_history(&self) {
-        let client = crate::ipc::DaemonClient::new();
+        let client = crate::ipc::DaemonClient::global();
         let window_weak = self.downgrade();
 
         glib::spawn_future_local(async move {

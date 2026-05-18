@@ -1,6 +1,7 @@
 use crate::daemon::DaemonEvent;
 use reqwest::Client;
 use reqwest_eventsource::{Event, EventSource};
+use std::sync::OnceLock;
 use tokio_stream::StreamExt;
 
 /// Клиент для взаимодействия с привилегированным демоном через REST API и SSE.
@@ -12,7 +13,7 @@ pub struct DaemonClient {
 
 impl Default for DaemonClient {
     fn default() -> Self {
-        Self::new()
+        Self::global()
     }
 }
 
@@ -30,6 +31,12 @@ impl DaemonClient {
             client,
             base_url: "http://127.0.0.1:13337",
         }
+    }
+
+    /// Возвращает глобальный кэшированный экземпляр клиента.
+    pub fn global() -> Self {
+        static CLIENT: OnceLock<DaemonClient> = OnceLock::new();
+        CLIENT.get_or_init(Self::new).clone()
     }
 
     /// Проверяет доступность демона (Health check).

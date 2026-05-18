@@ -32,7 +32,7 @@ impl Default for CoreBackend {
 impl CoreBackend {
     pub fn new() -> Self {
         let rt = Runtime::new().expect("Failed to create tokio runtime");
-        let client = DaemonClient::new();
+        let client = DaemonClient::global();
 
         // --- Раздел: Проверка окружения ---
         let rt_clone = Arc::new(rt);

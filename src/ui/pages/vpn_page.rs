@@ -356,7 +356,7 @@ impl VrxxVpnPage {
     fn setup_daemon_listener(&self) {
         let page_weak = self.downgrade();
         glib::spawn_future_local(async move {
-            let client = crate::ipc::DaemonClient::new();
+            let client = crate::ipc::DaemonClient::global();
             if let Ok(status) = client.status().await {
                 if let Some(page) = page_weak.upgrade() {
                     page.handle_daemon_status_change(&status);
@@ -883,7 +883,7 @@ impl VrxxVpnPage {
             let item_clone = active_item.clone();
 
             glib::spawn_future_local(async move {
-                let proxy = crate::ipc::DaemonClient::new();
+                let proxy = crate::ipc::DaemonClient::global();
                 tracing::info!("Connecting to VPN key via REST API: {}", item_clone.name());
                 if let Err(e) = proxy.start_proxy(core_type, config_json, tun_mode).await {
                     tracing::error!("Failed to start backend via REST API: {}", e);
@@ -1364,7 +1364,7 @@ impl VrxxVpnPage {
         disconnect_action.connect_activate(move |_, _| {
             tracing::info!("Disconnecting VPN via REST API");
             glib::spawn_future_local(async move {
-                let proxy = crate::ipc::DaemonClient::new();
+                let proxy = crate::ipc::DaemonClient::global();
                 if let Err(e) = proxy.stop_proxy().await {
                     tracing::error!("Failed to stop backend via REST API: {}", e);
                 }
