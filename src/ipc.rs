@@ -1,6 +1,7 @@
 use crate::daemon::DaemonEvent;
 use reqwest::Client;
 use reqwest_eventsource::{Event, EventSource};
+use std::sync::OnceLock;
 use tokio_stream::StreamExt;
 
 /// Клиент для взаимодействия с привилегированным демоном через REST API и SSE.
@@ -19,12 +20,19 @@ impl Default for DaemonClient {
 impl DaemonClient {
     /// Создает новый экземпляр клиента.
     pub fn new() -> Self {
+        static CLIENT: OnceLock<Client> = OnceLock::new();
+
         // Явно отключаем системные прокси, чтобы локальный трафик до демона
         // не маршрутизировался через VPN и не блокировался ядром.
-        let client = Client::builder()
-            .no_proxy()
-            .build()
-            .unwrap_or_else(|_| Client::new());
+        // Кэшируем клиент для переиспользования пула соединений.
+        let client = CLIENT
+            .get_or_init(|| {
+                Client::builder()
+                    .no_proxy()
+                    .build()
+                    .unwrap_or_else(|_| Client::new())
+            })
+            .clone();
 
         Self {
             client,
