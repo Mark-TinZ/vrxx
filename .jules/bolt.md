@@ -9,3 +9,6 @@
 ## 2024-05-30 - Optimize D-Bus Proxy Caching
 **Learning:** Re-establishing the D-Bus `DaemonProxy` per operation (e.g. `is_running`) even when using a cached connection still introduces significant runtime overhead due to proxy object recreation.
 **Action:** The backend connection `DaemonProxy` itself can be cached entirely via `tokio::sync::OnceCell` in `CoreBackend`, completely eliminating repeated creation overhead for standard IPC calls.
+## 2024-05-30 - Cache REST API client for DaemonClient
+**Learning:** Recreating `reqwest::Client::new()` in polling or hot paths introduces noticeable overhead and fails to reuse the internal connection pool.
+**Action:** Use a static `std::sync::OnceLock<reqwest::Client>` to globally cache the HTTP client for REST APIs, enabling connection keep-alive and lower latency during frequent UI polls.
