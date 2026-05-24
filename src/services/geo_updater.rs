@@ -15,7 +15,7 @@ pub async fn update_geo_databases(
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("vrxx");
-    fs::create_dir_all(&config_dir)?;
+    crate::utils::secure_create_dir_all(&config_dir)?;
 
     // Список ресурсов для скачивания.
     // Используются актуальные источники для глобальных и региональных правил.
@@ -86,7 +86,9 @@ pub async fn update_geo_databases(
                             }
                             #[cfg(not(unix))]
                             {
-                                if let Ok(mut file) = fs::File::create(&file_path) {
+                                let mut opts = std::fs::OpenOptions::new();
+                                opts.write(true).create(true).truncate(true);
+                                if let Ok(mut file) = opts.open(&file_path) {
                                     let _ = file.write_all(&bytes);
                                     tracing::info!("{} updated successfully.", filename);
                                 }

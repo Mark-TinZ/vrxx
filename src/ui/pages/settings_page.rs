@@ -247,7 +247,7 @@ impl VrxxSettingsPage {
 
                 // NOTE: Настройка автозагрузки через создание .desktop файла
                 let autostart_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("autostart");
-                std::fs::create_dir_all(&autostart_dir).ok();
+                crate::utils::secure_create_dir_all(&autostart_dir).ok();
                 let desktop_file_path = autostart_dir.join("ru.mark.vrxx.desktop");
 
                 if s.autostart {
@@ -259,7 +259,16 @@ impl VrxxSettingsPage {
                     };
 
                     let desktop_content = format!("[Desktop Entry]\nType=Application\nName=Vrxx\nExec={exec_cmd}\nIcon=ru.mark.vrxx\nComment=VPN Client\nTerminal=false\nCategories=Network;\n");
-                    let _ = std::fs::write(&desktop_file_path, desktop_content);
+
+                    let mut opts = std::fs::OpenOptions::new();
+                    opts.write(true).create(true).truncate(true);
+                    #[cfg(unix)]
+                    {
+                        std::os::unix::fs::OpenOptionsExt::mode(&mut opts, 0o644);
+                    }
+                    if let Ok(mut file) = opts.open(&desktop_file_path) {
+                        let _ = std::io::Write::write_all(&mut file, desktop_content.as_bytes());
+                    }
                 } else {
                     let _ = std::fs::remove_file(&desktop_file_path);
                 }

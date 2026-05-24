@@ -191,7 +191,11 @@ impl VrxxApplication {
                                     }
                                     #[cfg(not(unix))]
                                     {
-                                        let _ = std::fs::write(path, content);
+                                        let mut opts = std::fs::OpenOptions::new();
+                                        opts.write(true).create(true).truncate(true);
+                                        if let Ok(mut file) = opts.open(&path) {
+                                            let _ = std::io::Write::write_all(&mut file, content.as_bytes());
+                                        }
                                     }
                                 }
                             }
@@ -229,7 +233,7 @@ impl VrxxApplication {
                     .unwrap_or_else(|| std::path::PathBuf::from("."))
                     .join("vrxx")
                     .join("logs");
-                std::fs::create_dir_all(&log_dir).ok();
+                crate::utils::secure_create_dir_all(&log_dir).ok();
                 if let Ok(uri) = glib::filename_to_uri(&log_dir, None) {
                     let _ =
                         gio::AppInfo::launch_default_for_uri(&uri, None::<&gio::AppLaunchContext>);

@@ -120,7 +120,7 @@ pub async fn download_core(progress_tx: Option<async_channel::Sender<f64>>) -> R
     tracing::info!("Downloading sing-box from {}", download_url);
 
     let data_dir = get_local_bin_dir();
-    std::fs::create_dir_all(&data_dir)?;
+    crate::utils::secure_create_dir_all(&data_dir)?;
     let archive_path = data_dir.join(&archive_name);
 
     let response = reqwest::Client::new().get(&download_url).send().await?;
@@ -132,7 +132,13 @@ pub async fn download_core(progress_tx: Option<async_channel::Sender<f64>>) -> R
     }
 
     let total_size = response.content_length().unwrap_or(0) as f64;
-    let mut file = std::fs::File::create(&archive_path)?;
+    let mut opts = std::fs::OpenOptions::new();
+    opts.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::OpenOptionsExt::mode(&mut opts, 0o600);
+    }
+    let mut file = opts.open(&archive_path)?;
     let mut downloaded: f64 = 0.0;
 
     let mut stream = response.bytes_stream();
@@ -160,7 +166,7 @@ pub async fn download_core(progress_tx: Option<async_channel::Sender<f64>>) -> R
 
 pub fn install_from_archive(archive_path: &Path) -> Result<String> {
     let data_dir = get_local_bin_dir();
-    std::fs::create_dir_all(&data_dir)?;
+    crate::utils::secure_create_dir_all(&data_dir)?;
     extract_and_install(archive_path, &data_dir)
 }
 

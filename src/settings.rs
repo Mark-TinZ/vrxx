@@ -206,7 +206,7 @@ impl SettingsManager {
     pub fn new() -> Self {
         let mut path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
         path.push("vrxx");
-        fs::create_dir_all(&path).ok();
+        crate::utils::secure_create_dir_all(&path).ok();
         path.push("settings.json");
         Self { config_path: path }
     }
@@ -241,7 +241,11 @@ impl SettingsManager {
                 }
                 #[cfg(not(unix))]
                 {
-                    std::fs::write(&path, content).ok();
+                    let mut opts = std::fs::OpenOptions::new();
+                    opts.write(true).create(true).truncate(true);
+                    if let Ok(mut file) = opts.open(&path) {
+                        let _ = std::io::Write::write_all(&mut file, content.as_bytes());
+                    }
                 }
                 // ============================================
             });

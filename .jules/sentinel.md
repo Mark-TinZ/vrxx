@@ -10,3 +10,7 @@
 **Vulnerability:** Xray-core generated its `access.log` and `error.log` files with default system permissions (e.g., 0644), exposing users' VPN browsing history and IP addresses to other local users.
 **Learning:** Even if the application strictly enforces `0600` permissions for its own files, external core binaries orchestrated by the application will use the system's default `umask` when creating new files like logs.
 **Prevention:** Always pre-create sensitive log/config files with restricted permissions (`0o600`) from within the parent application before passing their paths to external binaries. The binaries will then append to the existing files and preserve their strict permissions.
+## 2025-05-24 - File Creation Permissions
+**Vulnerability:** Use of `std::fs::File::create`, `std::fs::write`, and `std::fs::create_dir_all` created files and directories with default permissive permissions (`0o644` or `0o755`), potentially leaking sensitive VPN configuration and application logs to unauthorized local users.
+**Learning:** Rust's standard library file writing operations use default umask, providing insufficient protection for sensitive files on Unix systems.
+**Prevention:** Instead of default functions, use `std::fs::OpenOptions` with `.mode(0o600)` (via `std::os::unix::fs::OpenOptionsExt`) for creating files, and custom `DirBuilder` with `.mode(0o700)` for directories when storing or writing sensitive files like keys, configurations, or logs.

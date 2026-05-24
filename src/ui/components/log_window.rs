@@ -148,7 +148,11 @@ impl VrxxLogWindow {
                 }
                 #[cfg(not(unix))]
                 {
-                    let _ = std::fs::write(log_path, "");
+                    let mut opts = std::fs::OpenOptions::new();
+                    opts.write(true).create(true).truncate(true);
+                    if let Ok(mut file) = opts.open(&log_path) {
+                        let _ = std::io::Write::write_all(&mut file, b"");
+                    }
                 }
 
                 window.imp().text_view.buffer().set_text("");
