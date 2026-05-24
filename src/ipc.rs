@@ -1,7 +1,16 @@
 use crate::daemon::DaemonEvent;
 use reqwest::Client;
 use reqwest_eventsource::{Event, EventSource};
+use std::sync::OnceLock;
 use tokio_stream::StreamExt;
+
+// ⚡ Bolt Optimization:
+// `reqwest::Client` holds an internal connection pool, TLS configuration, and workers.
+// Creating it on every `DaemonClient::new()` call causes significant performance degradation
+// due to re-initialization and dropped keep-alive connections.
+// By caching it in a global `OnceLock` and cloning it (which just clones an `Arc` underneath),
+// we avoid overhead and reuse active connections.
+static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
 
 /// Клиент для взаимодействия с привилегированным демоном через REST API и SSE.
 #[derive(Clone, Debug)]
@@ -21,10 +30,14 @@ impl DaemonClient {
     pub fn new() -> Self {
         // Явно отключаем системные прокси, чтобы локальный трафик до демона
         // не маршрутизировался через VPN и не блокировался ядром.
-        let client = Client::builder()
-            .no_proxy()
-            .build()
-            .unwrap_or_else(|_| Client::new());
+        let client = HTTP_CLIENT
+            .get_or_init(|| {
+                Client::builder()
+                    .no_proxy()
+                    .build()
+                    .unwrap_or_else(|_| Client::new())
+            })
+            .clone();
 
         Self {
             client,
