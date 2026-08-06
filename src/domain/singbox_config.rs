@@ -39,28 +39,28 @@ fn get_singbox_version() -> (u32, u32, u32) {
     (1, 8, 0)
 }
 
-/// Генерирует JSON-конфигурацию для sing-box на основе выбранного ключа и настроек приложения.
-///
-/// Основные возможности:
-/// - Поддержка протоколов VLESS, VMess, Trojan.
-/// - Настройка TUN-интерфейса с автоматической маршрутизацией.
-/// - Региональная маршрутизация (RU, CN, IR) через SRS-файлы.
-/// - Блокировка IPv6 и рекламы.
-/// - Тултипы и сниффинг трафика.
+/// Генерирует JSON-конфигурацию для sing-box на основе выбранного ключа и настроек приложения с автоматическим определением версии ядра.
 pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> String {
-    // Гарантируем, что HTTP и SOCKS порты не совпадают.
+    let version = get_singbox_version();
+    build_singbox_config_with_version(parsed_key, settings, version)
+}
+
+/// Генерирует JSON-конфигурацию для sing-box с явно заданной версией ядра (используется для генерации и версионных тестов).
+pub fn build_singbox_config_with_version(
+    parsed_key: &ParsedKey,
+    settings: &AppSettings,
+    sb_version: (u32, u32, u32),
+) -> String {
     let mut actual_http_port = settings.http_port;
     if actual_http_port == settings.socks_port {
         actual_http_port += 1;
     }
 
-    let sb_version = get_singbox_version();
-    // Начиная с версии 1.11 sing-box изменил механизм сниффинга.
     let is_1_11_or_newer = sb_version.0 > 1 || (sb_version.0 == 1 && sb_version.1 >= 11);
-    // Версия 1.12 принесла изменения в DNS и domain_resolver.
     let is_1_12_or_newer = sb_version.0 > 1 || (sb_version.0 == 1 && sb_version.1 >= 12);
+    let is_1_13_or_newer = sb_version.0 > 1 || (sb_version.0 == 1 && sb_version.1 >= 13);
 
-    // Настройка входящих соединений (Inbounds).
+    // 1. Inbounds
     let mut socks_inbound = json!({
         "type": "socks",
         "tag": "socks-in",
@@ -68,7 +68,6 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         "listen_port": settings.socks_port,
     });
 
-    // Для старых версий сниффинг настраивается во входящем соединении.
     if !is_1_11_or_newer {
         socks_inbound["sniff"] = json!(settings.enable_sniffing);
         socks_inbound["sniff_override_destination"] = json!(settings.enable_sniffing);
@@ -84,20 +83,22 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         }),
     ];
 
-    // Настройка TUN интерфейса, если режим включен.
     if settings.tun_mode {
         let mut tun_inbound = json!({
             "type": "tun",
             "tag": "tun-in",
             "interface_name": "vrxx-tun",
-            "address": [
-                "172.19.0.1/30",
-                "fdfe:dcba:9876::1/126"
-            ],
-            "auto_route": true, // Позволяет демону автоматически настраивать маршруты.
-            "strict_route": true, // Предотвращает утечки трафика вне туннеля.
+            "auto_route": true,
+            "strict_route": true,
             "stack": "gvisor",
         });
+
+        if is_1_12_or_newer {
+            tun_inbound["address"] = json!(["172.19.0.1/30", "fdfe:dcba:9876::1/126"]);
+        } else {
+            tun_inbound["inet4_address"] = json!("172.19.0.1/30");
+            tun_inbound["inet6_address"] = json!("fdfe:dcba:9876::1/126");
+        }
 
         if !is_1_11_or_newer {
             tun_inbound["sniff"] = json!(settings.enable_sniffing);
@@ -107,51 +108,154 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         inbounds.push(tun_inbound);
     }
 
-    // Настройка основного исходящего соединения (Proxy Outbound).
+    // 2. Outbounds & Endpoints
     let qp = &parsed_key.query_params;
+    let proto_lower = parsed_key.protocol.to_lowercase();
     let security = qp.get("security").map(|s| s.as_str()).unwrap_or("none");
-    let net = qp.get("type").map(|s| s.as_str()).unwrap_or("tcp");
+    let net = qp.get("type").or_else(|| qp.get("net")).map(|s| s.as_str()).unwrap_or("tcp");
 
-    let mut proxy_outbound = json!({
-        "type": parsed_key.protocol.to_lowercase(),
-        "tag": "proxy",
-        "server": parsed_key.host,
-        "server_port": parsed_key.port,
-    });
+    let mut endpoints = vec![];
 
-    // Для sing-box 1.12+ указываем удаленный DNS для резолва домена сервера.
+    let mut proxy_outbound = match proto_lower.as_str() {
+        "vless" => {
+            let mut outbound = json!({
+                "type": "vless",
+                "tag": "proxy",
+                "server": parsed_key.host,
+                "server_port": parsed_key.port,
+                "uuid": parsed_key.uuid,
+            });
+            let flow = qp.get("flow").map(|s| s.as_str()).unwrap_or("");
+            if !flow.is_empty() {
+                outbound["flow"] = json!(flow);
+            }
+            outbound
+        }
+        "vmess" => json!({
+            "type": "vmess",
+            "tag": "proxy",
+            "server": parsed_key.host,
+            "server_port": parsed_key.port,
+            "uuid": parsed_key.uuid,
+            "alter_id": 0,
+            "security": "auto",
+            "packet_encoding": "xudp"
+        }),
+        "trojan" => json!({
+            "type": "trojan",
+            "tag": "proxy",
+            "server": parsed_key.host,
+            "server_port": parsed_key.port,
+            "password": parsed_key.uuid,
+        }),
+        "shadowsocks" | "ss" => {
+            let method = qp.get("method").cloned().unwrap_or_else(|| "2022-blake3-aes-128-gcm".to_string());
+            json!({
+                "type": "shadowsocks",
+                "tag": "proxy",
+                "server": parsed_key.host,
+                "server_port": parsed_key.port,
+                "method": method,
+                "password": parsed_key.uuid,
+                "packet_encoding": "xudp"
+            })
+        }
+        "hysteria2" | "hy2" => {
+            let mut outbound = json!({
+                "type": "hysteria2",
+                "tag": "proxy",
+                "server": parsed_key.host,
+                "server_port": parsed_key.port,
+                "password": parsed_key.uuid,
+            });
+            if let Some(up) = qp.get("up").or_else(|| qp.get("up_mbps")).and_then(|v| v.parse::<u32>().ok()) {
+                outbound["up_mbps"] = json!(up);
+            }
+            if let Some(down) = qp.get("down").or_else(|| qp.get("down_mbps")).and_then(|v| v.parse::<u32>().ok()) {
+                outbound["down_mbps"] = json!(down);
+            }
+            if let Some(obfs_type) = qp.get("obfs") {
+                outbound["obfs"] = json!({
+                    "type": obfs_type,
+                    "password": qp.get("obfs-password").unwrap_or(&"".to_string())
+                });
+            }
+            outbound
+        }
+        "tuic" => {
+            let (user_id, pass) = if let Some((u, p)) = parsed_key.uuid.split_once(':') {
+                (u.to_string(), p.to_string())
+            } else {
+                (parsed_key.uuid.clone(), qp.get("password").cloned().unwrap_or_default())
+            };
+            json!({
+                "type": "tuic",
+                "tag": "proxy",
+                "server": parsed_key.host,
+                "server_port": parsed_key.port,
+                "uuid": user_id,
+                "password": pass,
+                "congestion_control": qp.get("congestion_control").or_else(|| qp.get("cc")).map(|s| s.as_str()).unwrap_or("bbr"),
+                "udp_relay_mode": qp.get("udp_relay_mode").map(|s| s.as_str()).unwrap_or("native"),
+            })
+        }
+        "wireguard" | "wg" => {
+            let local_ip = qp.get("ip").cloned().unwrap_or_else(|| "10.0.0.2/32".to_string());
+            let peer_pub = qp.get("public_key").cloned().unwrap_or_default();
+
+            if is_1_13_or_newer {
+                endpoints.push(json!({
+                    "type": "wireguard",
+                    "tag": "wg-ep",
+                    "system_interface": false,
+                    "interface_name": "wg-vrxx",
+                    "local_address": [local_ip],
+                    "private_key": parsed_key.uuid,
+                    "peers": [{
+                        "server": parsed_key.host,
+                        "server_port": parsed_key.port,
+                        "public_key": peer_pub,
+                        "allowed_ips": ["0.0.0.0/0", "::/0"]
+                    }]
+                }));
+                json!({
+                    "type": "direct",
+                    "tag": "proxy",
+                    "detour": "wg-ep"
+                })
+            } else {
+                json!({
+                    "type": "wireguard",
+                    "tag": "proxy",
+                    "server": parsed_key.host,
+                    "server_port": parsed_key.port,
+                    "system_interface": false,
+                    "interface_name": "wg-vrxx",
+                    "local_address": [local_ip],
+                    "private_key": parsed_key.uuid,
+                    "peer_public_key": peer_pub,
+                })
+            }
+        }
+        _ => json!({
+            "type": "direct",
+            "tag": "proxy"
+        }),
+    };
+
     if is_1_12_or_newer && std::net::IpAddr::from_str(&parsed_key.host).is_err() {
         proxy_outbound["domain_resolver"] = json!("remote-dns");
     }
 
-    // Специфичные настройки для VLESS/VMess/Trojan.
-    if parsed_key.protocol.to_lowercase() == "vless"
-        || parsed_key.protocol.to_lowercase() == "vmess"
-    {
-        proxy_outbound["uuid"] = json!(parsed_key.uuid);
-        if parsed_key.protocol.to_lowercase() == "vmess" {
-            proxy_outbound["alter_id"] = json!(0);
-            proxy_outbound["security"] = json!("auto");
-            proxy_outbound["packet_encoding"] = json!("xudp");
-        } else {
-            let flow = qp.get("flow").map(|s| s.as_str()).unwrap_or("");
-            if !flow.is_empty() {
-                proxy_outbound["flow"] = json!(flow);
-            }
-        }
-    } else if parsed_key.protocol.to_lowercase() == "trojan" {
-        proxy_outbound["password"] = json!(parsed_key.uuid);
-    }
-
-    // Настройка TLS (TLS, Reality).
-    if security == "tls" || security == "reality" {
+    // TLS configuration
+    if security == "tls" || security == "reality" || proto_lower == "hysteria2" || proto_lower == "tuic" {
         let mut tls = json!({
             "enabled": true,
             "server_name": qp.get("sni").unwrap_or(&parsed_key.host),
             "alpn": qp.get("alpn").map(|s| s.split(',').collect::<Vec<&str>>()).unwrap_or_else(|| vec!["h2", "http/1.1"])
         });
 
-        let fp = qp.get("fp").map(|s| s.as_str()).unwrap_or("chrome");
+        let fp = qp.get("fp").or_else(|| qp.get("fingerprint")).map(|s| s.as_str()).unwrap_or("chrome");
         if !fp.is_empty() {
             tls["utls"] = json!({
                 "enabled": true,
@@ -170,7 +274,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         proxy_outbound["tls"] = tls;
     }
 
-    // Настройка транспорта (gRPC, WebSocket).
+    // Transports
     if net == "grpc" {
         proxy_outbound["transport"] = json!({
             "type": "grpc",
@@ -186,8 +290,8 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         });
     }
 
-    // Мультиплексирование.
-    if settings.enable_mux && security != "reality" {
+    // Multiplexing
+    if settings.enable_mux && security != "reality" && proto_lower != "hysteria2" && proto_lower != "tuic" {
         proxy_outbound["multiplex"] = json!({
             "enabled": true,
             "protocol": "smux"
@@ -198,17 +302,22 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         proxy_outbound["domain_strategy"] = json!("ipv4_only");
     }
 
-    // --- Раздел: Правила маршрутизации ---
+    // 3. Routing rules
     let mut rules = vec![];
 
-    // Сниффинг в новых версиях настраивается через правила.
     if is_1_11_or_newer && settings.enable_sniffing {
         rules.push(json!({
             "action": "sniff"
         }));
     }
 
-    // Блокировка всего IPv6 трафика.
+    if is_1_13_or_newer {
+        rules.push(json!({
+            "protocol": "dns",
+            "action": "hijack-dns"
+        }));
+    }
+
     if settings.disable_ipv6 {
         rules.push(json!({
             "ip_cidr": ["::/0"],
@@ -216,7 +325,6 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         }));
     }
 
-    // Обход локальной сети (LAN).
     if settings.bypass_lan {
         rules.push(json!({
             "ip_is_private": true,
@@ -231,7 +339,6 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
     let mut rule_sets = vec![];
     let mut active_rule_sets = vec![];
 
-    // Блокировка рекламы через удаленные наборы правил.
     if settings.block_ads {
         let tag = "geosite-category-ads-all";
         rule_sets.push(json!({
@@ -247,7 +354,6 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         }));
     }
 
-    // Региональные правила (Россия, Китай, Иран).
     if settings.enable_routing {
         let mut add_region = |tag: &str, url: &str| {
             active_rule_sets.push(tag.to_string());
@@ -294,7 +400,6 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
             }
         }
 
-        // Пользовательские правила (домены, IP, SRS).
         for rule in &settings.routing_rules {
             let action_tag = if rule.action == "direct" {
                 "direct"
@@ -315,7 +420,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
                     "outbound": action_tag
                 }));
             } else if rule.type_ == "srs_url" {
-                let srs_tag = format!("srs-{}", rule.name.replace(" ", "-").to_lowercase());
+                let srs_tag = format!("srs-{}", rule.name.replace(' ', "-").to_lowercase());
                 rule_sets.push(json!({
                     "tag": srs_tag.clone(),
                     "type": "remote",
@@ -331,7 +436,6 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         }
     }
 
-    // Настройка исходящих соединений (Outbounds).
     let mut direct_outbound = json!({
         "type": "direct",
         "tag": "direct"
@@ -349,7 +453,6 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         }),
     ];
 
-    // Конфигурация маршрутизатора (Route).
     let mut route_config = json!({
         "rules": rules,
         "auto_detect_interface": true,
@@ -364,12 +467,12 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         route_config["rule_set"] = json!(rule_sets);
     }
 
-    // Настройка DNS.
+    // 4. DNS config
     let remote_dns = json!({
         "tag": "remote-dns",
         "type": "https",
         "server": "1.1.1.1",
-        "detour": "proxy" // DNS-запросы идут через прокси для предотвращения утечек.
+        "detour": "proxy"
     });
 
     let local_dns = json!({
@@ -381,7 +484,6 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
     let mut dns_rules = vec![];
 
     if is_1_12_or_newer && settings.disable_ipv6 {
-        // Отклоняем AAAA запросы в новых версиях.
         dns_rules.push(json!({
             "query_type": ["AAAA"],
             "action": "reject",
@@ -413,8 +515,8 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         "independent_cache": true
     });
 
-    // Сборка финального корневого объекта JSON.
-    let root = json!({
+    // 5. Final Root Assembly
+    let mut root = json!({
         "log": {
             "level": settings.log_level,
             "timestamp": true
@@ -430,5 +532,103 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         }
     });
 
+    if is_1_13_or_newer && !endpoints.is_empty() {
+        root["endpoints"] = json!(endpoints);
+    }
+
     serde_json::to_string_pretty(&root).unwrap_or_else(|_| "{}".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::key_parser::parse_vpn_key;
+
+    #[test]
+    fn test_singbox_config_validity() {
+        let key = parse_vpn_key("vless://my-uuid@1.1.1.1:443?security=reality&pbk=pubkey&sid=sid&sni=google.com&flow=xtls-rprx-vision#TestVLESS")
+            .expect("Valid key");
+        let settings = AppSettings::default();
+
+        let json_str = build_singbox_config(&key, &settings);
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Valid JSON");
+
+        assert!(parsed.get("inbounds").is_some());
+        assert!(parsed.get("outbounds").is_some());
+        assert!(parsed.get("route").is_some());
+        assert!(parsed.get("dns").is_some());
+    }
+
+    #[test]
+    fn test_singbox_version_1_13_adaptation() {
+        let key = parse_vpn_key("wg://my-priv-key@1.1.1.1:51820?public_key=peer_pub&ip=10.0.0.2/32#TestWG")
+            .expect("Valid WG key");
+        let mut settings = AppSettings::default();
+        settings.tun_mode = true;
+        settings.disable_ipv6 = true;
+
+        let json_str = build_singbox_config_with_version(&key, &settings, (1, 13, 0));
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Valid JSON");
+
+        // Verify endpoints array for 1.13+ WireGuard
+        assert!(parsed.get("endpoints").is_some(), "Should contain endpoints in 1.13+");
+
+        // Verify TUN address array in 1.13+
+        let inbounds = parsed.get("inbounds").and_then(|i| i.as_array()).expect("Inbounds array");
+        let tun = inbounds.iter().find(|i| i.get("type").and_then(|t| t.as_str()) == Some("tun")).expect("TUN inbound");
+        assert!(tun.get("address").is_some(), "Should use address array in 1.13+");
+
+        // Verify route rules hijack-dns in 1.13+
+        let rules = parsed.get("route").and_then(|r| r.get("rules")).and_then(|r| r.as_array()).expect("Route rules");
+        let hijack_rule = rules.iter().find(|r| r.get("action").and_then(|a| a.as_str()) == Some("hijack-dns"));
+        assert!(hijack_rule.is_some(), "Should contain hijack-dns rule in 1.13+");
+
+        // Verify DNS reject for IPv6 AAAA in 1.13+
+        let dns_rules = parsed.get("dns").and_then(|d| d.get("rules")).and_then(|r| r.as_array()).expect("DNS rules");
+        let reject_rule = dns_rules.iter().find(|r| r.get("action").and_then(|a| a.as_str()) == Some("reject"));
+        assert!(reject_rule.is_some(), "Should contain reject rule for AAAA in 1.13+");
+    }
+
+    #[test]
+    fn test_singbox_version_1_8_adaptation() {
+        let key = parse_vpn_key("vless://my-uuid@1.1.1.1:443#TestOld")
+            .expect("Valid key");
+        let mut settings = AppSettings::default();
+        settings.tun_mode = true;
+
+        let json_str = build_singbox_config_with_version(&key, &settings, (1, 8, 0));
+        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Valid JSON");
+
+        // Verify TUN inet4_address / inet6_address in < 1.12
+        let inbounds = parsed.get("inbounds").and_then(|i| i.as_array()).expect("Inbounds array");
+        let tun = inbounds.iter().find(|i| i.get("type").and_then(|t| t.as_str()) == Some("tun")).expect("TUN inbound");
+        assert!(tun.get("inet4_address").is_some(), "Should use inet4_address in < 1.12");
+        assert!(tun.get("address").is_none(), "Should not use address array in < 1.12");
+    }
+
+    #[test]
+    fn test_all_protocols_config_generation() {
+        let settings = AppSettings::default();
+
+        let protocols = vec![
+            "vless://uuid@1.1.1.1:443?security=reality&pbk=key&sid=id#VLESS",
+            "vmess://eyJ2IjoiMiIsInBzIjoiVk1lc3MiLCJhZGQiOiIxLjEuMS4xIiwicG9ydCI6NDQzLCJpZCI6InV1aWQiLCJuZXQiOiJ3cyJ9",
+            "trojan://pass@1.1.1.1:443#Trojan",
+            "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@1.1.1.1:8388#SS",
+            "hy2://pass@1.1.1.1:8443?up=100&down=500&obfs=salamander&obfs-password=123#HY2",
+            "tuic://uuid:pass@1.1.1.1:8443?congestion_control=bbr#TUIC",
+            "wg://privkey@1.1.1.1:51820?public_key=pubkey#WG",
+        ];
+
+        for proto_url in protocols {
+            let key = parse_vpn_key(proto_url).expect("Key parse");
+            let json_1_13 = build_singbox_config_with_version(&key, &settings, (1, 13, 0));
+            let parsed_1_13: serde_json::Value = serde_json::from_str(&json_1_13).expect("Valid 1.13 JSON");
+            assert!(parsed_1_13.get("outbounds").is_some(), "Protocol {} failed in 1.13", key.protocol);
+
+            let json_1_8 = build_singbox_config_with_version(&key, &settings, (1, 8, 0));
+            let parsed_1_8: serde_json::Value = serde_json::from_str(&json_1_8).expect("Valid 1.8 JSON");
+            assert!(parsed_1_8.get("outbounds").is_some(), "Protocol {} failed in 1.8", key.protocol);
+        }
+    }
 }

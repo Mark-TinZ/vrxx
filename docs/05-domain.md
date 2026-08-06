@@ -4,20 +4,21 @@
 
 Слой Domain (`src/domain/`) отвечает за обработку VPN-данных независимо от того, кто их вызвал (графический интерфейс или демон). Его основные задачи:
 1. Парсинг пользовательских строк/URI в стандартизированную структуру.
-2. Трансляция этой структуры + настроек приложения в сложный JSON-формат конфигурации ядра Sing-box.
+2. Трансляция этой структуры + настроек приложения в сложный JSON-формат конфигурации ядра Sing-box с динамической версионной адаптацией (от 1.8 до 1.13+).
 
 ## Поддерживаемые протоколы
 
-| Протокол | Формат ввода (URI Scheme) | Парсер (key_parser) | Генератор Sing-box |
-| --- | --- | --- | --- |
-| **VLESS** | `vless://uuid@host:port?params...` | ✅ Полный | ✅ Полный |
-| **VMess** | `vmess://[Base64 JSON]` | ✅ Полный | ✅ Полный |
-| **Trojan** | `trojan://pass@host:port?params...` | ✅ Полный | ✅ Полный |
-| **Shadowsocks**| `ss://[Base64 URL]@host:port` | ✅ Базовый | 🚧 Частичный |
-| **WireGuard** | `wg://...` (зарезервировано) | ❌ В планах | ❌ В планах |
-| **SOCKS** | `socks://...` (зарезервировано) | ❌ В планах | ❌ В планах |
+| Протокол | Формат ввода (URI Scheme) | Парсер (key_parser) | Генератор Sing-box | Особенности реализации |
+| --- | --- | --- | --- | --- |
+| **VLESS** | `vless://uuid@host:port?params...` | ✅ Полный | ✅ Полный | REALITY (`pbk`, `sid`), XTLS-Vision (`flow`), uTLS (`fp`) |
+| **VMess** | `vmess://[Base64 JSON]` | ✅ Полный | ✅ Полный | gRPC, WebSocket (`ws`), TCP, AlterId, `xudp` |
+| **Trojan** | `trojan://pass@host:port?params...` | ✅ Полный | ✅ Полный | TLS, uTLS отпечаток |
+| **Shadowsocks**| `ss://[Base64 URL]@host:port` | ✅ Полный | ✅ Полный | 2022-blake3-aes-128/256-gcm, AEAD (chacha20, aes-gcm), `xudp` |
+| **Hysteria2** | `hy2://pass@host:port?params...` | ✅ Полный | ✅ Полный | `up_mbps`, `down_mbps`, obfs (salamander), uTLS, TLS |
+| **TUIC v5** | `tuic://uuid:pass@host:port?params...` | ✅ Полный | ✅ Полный | `congestion_control` (bbr), `udp_relay_mode` (native/quic) |
+| **WireGuard** | `wg://privkey@host:port?params...` | ✅ Полный | ✅ Полный | 1.13+ через верхнеуровневый массив `endpoints` / классический outbound |
 
-> **Примечание:** Архитектура позволяет легко добавлять новые протоколы. Достаточно добавить вариант в `ProtocolSettings` (`protocol.rs`) и реализовать его обработку в генераторе.
+> **Примечание:** Архитектура позволяет легко добавлять новые протоколы. Достаточно реализовать вариативный парсинг в `key_parser.rs` и сформировать соответствующий исходящий блок в `singbox_config.rs`.
 
 ## Парсинг ключей (key_parser.rs)
 
@@ -25,60 +26,55 @@
 
 ```rust
 pub struct ParsedKey {
-    pub protocol: String,      // "VLESS", "VMess", "Trojan"
+    pub protocol: String,      // "VLESS", "VMess", "Trojan", "Shadowsocks", "Hysteria2", "TUIC", "WireGuard"
     pub name: String,          // Имя ключа (обычно берется из фрагмента #name)
     pub host: String,          // IP-адрес или домен сервера
     pub port: u16,
-    pub uuid: String,          // Пароль, UUID или шифр
-    pub query_params: HashMap<String, String>, // Все параметры (security, type, sni, pbk)
+    pub uuid: String,          // Пароль, UUID, приватный ключ или токен
+    pub query_params: HashMap<String, String>, // Все параметры (security, type, sni, pbk, obfs, cc)
     pub raw_url: String,       // Исходная строка
 }
 ```
 
 **Особенности парсинга:**
-- `VMess` использует специфичный парсинг: отбрасывает префикс `vmess://`, декодирует Base64 и парсит полученный JSON-объект.
-- Для `VLESS` и `Trojan` используется стандартный крейт `url`. Значения `security`, `flow`, `sni`, `pbk` и прочие извлекаются как Query Parameters.
-- Функция `build_vpn_key(parsed: &ParsedKey)` выполняет обратную операцию: собирает URL-строку из структуры (используется при экспорте).
+- `VMess` отбрасывает префикс `vmess://`, декодирует Base64 и парсит полученный JSON-объект.
+- `Shadowsocks` поддерживает SIP002 Base64 и plain text userinfo (`method:password`), автоматически определяя методы шифрования 2022.
+- `VLESS`, `Trojan`, `Hysteria2`, `TUIC`, `WireGuard` используют парсинг URL-схем с декодированием фрагментов `#name` и вычленением всех Query-параметров.
+- Функция `build_vpn_key(parsed: &ParsedKey)` выполняет обратную сериализацию структуры в стандартную URI-строку (для экспорта).
 
 ## Генерация конфигурации Sing-box (singbox_config.rs)
 
-Sing-box требует сложной JSON-конфигурации для работы. Написание таких конфигов вручную сопряжено с риском ошибок, поэтому VRXX генерирует их динамически `build_singbox_config(&ParsedKey, &AppSettings)`.
+VRXX динамически генерирует полную JSON-конфигурацию с помощью `build_singbox_config(&ParsedKey, &AppSettings)` и `build_singbox_config_with_version(...)`.
 
-### 1. Версионная адаптивность
-Код содержит функцию `get_singbox_version()`, которая парсит вывод `sing-box version`.
-Sing-box часто вносит обратно несовместимые (breaking) изменения в свой конфигурационный формат.
-VRXX автоматически подстраивает JSON под ядро:
-- **< 1.11**: Опции `sniff` указываются прямо во входящем (inbound) соединении.
-- **>= 1.11**: Сниффинг перемещен в отдельный блок маршрутизации (`route.rules.action: "sniff"`).
-- **>= 1.12**: Добавлены правила отклонения IPv6 AAAA запросов (`reject`, `drop`) и опция `domain_resolver: "remote-dns"` для исходящих прокси.
+### 1. Динамическая версионная адаптивность (1.8 – 1.13+)
+
+Функция `get_singbox_version()` определяет версию ядра (`sing-box version`). Код генератора адаптирует структуры JSON под особенности каждой версии:
+
+| Версия ядра | Inbounds TUN | WireGuard | DNS rules (IPv6) | Route rules |
+| --- | --- | --- | --- | --- |
+| **sing-box >= 1.13** | `address: ["172.19.0.1/30", "fdfe:dcba:9876::1/126"]` | Верхнеуровневый массив `"endpoints"` | `{"query_type": ["AAAA"], "action": "reject"}` | `{"protocol": "dns", "action": "hijack-dns"}` |
+| **sing-box == 1.12** | `address: [...]` | Классический outbound | `{"query_type": ["AAAA"], "action": "reject"}` | `domain_resolver: "remote-dns"` |
+| **sing-box < 1.12** | `inet4_address`, `inet6_address` | Классический outbound | `domain_strategy: "ipv4_only"` | `sniff` в inbounds |
 
 ### 2. Входящие соединения (Inbounds)
-VRXX всегда создает минимум два локальных порта:
 - **SOCKS in**: порт из настроек (по умолчанию `10808`).
-- **HTTP in**: порт из настроек (по умолчанию `10809`). Если порты совпадают, HTTP-порту прибавляется `+1`.
-- **TUN in** (опционально): при включенном TUN-режиме, создается интерфейс с IP `172.19.0.1/30` и стеком `gvisor`. Включены флаги `auto_route: true` и `strict_route: true`.
+- **HTTP in**: порт из настроек (по умолчанию `10809`).
+- **TUN in**: интерфейс `vrxx-tun`, стек `gvisor`, `auto_route: true`, `strict_route: true`.
 
-### 3. Исходящие соединения (Outbounds)
-Формируется основной `proxy` outbound в зависимости от протокола.
-- **TLS и Reality**: Автоматически мапится `server_name` (`sni`), `alpn` (http/1.1, h2) и uTLS отпечаток (`fp = chrome`). Для Reality передаются `public_key` и `short_id`.
-- **Транспорт (Transport)**: Поддерживается `grpc` (с `serviceName`) и `ws` (WebSockets с правильными `Host` заголовками).
-- **Мультиплексирование (smux)**: Добавляется блок `multiplex`, если он включен в настройках, но принудительно отключается, если используется протокол Reality (т.к. smux деанонимизирует Reality).
+### 3. Исходящие соединения (Outbounds) & Endpoints
+- **VLESS / REALITY / Vision**: настройка `flow`, `public_key`, `short_id`, `sni`, uTLS.
+- **VMess**: UUID, `alter_id` (0), transport (`grpc`, `ws`), `packet_encoding: "xudp"`.
+- **Shadowsocks**: поддержка протоколов 2022-blake3 и AEAD.
+- **Hysteria2**: лимиты пропускной способности `up_mbps` / `down_mbps`, `obfs` (`salamander`), uTLS.
+- **TUIC v5**: `congestion_control` (BBR), `udp_relay_mode` (native).
+- **WireGuard**: верхнеуровневый массив `"endpoints"` для sing-box 1.13+ с детуром через direct, либо прямое исходящее соединение `wireguard` для старых ядер.
 
-### 4. Настройка DNS
-- **remote-dns** (`1.1.1.1` через `https`): используется для безопасного резолва заблокированных доменов. Запросы к нему принудительно отправляются через detour `"proxy"`, предотвращая утечки.
-- **local-dns** (`local`): используется для локальных запросов (например, обход LAN).
-
-### 5. Правила маршрутизации (Route)
-Генерируется сложный блок правил на основе включенных опций:
-1. **Сниффинг**: активация захвата пакетов.
-2. **Блокировка IPv6**: если `disable_ipv6 = true`, сбрасываем `::/0`.
-3. **Обход LAN**: запросы к приватным сетям (`192.168.x.x`, `10.x.x.x`) направляются в `direct`.
-4. **Удаленные наборы правил (Remote Rule Sets / SRS)**:
-   При включении региональной маршрутизации добавляются скомпилированные правила от MetaCubeX:
-   - `geosite-ru.srs` / `geoip-ru.srs` (Россия)
-   - `geosite-cn.srs` / `geoip-cn.srs` (Китай)
-   - `geosite-ir.srs` / `geoip-ir.srs` (Иран)
-   - `geosite-antifilter.srs` (Россия, Antifilter)
-5. **Пользовательские правила**: Трансляция объектов `RoutingRule` в JSON-блоки (домен, IP или URL собственного SRS файла).
+### 4. Настройка DNS и Маршрутизация
+- **DNS**: `remote-dns` (DoH 1.1.1.1 через proxy) и `local-dns` (local через direct).
+- **Сниффинг трафика**: правило `action: "sniff"` в `route.rules` для ядер >= 1.11.
+- **Перехват DNS**: правило `action: "hijack-dns"` для ядер >= 1.13.
+- **Обход LAN**: автоматический перевод локальных подсетей в `direct`.
+- **Удаленные наборы правил (Remote SRS Rule Sets)**: MetaCubeX geosite & geoip SRS для блокировки рекламы и регионального роутинга (RU, CN, IR, Antifilter).
 
 Сгенерированный JSON передается демоном в `stdin` процесса ядра, не оставляя следов на диске.
+
