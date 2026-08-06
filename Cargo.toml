@@ -34,6 +34,9 @@ axum-extra = { version = "0.12.6", features = ["default"] }
 tokio-stream = { version = "0.1.18", features = ["sync"] }
 reqwest-eventsource = "0.6.0"
 zbus = { version = "5.15.0", features = ["tokio"] }
+ratatui = "0.29"
+crossterm = "0.28"
+
 
 [dependencies.adw]
 package = "libadwaita"

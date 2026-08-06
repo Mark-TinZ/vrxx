@@ -18,6 +18,8 @@ pub mod ipc;
 mod protocol;
 pub mod services;
 mod settings;
+pub mod tui;
+
 mod ui;
 mod window;
 
@@ -56,6 +58,17 @@ fn main() -> glib::ExitCode {
     std::fs::create_dir_all(&log_dir).ok();
 
     let is_daemon = args.iter().any(|arg| arg == "--daemon");
+    let is_tui = args.iter().any(|arg| arg == "tui");
+
+    if is_tui {
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+        if let Err(e) = rt.block_on(tui::run_tui()) {
+            eprintln!("Error running TUI: {e}");
+            std::process::exit(1);
+        }
+        std::process::exit(0);
+    }
+
     let log_suffix = if is_daemon { "daemon" } else { "app" };
 
     #[cfg(unix)]
