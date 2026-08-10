@@ -29,11 +29,11 @@ use gettextrs::{bind_textdomain_codeset, bindtextdomain, setlocale, textdomain, 
 use gtk::prelude::*;
 use gtk::{gio, glib};
 
-struct MultiWriter {
-    app_log: std::fs::File,
-    all_log: std::fs::File,
+struct MultiWriter<W1: std::io::Write, W2: std::io::Write> {
+    app_log: W1,
+    all_log: W2,
 }
-impl std::io::Write for MultiWriter {
+impl<W1: std::io::Write, W2: std::io::Write> std::io::Write for MultiWriter<W1, W2> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let _ = self.app_log.write_all(buf);
         let _ = self.all_log.write_all(buf);
@@ -50,9 +50,13 @@ fn main() -> glib::ExitCode {
     // Точка входа в приложение
     let args: Vec<String> = std::env::args().collect();
 
-    // --- Раздел: Логирование ---
-    let log_dir = dirs::config_dir()
-        .unwrap_or_else(|| std::path::PathBuf::from("."))
+    // --- Раздел: Логирование с авторотацией в ~/.local/share/vrxx/logs/ ---
+    let log_dir = dirs::data_local_dir()
+        .unwrap_or_else(|| {
+            dirs::home_dir()
+                .map(|h| h.join(".local/share"))
+                .unwrap_or_else(|| std::path::PathBuf::from("."))
+        })
         .join("vrxx")
         .join("logs");
     std::fs::create_dir_all(&log_dir).ok();
@@ -63,59 +67,16 @@ fn main() -> glib::ExitCode {
     if is_tui {
         let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
         if let Err(e) = rt.block_on(tui::run_tui()) {
-            eprintln!("Error running TUI: {e}");
+            tracing::error!("Error running TUI: {e}");
             std::process::exit(1);
         }
         std::process::exit(0);
     }
 
-    let log_suffix = if is_daemon { "daemon" } else { "app" };
+    let log_prefix = if is_daemon { "daemon.log" } else { "app.log" };
 
-    #[cfg(unix)]
-    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-
-    let mut log_opts = std::fs::OpenOptions::new();
-    log_opts.create(true).append(true);
-    #[cfg(unix)]
-    log_opts.mode(0o600);
-
-    let log_file = match log_opts.open(log_dir.join(format!("{}.log", log_suffix))) {
-        Ok(file) => {
-            #[cfg(unix)]
-            let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
-            file
-        }
-        Err(e) => {
-            eprintln!(
-                "Warning: Failed to open {}.log: {}. Using /dev/null",
-                log_suffix, e
-            );
-            std::fs::OpenOptions::new()
-                .write(true)
-                .open("/dev/null")
-                .unwrap_or_else(|_| std::process::exit(1))
-        }
-    };
-
-    let mut all_log_opts = std::fs::OpenOptions::new();
-    all_log_opts.create(true).append(true);
-    #[cfg(unix)]
-    all_log_opts.mode(0o600);
-
-    let all_log_file = match all_log_opts.open(log_dir.join("all.log")) {
-        Ok(file) => {
-            #[cfg(unix)]
-            let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
-            file
-        }
-        Err(e) => {
-            eprintln!("Warning: Failed to open all.log: {}. Using /dev/null", e);
-            std::fs::OpenOptions::new()
-                .write(true)
-                .open("/dev/null")
-                .unwrap_or_else(|_| std::process::exit(1))
-        }
-    };
+    let log_file = tracing_appender::rolling::daily(&log_dir, log_prefix);
+    let all_log_file = tracing_appender::rolling::daily(&log_dir, "all.log");
 
     let multi_writer = MultiWriter {
         app_log: log_file,
@@ -150,7 +111,7 @@ fn main() -> glib::ExitCode {
                 std::process::exit(0);
             }
             Err(e) => {
-                eprintln!("Failed to initialize tokio runtime: {e}");
+                tracing::error!("Failed to initialize tokio runtime: {e}");
                 std::process::exit(1);
             }
         }
@@ -186,13 +147,13 @@ fn main() -> glib::ExitCode {
     gtk::glib::set_application_name("Vrxx");
 
     if let Err(e) = bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR) {
-        eprintln!("Unable to bind the text domain: {}", e);
+        tracing::warn!("Unable to bind the text domain: {}", e);
     }
     if let Err(e) = bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8") {
-        eprintln!("Unable to set the text domain encoding: {}", e);
+        tracing::warn!("Unable to set the text domain encoding: {}", e);
     }
     if let Err(e) = textdomain(GETTEXT_PACKAGE) {
-        eprintln!("Unable to switch to the text domain: {}", e);
+        tracing::warn!("Unable to switch to the text domain: {}", e);
     }
 
     // Загружаем ресурсы
@@ -200,7 +161,7 @@ fn main() -> glib::ExitCode {
     if let Ok(res) = gio::Resource::from_data(&glib::Bytes::from(res_data)) {
         gio::resources_register(&res);
     } else {
-        eprintln!("Failed to load compiled resources");
+        tracing::error!("Failed to load compiled resources");
     }
 
     // Устанавливаем перехватчик логов GLib/GTK

@@ -33,3 +33,10 @@ async fn test_dns_protection() {
 
     tun_mgr.teardown().await.unwrap();
 }
+
+#[tokio::test]
+async fn test_self_healing_execution() {
+    // Проверяем, что процедура самовосстановления вызывается без паник
+    let res = crate::daemon::network::self_heal().await;
+    assert!(res.is_ok());
+}

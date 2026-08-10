@@ -46,7 +46,7 @@ pub async fn run_tui() -> Result<()> {
     terminal.show_cursor()?;
 
     if let Err(err) = res {
-        println!("TUI Error: {err:?}");
+        tracing::error!("TUI Error: {err:?}");
     }
 
     Ok(())

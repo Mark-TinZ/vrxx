@@ -1,4 +1,5 @@
 pub mod components;
+pub mod error_dialog;
 pub mod import_dialog;
 pub mod models;
 pub mod pages;

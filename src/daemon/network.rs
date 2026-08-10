@@ -112,3 +112,80 @@ impl TunManager {
         Ok(())
     }
 }
+
+/// Функция самовосстановления сети (Self-Healing).
+/// Выполняется при старте демона `vrxx-daemon`:
+/// 1. Удаление подвисших/сиротских интерфейсов `vrxx-tun`.
+/// 2. Очистка подвисших правил таблицы маршрутизации (`ip rule del table 100`).
+/// 3. Сброс `org.gnome.system.proxy mode` на `"none"`, если прокси не подключен.
+pub async fn self_heal() -> Result<()> {
+    tracing::info!("Running network self-healing checks on daemon startup...");
+
+    // 1. Проверка наличия и удаление сиротских интерфейсов vrxx-tun
+    let status_del_tun = tokio::process::Command::new("ip")
+        .args(["link", "del", "vrxx-tun"])
+        .status()
+        .await;
+
+    match status_del_tun {
+        Ok(st) if st.success() => {
+            tracing::info!("Self-Healing: Removed orphan interface vrxx-tun.");
+        }
+        _ => {
+            tracing::debug!("Self-Healing: No orphan vrxx-tun interface found.");
+        }
+    }
+
+    // 2. Очистка зависших правил таблицы маршрутизации (ip rule del table 100)
+    let mut cleaned_rules = 0;
+    loop {
+        let status = tokio::process::Command::new("ip")
+            .args(["rule", "del", "table", "100"])
+            .status()
+            .await;
+
+        match status {
+            Ok(st) if st.success() => {
+                cleaned_rules += 1;
+            }
+            _ => break,
+        }
+    }
+    if cleaned_rules > 0 {
+        tracing::info!(
+            "Self-Healing: Removed {} dangling table 100 routing rule(s).",
+            cleaned_rules
+        );
+    } else {
+        tracing::debug!("Self-Healing: No dangling table 100 routing rules found.");
+    }
+
+    // 3. Проверка org.gnome.system.proxy mode. Если демон не подключен, сброс режима на "none".
+    reset_gnome_proxy_if_disconnected().await;
+
+    Ok(())
+}
+
+pub async fn reset_gnome_proxy_if_disconnected() {
+    let output = tokio::process::Command::new("gsettings")
+        .args(["get", "org.gnome.system.proxy", "mode"])
+        .output()
+        .await;
+
+    if let Ok(out) = output {
+        let mode_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        if !mode_str.contains("'none'") && !mode_str.is_empty() {
+            tracing::warn!(
+                "Self-Healing: GNOME proxy mode was set to {}, resetting to 'none'",
+                mode_str
+            );
+            let set_res = tokio::process::Command::new("gsettings")
+                .args(["set", "org.gnome.system.proxy", "mode", "none"])
+                .status()
+                .await;
+            if let Err(e) = set_res {
+                tracing::error!("Self-Healing: Failed to reset GNOME proxy mode: {}", e);
+            }
+        }
+    }
+}

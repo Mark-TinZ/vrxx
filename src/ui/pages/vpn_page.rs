@@ -926,14 +926,22 @@ impl VrxxVpnPage {
                         page.save_current_keys();
                         page.update_disconnect_action_state();
 
-                        let dialog = adw::AlertDialog::builder()
-                            .heading(gettext("Connection error"))
-                            .body(e.to_string())
-                            .build();
-                        dialog.add_response("ok", &gettext("OK"));
-                        if let Some(root) = page.root() {
-                            dialog.present(Some(&root));
-                        }
+                        let raw_err = e.to_string();
+                        let human_msg = crate::ui::error_dialog::format_human_error(&raw_err);
+                        let tech_log = format!(
+                            "--- Technical Log & Error Stack ---\nTimestamp: {}\nError: {}\nRaw Trace: {:?}",
+                            chrono::Local::now().to_rfc3339(),
+                            human_msg,
+                            e
+                        );
+
+                        let root_widget = page.root();
+                        crate::ui::error_dialog::show_error_dialog(
+                            root_widget.as_ref(),
+                            Some(&gettext("Failed to connect to VPN")),
+                            &human_msg,
+                            &tech_log,
+                        );
                     }
                 } else {
                     tracing::info!("Backend successfully started via REST API");

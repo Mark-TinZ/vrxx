@@ -13,6 +13,11 @@ use std::sync::Arc;
 pub async fn run_with_manager(event_manager: Arc<events::EventManager>) -> anyhow::Result<()> {
     tracing::info!("Starting vrxx daemon REST API on 127.0.0.1:13337...");
 
+    // 0. Запуск процедур самовосстановления сети (Self-Healing)
+    if let Err(e) = network::self_heal().await {
+        tracing::warn!("Network self-healing warning: {}", e);
+    }
+
     // 1. Инициализируем менеджер прокси
     let proxy_manager = Arc::new(core::ProxyManager::new(event_manager.clone()));
 
