@@ -149,4 +149,42 @@ impl VrxxWindow {
         imp.active_server_traffic
             .set_label(&format!("↓ {} | ↑ {}", down, up));
     }
+
+    pub fn handle_open_uri(&self, uri: &str) {
+        match crate::domain::key_parser::parse_vpn_key(uri) {
+            Ok(parsed) => {
+                self.present();
+                let window_weak = self.downgrade();
+                crate::ui::import_dialog::show_import_dialog(
+                    self.upcast_ref::<gtk::Window>(),
+                    parsed,
+                    move |parsed_import| {
+                        if let Some(window) = window_weak.upgrade() {
+                            window.import_key_to_vpn_page(parsed_import, false);
+                        }
+                    },
+                    {
+                        let window_weak = self.downgrade();
+                        move |parsed_connect| {
+                            if let Some(window) = window_weak.upgrade() {
+                                window.import_key_to_vpn_page(parsed_connect, true);
+                            }
+                        }
+                    },
+                );
+            }
+            Err(e) => {
+                tracing::error!("Failed to parse URL scheme link '{uri}': {e}");
+            }
+        }
+    }
+
+    fn import_key_to_vpn_page(&self, parsed: crate::domain::key_parser::ParsedKey, connect: bool) {
+        let imp = self.imp();
+        if let Some(vpn_widget) = imp.view_stack.child_by_name("page_vpn") {
+            if let Some(vpn_page) = vpn_widget.downcast_ref::<VrxxVpnPage>() {
+                vpn_page.import_key(parsed, connect);
+            }
+        }
+    }
 }

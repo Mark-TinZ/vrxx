@@ -1,6 +1,8 @@
 pub mod components;
+pub mod import_dialog;
 pub mod models;
 pub mod pages;
+pub mod qr_dialog;
 
 use gtk::prelude::*;
 

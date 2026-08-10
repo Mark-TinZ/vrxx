@@ -211,6 +211,16 @@ impl VrxxVpnPage {
                 None
             });
 
+            // QR Код
+            let page_weak_qr = page_weak.clone();
+            let key_obj_qr = key_obj.clone();
+            row.connect_local("request-qr-code", false, move |_| {
+                if let Some(page) = page_weak_qr.upgrade() {
+                    page.handle_qr_code_key(&key_obj_qr);
+                }
+                None
+            });
+
             // Ручной пинг (ИСПРАВЛЕНО: Явное указание типов)
             let key_obj_ping = key_obj.clone();
             row.connect_local("request-ping", false, move |_| {
@@ -252,26 +262,40 @@ impl VrxxVpnPage {
                 });
 
                 // 3. Отправитель работает в фоне (БЕЗ объектов UI)
+                let raw_url_bg = key_obj_ping.url();
                 std::thread::spawn(move || {
-                    use std::net::{TcpStream, ToSocketAddrs};
-                    use std::time::{Duration, Instant};
+                    let parsed =
+                        crate::domain::key_parser::parse_vpn_key(&raw_url_bg).unwrap_or_default();
+                    let target = crate::services::ping::PingTarget {
+                        id: parsed.name,
+                        host: target_host,
+                        port: target_port,
+                        raw_url: raw_url_bg,
+                    };
 
-                    let start_ping = Instant::now();
-                    let mut success = false;
-                    let timeout = Duration::from_secs(2);
+                    let settings = crate::settings::SettingsManager::new().load();
+                    let options = crate::services::ping::PingOptions {
+                        algorithm: crate::services::ping::PingAlgorithm::parse(
+                            &settings.ping_algorithm,
+                        ),
+                        target_url: settings.ping_target_url,
+                        timeout: std::time::Duration::from_secs(3),
+                        proxy_url: None,
+                        concurrency_limit: 1,
+                    };
 
-                    // Разрешаем доменное имя в IP, если это не IP
-                    let addr = format!("{target_host}:{target_port}");
-                    if let Ok(mut addrs) = addr.to_socket_addrs() {
-                        if let Some(socket_addr) = addrs.next() {
-                            if let Ok(stream) = TcpStream::connect_timeout(&socket_addr, timeout) {
-                                success = true;
-                                let _ = stream.shutdown(std::net::Shutdown::Both);
-                            }
-                        }
-                    }
+                    let ping_res = if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                    {
+                        rt.block_on(crate::services::ping::ping_target(&target, &options))
+                    } else {
+                        crate::services::ping::PingResult::Timeout
+                    };
 
-                    let _ = sender.send_blocking((success, start_ping.elapsed().as_millis()));
+                    let success = ping_res.is_success();
+                    let ms = ping_res.latency_ms().unwrap_or(0);
+                    let _ = sender.send_blocking((success, ms));
                 });
                 None
             });
@@ -771,40 +795,44 @@ impl VrxxVpnPage {
                                                     }
                                                 }
                                             } else {
-                                                use std::net::{TcpStream, ToSocketAddrs};
                                                 let parsed =
                                                     crate::domain::key_parser::parse_vpn_key(
                                                         &raw_url_bg,
                                                     )
-                                                    .unwrap_or_else(|_| {
-                                                        crate::domain::key_parser::ParsedKey {
-                                                            protocol: "".to_string(),
-                                                            name: "".to_string(),
-                                                            host: "127.0.0.1".to_string(),
-                                                            port: 0,
-                                                            uuid: "".to_string(),
-                                                            query_params:
-                                                                std::collections::HashMap::new(),
-                                                            raw_url: "".to_string(),
-                                                        }
-                                                    });
+                                                    .unwrap_or_default();
+                                                let target = crate::services::ping::PingTarget {
+                                                    id: parsed.name,
+                                                    host: parsed.host,
+                                                    port: parsed.port,
+                                                    raw_url: raw_url_bg,
+                                                };
 
-                                                let timeout = std::time::Duration::from_secs(2);
-                                                let addr =
-                                                    format!("{}:{}", parsed.host, parsed.port);
-                                                if let Ok(mut addrs) = addr.to_socket_addrs() {
-                                                    if let Some(socket_addr) = addrs.next() {
-                                                        if let Ok(stream) =
-                                                            TcpStream::connect_timeout(
-                                                                &socket_addr,
-                                                                timeout,
-                                                            )
-                                                        {
-                                                            success = true;
-                                                            ms = start_ping.elapsed().as_millis();
-                                                            let _ = stream
-                                                                .shutdown(std::net::Shutdown::Both);
-                                                        }
+                                                let settings =
+                                                    crate::settings::SettingsManager::new().load();
+                                                let options = crate::services::ping::PingOptions {
+                                                    algorithm:
+                                                        crate::services::ping::PingAlgorithm::parse(
+                                                            &settings.ping_algorithm,
+                                                        ),
+                                                    target_url: settings.ping_target_url,
+                                                    timeout: std::time::Duration::from_secs(3),
+                                                    proxy_url: None,
+                                                    concurrency_limit: 1,
+                                                };
+
+                                                if let Ok(rt) =
+                                                    tokio::runtime::Builder::new_current_thread()
+                                                        .enable_all()
+                                                        .build()
+                                                {
+                                                    let ping_res = rt.block_on(
+                                                        crate::services::ping::ping_target(
+                                                            &target, &options,
+                                                        ),
+                                                    );
+                                                    if let Some(l) = ping_res.latency_ms() {
+                                                        success = true;
+                                                        ms = l;
                                                     }
                                                 }
                                             }
@@ -940,6 +968,24 @@ impl VrxxVpnPage {
         }
     }
 
+    pub fn import_key(&self, parsed: crate::domain::key_parser::ParsedKey, connect: bool) {
+        if let Some(model) = self.imp().model.borrow().as_ref() {
+            let new_url = crate::domain::key_parser::build_vpn_key(&parsed);
+            let raw_url = if new_url.is_empty() {
+                parsed.raw_url
+            } else {
+                new_url
+            };
+            let new_key = VpnKeyObject::new(&parsed.name, &parsed.protocol, false, &raw_url);
+            model.append(&new_key);
+            self.save_current_keys();
+
+            if connect {
+                self.set_active_key(&new_key);
+            }
+        }
+    }
+
     // Логика отображения информации о ключе
     // ================================
 
@@ -1036,6 +1082,13 @@ impl VrxxVpnPage {
 
         if let Some(root) = self.root().and_downcast::<gtk::Window>() {
             dialog.present(Some(&root));
+        }
+    }
+
+    // Логика отображения QR-кода профиля
+    fn handle_qr_code_key(&self, key: &VpnKeyObject) {
+        if let Some(root) = self.root().and_downcast::<gtk::Window>() {
+            crate::ui::qr_dialog::show_qr_dialog(&root, &key.name(), &key.url());
         }
     }
 

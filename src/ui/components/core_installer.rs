@@ -36,7 +36,7 @@ pub fn check_and_prompt(parent: &gtk::Window) {
         .build();
 
     let label = gtk::Label::builder()
-        .label(&gettext("VRXX cannot work without the sing-box core. Would you like to download it automatically, or manually select a release archive (.tar.gz / .zip)?"))
+        .label(gettext("VRXX cannot work without the sing-box core. Would you like to download it automatically, or manually select a release archive (.tar.gz / .zip)?"))
         .wrap(true)
         .justify(gtk::Justification::Center)
         .build();
@@ -55,14 +55,14 @@ pub fn check_and_prompt(parent: &gtk::Window) {
         .build();
 
     let btn_manual = gtk::Button::builder()
-        .label(&gettext("Select Archive"))
+        .label(gettext("Select Archive"))
         .build();
     let btn_auto = gtk::Button::builder()
-        .label(&gettext("Download Automatically"))
+        .label(gettext("Download Automatically"))
         .css_classes(["suggested-action"])
         .build();
     let btn_ok = gtk::Button::builder()
-        .label(&gettext("OK"))
+        .label(gettext("OK"))
         .visible(false)
         .css_classes(["suggested-action"])
         .build();
@@ -102,7 +102,7 @@ pub fn check_and_prompt(parent: &gtk::Window) {
             filter.add_pattern("*.zip");
 
             let fd = gtk::FileDialog::builder()
-                .title(&gettext("Select Core Archive"))
+                .title(gettext("Select Core Archive"))
                 .default_filter(&filter)
                 .build();
 

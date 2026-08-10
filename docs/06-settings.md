@@ -37,6 +37,8 @@
 | `enable_mux` | bool | `false` | Включить мультиплексирование соединений (smux) |
 | `mux_concurrency` | i32 | `8` | Количество потоков мультиплексирования |
 | `enable_fragment` | bool | `false` | Включить фрагментацию пакетов (в стадии реализации) |
+| `ping_algorithm` | String | `"tcp_handshake"` | Алгоритм пинга: `"tcp_handshake"`, `"icmp_ping"`, `"via_proxy_get"`, `"via_proxy_head"` |
+| `ping_target_url` | String | `"https://www.gstatic.com/generate_204"` | URL-адрес для HTTP проверки задержки через прокси |
 | `keys` | Vec<VpnKeyData>| `[]` | Список сохраненных VPN-ключей |
 | `whitelist` | Vec<String>| `[]` | Белый список доменов |
 | `enable_routing` | bool | `false` | Активировать продвинутую маршрутизацию |

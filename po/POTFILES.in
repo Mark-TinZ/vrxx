@@ -1,11 +1,12 @@
 src/application.rs
 src/backend.rs
 src/config.rs
+src/domain/exporter.rs
 src/domain/key_parser.rs
 src/domain/mod.rs
 src/domain/singbox_config.rs
-src/domain/xray_config.rs
 src/main.rs
+
 src/protocol.rs
 src/settings.rs
 src/shortcuts-dialog.ui
@@ -23,6 +24,8 @@ src/ui/pages/proxy_page.rs
 src/ui/pages/proxy_page.ui
 src/ui/pages/settings_page.rs
 src/ui/pages/settings_page.ui
+src/ui/qr_dialog.rs
+
 src/ui/pages/vpn_page.rs
 src/ui/pages/vpn_page.ui
 src/ui/pages/whitelist_page.rs

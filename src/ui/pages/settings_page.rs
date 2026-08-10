@@ -53,6 +53,10 @@ mod imp {
         pub mux_concurrency_row: TemplateChild<adw::SpinRow>,
         #[template_child]
         pub fragment_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub ping_algorithm_row: TemplateChild<adw::ComboRow>,
+        #[template_child]
+        pub ping_target_url_row: TemplateChild<adw::EntryRow>,
 
         pub has_changes: RefCell<bool>,
         pub has_lang_changed: RefCell<bool>,
@@ -66,6 +70,7 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             adw::ComboRow::static_type();
+            adw::EntryRow::static_type();
             adw::SwitchRow::static_type();
             adw::ExpanderRow::static_type();
             adw::SpinRow::static_type();
@@ -133,8 +138,8 @@ impl VrxxSettingsPage {
         if lang_changed {
             if let Some(window) = self.root().and_downcast::<gtk::Window>() {
                 let dialog = adw::AlertDialog::builder()
-                    .heading(&gettextrs::gettext("Restart Required"))
-                    .body(&gettextrs::gettext("You have changed the language. The application needs to restart to apply the new language. Restart now?"))
+                    .heading(gettextrs::gettext("Restart Required"))
+                    .body(gettextrs::gettext("You have changed the language. The application needs to restart to apply the new language. Restart now?"))
                     .build();
 
                 dialog.add_response("cancel", &gettextrs::gettext("Cancel"));
@@ -217,10 +222,51 @@ impl VrxxSettingsPage {
         };
         imp.log_level_row.set_selected(log_idx);
 
+        let ping_algo_idx = match settings.ping_algorithm.as_str() {
+            "icmp_ping" => 1,
+            "via_proxy_get" => 2,
+            "via_proxy_head" => 3,
+            _ => 0, // tcp_handshake
+        };
+        imp.ping_algorithm_row.set_selected(ping_algo_idx);
+        imp.ping_target_url_row.set_text(&settings.ping_target_url);
+
         self.update_core_info(None);
         self.refresh_geo_status();
 
         // Connect signals
+        imp.ping_algorithm_row.connect_selected_notify(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                s.ping_algorithm = match row.selected() {
+                    1 => "icmp_ping".to_string(),
+                    2 => "via_proxy_get".to_string(),
+                    3 => "via_proxy_head".to_string(),
+                    _ => "tcp_handshake".to_string(),
+                };
+                manager.save(&s);
+                page.mark_changed(false);
+            }
+        ));
+
+        imp.ping_target_url_row.connect_changed(glib::clone!(
+            #[weak(rename_to = page)]
+            self,
+            move |row| {
+                let manager = SettingsManager::new();
+                let mut s = manager.load();
+                let text = row.text().to_string();
+                if !text.trim().is_empty() {
+                    s.ping_target_url = text;
+                    manager.save(&s);
+                    page.mark_changed(false);
+                }
+            }
+        ));
+
         imp.language_row.connect_selected_notify(glib::clone!(
             #[weak(rename_to = page)]
             self,

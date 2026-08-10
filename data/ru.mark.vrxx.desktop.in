@@ -1,10 +1,11 @@
 [Desktop Entry]
 Name=vrxx
-Exec=vrxx
+Exec=vrxx %u
 Icon=ru.mark.vrxx
 Terminal=false
 Type=Application
-Categories=Utility;
-Keywords=GTK;
+Categories=Utility;Network;VPN;
+Keywords=GTK;vpn;proxy;xray;v2ray;sing-box;
 StartupNotify=true
 DBusActivatable=true
+MimeType=x-scheme-handler/vless;x-scheme-handler/vmess;x-scheme-handler/trojan;x-scheme-handler/ss;x-scheme-handler/hysteria2;x-scheme-handler/hy2;x-scheme-handler/tuic;

@@ -103,7 +103,7 @@ pub async fn download_core(progress_tx: Option<async_channel::Sender<f64>>) -> R
     if res.status().is_redirection() {
         if let Some(loc) = res.headers().get(reqwest::header::LOCATION) {
             let loc_str = loc.to_str().unwrap_or("");
-            if let Some(tag) = loc_str.split('/').last() {
+            if let Some(tag) = loc_str.split('/').next_back() {
                 version = tag.trim_start_matches('v').to_string();
             }
         }

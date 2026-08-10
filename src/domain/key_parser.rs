@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use url::Url;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ParsedKey {
     pub protocol: String,
     pub name: String,
@@ -12,6 +12,12 @@ pub struct ParsedKey {
     #[serde(default)]
     pub query_params: HashMap<String, String>,
     pub raw_url: String,
+}
+
+impl ParsedKey {
+    pub fn parse(url_str: &str) -> Result<Self, String> {
+        parse_vpn_key(url_str)
+    }
 }
 
 pub fn parse_vpn_key(url_str: &str) -> Result<ParsedKey, String> {
@@ -424,7 +430,8 @@ mod tests {
 
     #[test]
     fn test_parse_wireguard_url() {
-        let url = "wg://my-priv-key@wg.example.com:51820?public_key=peer_pub_key&ip=10.0.0.2/32#MyWG";
+        let url =
+            "wg://my-priv-key@wg.example.com:51820?public_key=peer_pub_key&ip=10.0.0.2/32#MyWG";
         let parsed = parse_vpn_key(url).expect("Should parse wireguard url");
         assert_eq!(parsed.protocol, "WireGuard");
         assert_eq!(parsed.uuid, "my-priv-key");

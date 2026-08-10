@@ -87,6 +87,22 @@ mod imp {
                 window.downcast_ref::<gtk::Window>().unwrap(),
             );
         }
+
+        fn open(&self, files: &[gio::File], _hint: &str) {
+            let application = self.obj();
+            let window = application.active_window().unwrap_or_else(|| {
+                let window = VrxxWindow::new(&*application);
+                window.upcast()
+            });
+
+            if let Some(vrxx_win) = window.downcast_ref::<VrxxWindow>() {
+                for file in files {
+                    let uri = file.uri();
+                    tracing::info!("Received URL scheme link via open handler: {uri}");
+                    vrxx_win.handle_open_uri(&uri);
+                }
+            }
+        }
     }
 
     impl GtkApplicationImpl for VrxxApplication {}
@@ -101,9 +117,10 @@ glib::wrapper! {
 
 impl VrxxApplication {
     pub fn new(application_id: &str, flags: &gio::ApplicationFlags) -> Self {
+        let combined_flags = *flags | gio::ApplicationFlags::HANDLES_OPEN;
         glib::Object::builder()
             .property("application-id", application_id)
-            .property("flags", flags)
+            .property("flags", combined_flags)
             .property("resource-base-path", "/ru/mark/vrxx")
             .build()
     }

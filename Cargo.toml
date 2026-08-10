@@ -2,6 +2,7 @@
 name = "vrxx"
 version = "0.1.8"
 edition = "2021"
+default-run = "vrxx"
 
 [dependencies]
 base64 = "0.22.1"
@@ -36,6 +37,9 @@ reqwest-eventsource = "0.6.0"
 zbus = { version = "5.15.0", features = ["tokio"] }
 ratatui = "0.29"
 crossterm = "0.28"
+qrcode = "0.14"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
 
 
 [dependencies.adw]

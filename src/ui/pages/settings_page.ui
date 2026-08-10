@@ -265,6 +265,38 @@
               </object>
             </child>
 
+            <!-- Latency / Ping Settings -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Latency Testing</property>
+
+                <child>
+                  <object class="AdwComboRow" id="ping_algorithm_row">
+                    <property name="title" translatable="yes">Ping Algorithm</property>
+                    <property name="subtitle" translatable="yes">Method used for measuring server latency</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">TCP Handshake</item>
+                          <item translatable="yes">ICMP Ping</item>
+                          <item translatable="yes">HTTP GET (via Proxy)</item>
+                          <item translatable="yes">HTTP HEAD (via Proxy)</item>
+                        </items>
+                      </object>
+                    </property>
+                    <property name="selected">0</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="AdwEntryRow" id="ping_target_url_row">
+                    <property name="title" translatable="yes">Ping Target URL</property>
+                    <property name="text">https://www.gstatic.com/generate_204</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
             <!-- Logging Settings -->
             <child>
               <object class="AdwPreferencesGroup">

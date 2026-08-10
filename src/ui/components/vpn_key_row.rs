@@ -54,6 +54,7 @@ mod imp {
                     glib::subclass::Signal::builder("request-delete").build(),
                     glib::subclass::Signal::builder("request-copy-link").build(),
                     glib::subclass::Signal::builder("request-copy-json").build(),
+                    glib::subclass::Signal::builder("request-qr-code").build(),
                     glib::subclass::Signal::builder("request-ping").build(),
                 ]
             })
@@ -220,6 +221,16 @@ impl VrxxVpnKeyRow {
             }
         });
         action_group.add_action(&copy_json_action);
+
+        // Action: QR Code
+        let qr_code_action = gio::SimpleAction::new("key_qr_code", None);
+        let row_weak_qr = self.downgrade();
+        qr_code_action.connect_activate(move |_, _| {
+            if let Some(row) = row_weak_qr.upgrade() {
+                row.emit_by_name::<()>("request-qr-code", &[]);
+            }
+        });
+        action_group.add_action(&qr_code_action);
 
         self.insert_action_group("row", Some(&action_group));
     }

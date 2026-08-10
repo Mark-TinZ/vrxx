@@ -721,6 +721,50 @@ msgstr "Connection Failed"
 msgid "Content"
 msgstr "Content"
 
+#: src/ui/components/vpn_key_row.ui:172
+msgid "_QR Code"
+msgstr "_QR Code"
+
+#: src/ui/qr_dialog.rs:27
+msgid "Profile QR Code"
+msgstr "Profile QR Code"
+
+#: src/ui/qr_dialog.rs:77
+msgid "Failed to generate QR code"
+msgstr "Failed to generate QR code"
+
+#: src/ui/qr_dialog.rs:98
+msgid "Copy Link"
+msgstr "Copy Link"
+
+#: src/ui/qr_dialog.rs:103
+msgid "Save QR Code as..."
+msgstr "Save QR Code as..."
+
+#: src/ui/qr_dialog.rs:125
+msgid "Link copied to clipboard"
+msgstr "Link copied to clipboard"
+
+#: src/ui/qr_dialog.rs:141
+msgid "Save QR Code As"
+msgstr "Save QR Code As"
+
+#: src/ui/qr_dialog.rs:145
+msgid "PNG Image (*.png)"
+msgstr "PNG Image (*.png)"
+
+#: src/ui/qr_dialog.rs:150
+msgid "SVG Vector (*.svg)"
+msgstr "SVG Vector (*.svg)"
+
+#: src/ui/qr_dialog.rs:194
+msgid "QR code saved successfully"
+msgstr "QR code saved successfully"
+
+#: src/ui/qr_dialog.rs:199
+msgid "Failed to save QR code"
+msgstr "Failed to save QR code"
+
 #~ msgid "Clear Whitelist"
 #~ msgstr "Clear Whitelist"
 

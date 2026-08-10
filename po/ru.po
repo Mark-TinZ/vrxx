@@ -697,6 +697,51 @@ msgstr "Детали активного подключения"
 msgid "Content"
 msgstr "Контент"
 
+#: src/ui/components/vpn_key_row.ui:172
+msgid "_QR Code"
+msgstr "_QR-код"
+
+#: src/ui/qr_dialog.rs:27
+msgid "Profile QR Code"
+msgstr "QR-код профиля"
+
+#: src/ui/qr_dialog.rs:77
+msgid "Failed to generate QR code"
+msgstr "Не удалось сгенерировать QR-код"
+
+#: src/ui/qr_dialog.rs:98
+msgid "Copy Link"
+msgstr "Скопировать ссылку"
+
+#: src/ui/qr_dialog.rs:103
+msgid "Save QR Code as..."
+msgstr "Сохранить QR-код как..."
+
+#: src/ui/qr_dialog.rs:125
+msgid "Link copied to clipboard"
+msgstr "Ссылка скопирована в буфер обмена"
+
+#: src/ui/qr_dialog.rs:141
+msgid "Save QR Code As"
+msgstr "Сохранить QR-код как"
+
+#: src/ui/qr_dialog.rs:145
+msgid "PNG Image (*.png)"
+msgstr "Изображение PNG (*.png)"
+
+#: src/ui/qr_dialog.rs:150
+msgid "SVG Vector (*.svg)"
+msgstr "Вектор SVG (*.svg)"
+
+#: src/ui/qr_dialog.rs:194
+msgid "QR code saved successfully"
+msgstr "QR-код успешно сохранен"
+
+#: src/ui/qr_dialog.rs:199
+msgid "Failed to save QR code"
+msgstr "Не удалось сохранить QR-код"
+
+
 #~ msgid "Application restart required to apply language"
 #~ msgstr "Требуется перезапуск приложения для применения языка"
 

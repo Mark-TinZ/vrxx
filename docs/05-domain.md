@@ -42,7 +42,15 @@ pub struct ParsedKey {
 - `VLESS`, `Trojan`, `Hysteria2`, `TUIC`, `WireGuard` используют парсинг URL-схем с декодированием фрагментов `#name` и вычленением всех Query-параметров.
 - Функция `build_vpn_key(parsed: &ParsedKey)` выполняет обратную сериализацию структуры в стандартную URI-строку (для экспорта).
 
+## Генерация и экспорт QR-кодов (exporter.rs)
+
+Модуль `src/domain/exporter.rs` предоставляет универсальный API генерации визуальных QR-кодов:
+- `generate_qr_svg(content: &str) -> Result<String>`: Формирует строку векторного формата SVG.
+- `generate_qr_png_bytes(content: &str, width: u32, height: u32) -> Result<Vec<u8>>`: Рендерит растровое изображение формата PNG в байтовый буфер `Vec<u8>`.
+- `generate_qr_texture(content: &str, size: u32) -> Result<gdk::Texture>`: Безопасно формирует объект `gdk::Texture` напрямую из оперативки в памяти без создания временных файлов на диске.
+
 ## Генерация конфигурации Sing-box (singbox_config.rs)
+
 
 VRXX динамически генерирует полную JSON-конфигурацию с помощью `build_singbox_config(&ParsedKey, &AppSettings)` и `build_singbox_config_with_version(...)`.
 
@@ -77,4 +85,29 @@ VRXX динамически генерирует полную JSON-конфиг�
 - **Удаленные наборы правил (Remote SRS Rule Sets)**: MetaCubeX geosite & geoip SRS для блокировки рекламы и регионального роутинга (RU, CN, IR, Antifilter).
 
 Сгенерированный JSON передается демоном в `stdin` процесса ядра, не оставляя следов на диске.
+
+## Модуль тестирования задержки (Ping Engine: `src/services/ping.rs`)
+
+Модуль `src/services/ping.rs` отвечает за измерение задержки до VPN-серверов. Поддерживаются 4 алгоритма тестирования, тип `PingResult`, настраиваемый URL проверки и параллельное неблокирующее исполнение.
+
+### 1. Поддерживаемые алгоритмы пинга (PingAlgorithm)
+
+| Алгоритм | Enum Вариант | Описание и особенности |
+| --- | --- | --- |
+| **TCP Handshake** | `TcpHandshake` | Измерение времени установления TCP 3-way handshake напрямую с `host:port` сервера. Алгоритм по умолчанию. |
+| **ICMP Ping** | `IcmpPing` | Отправка ICMP Echo Request пакетов к IP-адресу или хосту сервера с вызовом системной утилиты `ping`. |
+| **HTTP GET via Proxy** | `ViaProxyGet` | Выполнение полных HTTP GET запросов к целевому URL через SOCKS5/HTTP прокси (проверка прохождения данных и HTTP-стека). |
+| **HTTP HEAD via Proxy** | `ViaProxyHead` | Выполнение быстрых HTTP HEAD запросов к целевому URL через прокси. |
+
+### 2. Типы результатов (PingResult)
+
+- `PingResult::Success(u128)`: Задержка в миллисекундах (`ms`).
+- `PingResult::Timeout`: Таймаут ожидания соединения (по умолчанию 3 секунды).
+- `PingResult::Error(String)`: Сбой сети или ошибка подключения. Никаких паник не возникает.
+
+### 3. Параллельное исполнение и UI-интеграция
+
+- Для одновременной проверки списка серверов используется неблокирующий поток `futures::stream::iter` с `tokio::spawn` и лимитированием `buffer_unordered(concurrency_limit)`.
+- В GTK UI результаты передаются через `glib::spawn_future_local` и `async_channel`, предотвращая заморозку интерфейса.
+
 

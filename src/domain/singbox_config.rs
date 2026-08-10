@@ -112,7 +112,11 @@ pub fn build_singbox_config_with_version(
     let qp = &parsed_key.query_params;
     let proto_lower = parsed_key.protocol.to_lowercase();
     let security = qp.get("security").map(|s| s.as_str()).unwrap_or("none");
-    let net = qp.get("type").or_else(|| qp.get("net")).map(|s| s.as_str()).unwrap_or("tcp");
+    let net = qp
+        .get("type")
+        .or_else(|| qp.get("net"))
+        .map(|s| s.as_str())
+        .unwrap_or("tcp");
 
     let mut endpoints = vec![];
 
@@ -149,7 +153,10 @@ pub fn build_singbox_config_with_version(
             "password": parsed_key.uuid,
         }),
         "shadowsocks" | "ss" => {
-            let method = qp.get("method").cloned().unwrap_or_else(|| "2022-blake3-aes-128-gcm".to_string());
+            let method = qp
+                .get("method")
+                .cloned()
+                .unwrap_or_else(|| "2022-blake3-aes-128-gcm".to_string());
             json!({
                 "type": "shadowsocks",
                 "tag": "proxy",
@@ -168,10 +175,18 @@ pub fn build_singbox_config_with_version(
                 "server_port": parsed_key.port,
                 "password": parsed_key.uuid,
             });
-            if let Some(up) = qp.get("up").or_else(|| qp.get("up_mbps")).and_then(|v| v.parse::<u32>().ok()) {
+            if let Some(up) = qp
+                .get("up")
+                .or_else(|| qp.get("up_mbps"))
+                .and_then(|v| v.parse::<u32>().ok())
+            {
                 outbound["up_mbps"] = json!(up);
             }
-            if let Some(down) = qp.get("down").or_else(|| qp.get("down_mbps")).and_then(|v| v.parse::<u32>().ok()) {
+            if let Some(down) = qp
+                .get("down")
+                .or_else(|| qp.get("down_mbps"))
+                .and_then(|v| v.parse::<u32>().ok())
+            {
                 outbound["down_mbps"] = json!(down);
             }
             if let Some(obfs_type) = qp.get("obfs") {
@@ -186,7 +201,10 @@ pub fn build_singbox_config_with_version(
             let (user_id, pass) = if let Some((u, p)) = parsed_key.uuid.split_once(':') {
                 (u.to_string(), p.to_string())
             } else {
-                (parsed_key.uuid.clone(), qp.get("password").cloned().unwrap_or_default())
+                (
+                    parsed_key.uuid.clone(),
+                    qp.get("password").cloned().unwrap_or_default(),
+                )
             };
             json!({
                 "type": "tuic",
@@ -200,7 +218,10 @@ pub fn build_singbox_config_with_version(
             })
         }
         "wireguard" | "wg" => {
-            let local_ip = qp.get("ip").cloned().unwrap_or_else(|| "10.0.0.2/32".to_string());
+            let local_ip = qp
+                .get("ip")
+                .cloned()
+                .unwrap_or_else(|| "10.0.0.2/32".to_string());
             let peer_pub = qp.get("public_key").cloned().unwrap_or_default();
 
             if is_1_13_or_newer {
@@ -248,14 +269,22 @@ pub fn build_singbox_config_with_version(
     }
 
     // TLS configuration
-    if security == "tls" || security == "reality" || proto_lower == "hysteria2" || proto_lower == "tuic" {
+    if security == "tls"
+        || security == "reality"
+        || proto_lower == "hysteria2"
+        || proto_lower == "tuic"
+    {
         let mut tls = json!({
             "enabled": true,
             "server_name": qp.get("sni").unwrap_or(&parsed_key.host),
             "alpn": qp.get("alpn").map(|s| s.split(',').collect::<Vec<&str>>()).unwrap_or_else(|| vec!["h2", "http/1.1"])
         });
 
-        let fp = qp.get("fp").or_else(|| qp.get("fingerprint")).map(|s| s.as_str()).unwrap_or("chrome");
+        let fp = qp
+            .get("fp")
+            .or_else(|| qp.get("fingerprint"))
+            .map(|s| s.as_str())
+            .unwrap_or("chrome");
         if !fp.is_empty() {
             tls["utls"] = json!({
                 "enabled": true,
@@ -291,7 +320,11 @@ pub fn build_singbox_config_with_version(
     }
 
     // Multiplexing
-    if settings.enable_mux && security != "reality" && proto_lower != "hysteria2" && proto_lower != "tuic" {
+    if settings.enable_mux
+        && security != "reality"
+        && proto_lower != "hysteria2"
+        && proto_lower != "tuic"
+    {
         proxy_outbound["multiplex"] = json!({
             "enabled": true,
             "protocol": "smux"
@@ -561,8 +594,10 @@ mod tests {
 
     #[test]
     fn test_singbox_version_1_13_adaptation() {
-        let key = parse_vpn_key("wg://my-priv-key@1.1.1.1:51820?public_key=peer_pub&ip=10.0.0.2/32#TestWG")
-            .expect("Valid WG key");
+        let key = parse_vpn_key(
+            "wg://my-priv-key@1.1.1.1:51820?public_key=peer_pub&ip=10.0.0.2/32#TestWG",
+        )
+        .expect("Valid WG key");
         let mut settings = AppSettings::default();
         settings.tun_mode = true;
         settings.disable_ipv6 = true;
@@ -571,28 +606,57 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Valid JSON");
 
         // Verify endpoints array for 1.13+ WireGuard
-        assert!(parsed.get("endpoints").is_some(), "Should contain endpoints in 1.13+");
+        assert!(
+            parsed.get("endpoints").is_some(),
+            "Should contain endpoints in 1.13+"
+        );
 
         // Verify TUN address array in 1.13+
-        let inbounds = parsed.get("inbounds").and_then(|i| i.as_array()).expect("Inbounds array");
-        let tun = inbounds.iter().find(|i| i.get("type").and_then(|t| t.as_str()) == Some("tun")).expect("TUN inbound");
-        assert!(tun.get("address").is_some(), "Should use address array in 1.13+");
+        let inbounds = parsed
+            .get("inbounds")
+            .and_then(|i| i.as_array())
+            .expect("Inbounds array");
+        let tun = inbounds
+            .iter()
+            .find(|i| i.get("type").and_then(|t| t.as_str()) == Some("tun"))
+            .expect("TUN inbound");
+        assert!(
+            tun.get("address").is_some(),
+            "Should use address array in 1.13+"
+        );
 
         // Verify route rules hijack-dns in 1.13+
-        let rules = parsed.get("route").and_then(|r| r.get("rules")).and_then(|r| r.as_array()).expect("Route rules");
-        let hijack_rule = rules.iter().find(|r| r.get("action").and_then(|a| a.as_str()) == Some("hijack-dns"));
-        assert!(hijack_rule.is_some(), "Should contain hijack-dns rule in 1.13+");
+        let rules = parsed
+            .get("route")
+            .and_then(|r| r.get("rules"))
+            .and_then(|r| r.as_array())
+            .expect("Route rules");
+        let hijack_rule = rules
+            .iter()
+            .find(|r| r.get("action").and_then(|a| a.as_str()) == Some("hijack-dns"));
+        assert!(
+            hijack_rule.is_some(),
+            "Should contain hijack-dns rule in 1.13+"
+        );
 
         // Verify DNS reject for IPv6 AAAA in 1.13+
-        let dns_rules = parsed.get("dns").and_then(|d| d.get("rules")).and_then(|r| r.as_array()).expect("DNS rules");
-        let reject_rule = dns_rules.iter().find(|r| r.get("action").and_then(|a| a.as_str()) == Some("reject"));
-        assert!(reject_rule.is_some(), "Should contain reject rule for AAAA in 1.13+");
+        let dns_rules = parsed
+            .get("dns")
+            .and_then(|d| d.get("rules"))
+            .and_then(|r| r.as_array())
+            .expect("DNS rules");
+        let reject_rule = dns_rules
+            .iter()
+            .find(|r| r.get("action").and_then(|a| a.as_str()) == Some("reject"));
+        assert!(
+            reject_rule.is_some(),
+            "Should contain reject rule for AAAA in 1.13+"
+        );
     }
 
     #[test]
     fn test_singbox_version_1_8_adaptation() {
-        let key = parse_vpn_key("vless://my-uuid@1.1.1.1:443#TestOld")
-            .expect("Valid key");
+        let key = parse_vpn_key("vless://my-uuid@1.1.1.1:443#TestOld").expect("Valid key");
         let mut settings = AppSettings::default();
         settings.tun_mode = true;
 
@@ -600,10 +664,22 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Valid JSON");
 
         // Verify TUN inet4_address / inet6_address in < 1.12
-        let inbounds = parsed.get("inbounds").and_then(|i| i.as_array()).expect("Inbounds array");
-        let tun = inbounds.iter().find(|i| i.get("type").and_then(|t| t.as_str()) == Some("tun")).expect("TUN inbound");
-        assert!(tun.get("inet4_address").is_some(), "Should use inet4_address in < 1.12");
-        assert!(tun.get("address").is_none(), "Should not use address array in < 1.12");
+        let inbounds = parsed
+            .get("inbounds")
+            .and_then(|i| i.as_array())
+            .expect("Inbounds array");
+        let tun = inbounds
+            .iter()
+            .find(|i| i.get("type").and_then(|t| t.as_str()) == Some("tun"))
+            .expect("TUN inbound");
+        assert!(
+            tun.get("inet4_address").is_some(),
+            "Should use inet4_address in < 1.12"
+        );
+        assert!(
+            tun.get("address").is_none(),
+            "Should not use address array in < 1.12"
+        );
     }
 
     #[test]
@@ -623,12 +699,22 @@ mod tests {
         for proto_url in protocols {
             let key = parse_vpn_key(proto_url).expect("Key parse");
             let json_1_13 = build_singbox_config_with_version(&key, &settings, (1, 13, 0));
-            let parsed_1_13: serde_json::Value = serde_json::from_str(&json_1_13).expect("Valid 1.13 JSON");
-            assert!(parsed_1_13.get("outbounds").is_some(), "Protocol {} failed in 1.13", key.protocol);
+            let parsed_1_13: serde_json::Value =
+                serde_json::from_str(&json_1_13).expect("Valid 1.13 JSON");
+            assert!(
+                parsed_1_13.get("outbounds").is_some(),
+                "Protocol {} failed in 1.13",
+                key.protocol
+            );
 
             let json_1_8 = build_singbox_config_with_version(&key, &settings, (1, 8, 0));
-            let parsed_1_8: serde_json::Value = serde_json::from_str(&json_1_8).expect("Valid 1.8 JSON");
-            assert!(parsed_1_8.get("outbounds").is_some(), "Protocol {} failed in 1.8", key.protocol);
+            let parsed_1_8: serde_json::Value =
+                serde_json::from_str(&json_1_8).expect("Valid 1.8 JSON");
+            assert!(
+                parsed_1_8.get("outbounds").is_some(),
+                "Protocol {} failed in 1.8",
+                key.protocol
+            );
         }
     }
 }

@@ -168,7 +168,12 @@
         <attribute name="label" translatable="yes">_Edit</attribute>
         <attribute name="action">row.key_edit</attribute>
       </item>
+      <item>
+        <attribute name="label" translatable="yes">_QR Code</attribute>
+        <attribute name="action">row.key_qr_code</attribute>
+      </item>
       <submenu>
+
         <attribute name="label" translatable="yes">_Copy</attribute>
         <item>
           <attribute name="label" translatable="yes">_Link</attribute>

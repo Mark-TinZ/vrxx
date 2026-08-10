@@ -89,6 +89,12 @@ pub struct AppSettings {
     #[serde(default)]
     pub enable_fragment: bool,
 
+    // Latency / Ping Settings
+    #[serde(default = "default_ping_algorithm")]
+    pub ping_algorithm: String,
+    #[serde(default = "default_ping_target_url")]
+    pub ping_target_url: String,
+
     pub keys: Vec<VpnKeyData>,
     #[serde(default)]
     pub whitelist: Vec<String>,
@@ -152,6 +158,12 @@ fn default_domain_strategy() -> String {
 fn default_mux_concurrency() -> i32 {
     8
 }
+fn default_ping_algorithm() -> String {
+    "tcp_handshake".to_string()
+}
+fn default_ping_target_url() -> String {
+    "https://www.gstatic.com/generate_204".to_string()
+}
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -183,6 +195,8 @@ impl AppSettings {
             enable_mux: false,
             mux_concurrency: default_mux_concurrency(),
             enable_fragment: false,
+            ping_algorithm: default_ping_algorithm(),
+            ping_target_url: default_ping_target_url(),
             keys: vec![],
             whitelist: vec![],
             enable_routing: false,
@@ -200,6 +214,12 @@ impl AppSettings {
 
 pub struct SettingsManager {
     config_path: PathBuf,
+}
+
+impl Default for SettingsManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SettingsManager {

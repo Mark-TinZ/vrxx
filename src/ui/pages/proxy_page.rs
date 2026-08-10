@@ -93,12 +93,12 @@ impl VrxxProxyPage {
             "Proxy will be available for other devices in your local network",
         ));
 
-        // imp.btn_apply.set_visible(false); // Всегда показываем для возможности ручного перезапуска core
+        imp.btn_apply.set_visible(false); // Всегда показываем для возможности ручного перезапуска core
 
         imp.btn_apply.connect_clicked(glib::clone!(
             #[weak(rename_to = page)]
             self,
-            move |_btn| {
+            move |btn| {
                 let _ = crate::settings::core_restart_channel().0.send_blocking(());
                 if let Some(app) =
                     gtk::gio::Application::default().and_downcast::<gtk::Application>()
@@ -109,7 +109,7 @@ impl VrxxProxyPage {
                     app.send_notification(Some("settings_applied"), &notification);
                 }
                 *page.imp().has_changes.borrow_mut() = false;
-                // btn.set_visible(false);
+                btn.set_visible(false);
             }
         ));
 
