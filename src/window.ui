@@ -9,8 +9,17 @@
     <property name="default-width">960</property>
     <property name="default-height">650</property>
 
+    <child>
+      <object class="AdwBreakpoint">
+        <condition>max-width: 600sp</condition>
+        <setter object="split_view" property="collapsed">True</setter>
+      </object>
+    </child>
+
     <property name="content">
-      <object class="AdwNavigationSplitView">
+      <object class="AdwToastOverlay" id="toast_overlay">
+        <property name="child">
+          <object class="AdwNavigationSplitView" id="split_view">
         <property name="sidebar">
             <!-- ... (код боковой панели остается без изменений) ... -->
             <object class="AdwNavigationPage">
@@ -200,7 +209,9 @@
           </object>
         </property>
 
-      </object>
+        </object>
+      </property>
+    </object>
     </property>
   </template>
 </interface>

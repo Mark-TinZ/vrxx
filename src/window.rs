@@ -11,6 +11,8 @@ mod imp {
     #[template(resource = "/ru/mark/vrxx/window.ui")]
     pub struct VrxxWindow {
         #[template_child]
+        pub toast_overlay: TemplateChild<adw::ToastOverlay>,
+        #[template_child]
         pub navigation_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub view_stack: TemplateChild<gtk::Stack>,
@@ -34,6 +36,7 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
+            adw::ToastOverlay::static_type();
             VrxxVpnPage::static_type();
             VrxxProxyPage::static_type();
             VrxxWhitelistPage::static_type();
@@ -82,6 +85,11 @@ impl VrxxWindow {
         glib::Object::builder()
             .property("application", application)
             .build()
+    }
+
+    /// Отображает AdwToast уведомление в окне приложения.
+    pub fn add_toast(&self, toast: adw::Toast) {
+        self.imp().toast_overlay.add_toast(toast);
     }
 
     // Хелпер для извлечения имени страницы из строки

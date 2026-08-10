@@ -126,11 +126,46 @@ impl VrxxProxyPage {
             #[weak(rename_to = page)]
             self,
             move |row| {
+                let is_active = row.is_active();
                 let manager = SettingsManager::new();
                 let mut s = manager.load();
-                s.set_system_proxy = row.is_active();
+                s.set_system_proxy = is_active;
                 manager.save(&s);
-                crate::backend::CoreBackend::new().update_system_proxy(s.set_system_proxy);
+
+                // Обновляем локальные переменные процесса
+                crate::backend::set_process_proxy_env(s.http_port, is_active);
+
+                let result = crate::backend::CoreBackend::new().update_system_proxy(is_active);
+
+                if is_active {
+                    if let crate::backend::SystemProxyResult::SchemaUnavailable { desktop } = result {
+                        if let Some(window) = page.root().and_downcast::<crate::window::VrxxWindow>() {
+                            let msg = gettext(format!(
+                                "GNOME proxy GSettings scheme is unavailable on {}. Use TUN mode for system-wide routing.",
+                                desktop
+                            ));
+                            let toast = adw::Toast::new(&msg);
+                            toast.set_button_label(Some(&gettext("Switch to TUN")));
+
+                            let win_weak = window.downgrade();
+                            toast.connect_button_clicked(move |_| {
+                                let settings_mgr = SettingsManager::new();
+                                let mut app_settings = settings_mgr.load();
+                                app_settings.tun_mode = true;
+                                settings_mgr.save(&app_settings);
+
+                                let _ = crate::settings::core_restart_channel().0.send_blocking(());
+
+                                if let Some(w) = win_weak.upgrade() {
+                                    w.add_toast(adw::Toast::new(&gettext("TUN mode enabled and core restarted.")));
+                                }
+                            });
+
+                            window.add_toast(toast);
+                        }
+                    }
+                }
+
                 page.mark_changed();
             }
         ));
