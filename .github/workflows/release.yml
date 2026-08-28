@@ -44,8 +44,8 @@ jobs:
         env:
           SINGBOX_VERSION: "1.13.18"
         run: |
-          BUNDLE_DIR="vrxx-linux-x86_64"
-          rm -rf "${BUNDLE_DIR}"
+          rm -rf dist vrxx-linux-x86_64 vrxx-linux-x86_64.tar.gz*
+          BUNDLE_DIR="dist/vrxx-linux-x86_64"
           mkdir -p "${BUNDLE_DIR}"
 
           # 1. Копируем бинарник VRXX
@@ -53,9 +53,11 @@ jobs:
           chmod +x "${BUNDLE_DIR}/vrxx"
 
           # 2. Скачиваем официальный бинарник ядра sing-box
-          curl -sL "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz" | tar -xz
+          curl -fSL --retry 3 --retry-delay 2 -o sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz"
+          tar -xzf sing-box.tar.gz
           cp "sing-box-${SINGBOX_VERSION}-linux-amd64/sing-box" "${BUNDLE_DIR}/sing-box"
           chmod +x "${BUNDLE_DIR}/sing-box"
+          rm -rf sing-box.tar.gz "sing-box-${SINGBOX_VERSION}-linux-amd64"
 
           # 3. Копируем иконку, .desktop файл, лицензию и документацию
           cp data/icons/hicolor/scalable/apps/ru.mark.vrxx.svg "${BUNDLE_DIR}/ru.mark.vrxx.svg"
@@ -110,7 +112,7 @@ jobs:
           chmod +x "${BUNDLE_DIR}/uninstall.sh"
 
           # 6. Упаковываем tar.gz архив
-          tar -czf vrxx-linux-x86_64.tar.gz "${BUNDLE_DIR}"
+          tar -czf vrxx-linux-x86_64.tar.gz -C dist vrxx-linux-x86_64
           sha256sum vrxx-linux-x86_64.tar.gz > vrxx-linux-x86_64.tar.gz.sha256
 
           # 7. Подготавливаем отдельный бинарник
