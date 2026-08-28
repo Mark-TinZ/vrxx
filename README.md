@@ -49,9 +49,88 @@ VRXX предназначен для удобного управления VPN-�
 
 ## Скриншоты
 
-| Главный экран | Настройки | О программе |
-|:---:|:---:|:---:|
-| ![VPN Page](docs/vpn_page.png) | ![Settings Page](docs/settings_page.png) | ![About Dialog](docs/about_dialog.png) |
+<details>
+<summary><b>📸 Скриншоты интерфейса</b></summary>
+<br>
+
+<details open>
+<summary>🌙 <b>Тёмная тема</b></summary>
+<br>
+
+<p align="center">
+  <b>VPN Keys</b><br>
+  <img src="docs/screenshot/vpn-keys-dark.png" width="85%" alt="VPN Keys">
+</p>
+
+<p align="center">
+  <b>Routing</b><br>
+  <img src="docs/screenshot/routing-dark.png" width="85%" alt="Routing">
+</p>
+
+<p align="center">
+  <b>Proxy</b><br>
+  <img src="docs/screenshot/proxy-dark.png" width="85%" alt="Proxy">
+</p>
+
+<p align="center">
+  <b>Settings</b><br>
+  <img src="docs/screenshot/settings-dark.png" width="85%" alt="Settings">
+</p>
+
+<p align="center">
+  <b>System Logs</b><br>
+  <img src="docs/screenshot/system-logs-dark.png" width="85%" alt="System Logs">
+</p>
+
+<p align="center">
+  <b>Popups & Menu</b><br>
+  <img src="docs/screenshot/popups-dark.png" width="85%" alt="Popups">
+</p>
+
+<p align="center">
+  <b>Share Profile</b><br>
+  <img src="docs/screenshot/share-profile-dark.png" width="85%" alt="Share Profile">
+</p>
+
+</details>
+
+<details>
+<summary>☀️ <b>Светлая тема</b></summary>
+<br>
+
+<p align="center">
+  <b>VPN Keys</b><br>
+  <img src="docs/screenshot/vpn-keys-light.png" width="85%" alt="VPN Keys">
+</p>
+
+<p align="center">
+  <b>Routing</b><br>
+  <img src="docs/screenshot/routing-light.png" width="85%" alt="Routing">
+</p>
+
+<p align="center">
+  <b>Proxy</b><br>
+  <img src="docs/screenshot/proxy-light.png" width="85%" alt="Proxy">
+</p>
+
+<p align="center">
+  <b>Settings</b><br>
+  <img src="docs/screenshot/settings-light.png" width="85%" alt="Settings">
+</p>
+
+<p align="center">
+  <b>System Logs</b><br>
+  <img src="docs/screenshot/system-logs-light.png" width="85%" alt="System Logs">
+</p>
+
+<p align="center">
+  <b>Popups & Menu</b><br>
+  <img src="docs/screenshot/popups-light.png" width="85%" alt="Popups">
+</p>
+
+</details>
+
+</details>
 
 ## Текущий статус
 
@@ -346,9 +425,7 @@ sudo ./target/release/vrxx --daemon &
 │  ├─ 06-settings.md                # Настройки приложения
 │  ├─ 07-logging.md                 # Система логирования
 │  ├─ 08-localization.md            # Локализация
-│  ├─ vpn_page.png                  # Скриншот: главный экран
-│  ├─ settings_page.png             # Скриншот: настройки
-│  └─ about_dialog.png              # Скриншот: диалог «О программе»
+│  └─ screenshot/                   # Скриншоты интерфейса (Dark / Light темы)
 ├─ locale/                          # Скомпилированные .mo файлы (генерируются при сборке)
 ├─ po/
 │  ├─ LINGUAS                       # Список поддерживаемых языков
