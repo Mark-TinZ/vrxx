@@ -36,4 +36,10 @@ sudo cp ru.mark.vrxx.desktop /usr/share/applications/ru.mark.vrxx.desktop
 sudo gtk-update-icon-cache /usr/share/icons/hicolor
 sudo update-desktop-database /usr/share/applications
 
+# 4. Перезапуск службы демона (если активна)
+if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet vrxx-daemon.service; then
+    echo -e "${BLUE}🔄 Перезапускаю службу vrxx-daemon...${NC}"
+    sudo systemctl restart vrxx-daemon.service
+fi
+
 echo -e "${GREEN}✅ Обновление успешно завершено!${NC}"

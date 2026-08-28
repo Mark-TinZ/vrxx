@@ -87,9 +87,35 @@ jobs:
           if [ -f "${SCRIPT_DIR}/ru.mark.vrxx.desktop" ]; then
               sudo install -m 644 "${SCRIPT_DIR}/ru.mark.vrxx.desktop" /usr/share/applications/ru.mark.vrxx.desktop
           fi
+
+          # Настройка и запуск системной службы vrxx-daemon
+          echo -e "${BLUE}⚙️  Настраиваю системную службу vrxx-daemon...${NC}"
+          cat << 'SERVICE_EOF' | sed -e 's/^[ \t]*//' | sudo tee /etc/systemd/system/vrxx-daemon.service > /dev/null
+          [Unit]
+          Description=VRXX Privileged VPN & Proxy Daemon
+          After=network.target network-online.target systemd-resolved.service
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/local/bin/vrxx --daemon
+          Restart=always
+          RestartSec=3s
+          KillMode=process
+
+          [Install]
+          WantedBy=multi-user.target
+          SERVICE_EOF
+
+          if command -v systemctl >/dev/null 2>&1; then
+              sudo systemctl daemon-reload
+              sudo systemctl enable --now vrxx-daemon.service
+              echo -e "${GREEN}🔌 Служба vrxx-daemon запущена и добавлена в автозагрузку!${NC}"
+          fi
+
           command -v gtk-update-icon-cache >/dev/null 2>&1 && sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
           command -v update-desktop-database >/dev/null 2>&1 && sudo update-desktop-database /usr/share/applications || true
-          echo -e "${GREEN}✅ VRXX успешно установлен!${NC}"
+          echo -e "${GREEN}✅ VRXX успешно установлен и готов к работе!${NC}"
           EOF
           chmod +x "${BUNDLE_DIR}/install.sh"
 
@@ -102,12 +128,17 @@ jobs:
           NC='\033[0m'
 
           echo -e "${RED}🗑️ Удаление VRXX из системы...${NC}"
+          if command -v systemctl >/dev/null 2>&1; then
+              sudo systemctl disable --now vrxx-daemon.service 2>/dev/null || true
+              sudo rm -f /etc/systemd/system/vrxx-daemon.service
+              sudo systemctl daemon-reload 2>/dev/null || true
+          fi
           sudo rm -f /usr/local/bin/vrxx
           sudo rm -f /usr/share/icons/hicolor/scalable/apps/ru.mark.vrxx.svg
           sudo rm -f /usr/share/applications/ru.mark.vrxx.desktop
           command -v gtk-update-icon-cache >/dev/null 2>&1 && sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
           command -v update-desktop-database >/dev/null 2>&1 && sudo update-desktop-database /usr/share/applications || true
-          echo -e "${GREEN}✅ VRXX удален из системы.${NC}"
+          echo -e "${GREEN}✅ VRXX и служба vrxx-daemon удалены из системы.${NC}"
           EOF
           chmod +x "${BUNDLE_DIR}/uninstall.sh"
 
