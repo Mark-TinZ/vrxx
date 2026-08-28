@@ -177,15 +177,14 @@ fn main() -> glib::ExitCode {
     // 1. Инициализируем локаль libc
     let mut loc = setlocale(LocaleCategory::LcAll, "");
 
-    // Если локаль не была установлена (None) или сбросилась в голый ASCII "C" / "POSIX",
-    // gettext в glibc отключает перевод. Переключаем процесс на доступную UTF-8 локаль:
-    if loc.as_deref().is_none_or(|l| l == b"C" || l == b"POSIX") {
-        if setlocale(LocaleCategory::LcAll, "C.UTF-8").is_none()
-            && setlocale(LocaleCategory::LcAll, "C.utf8").is_none()
-        {
-            let _ = setlocale(LocaleCategory::LcAll, "en_US.UTF-8");
-        }
-        loc = setlocale(LocaleCategory::LcAll, "");
+    // Если локаль не была установлена (None) или сбросилась в "C" / "POSIX" / "C.UTF-8",
+    // gettext в glibc отключает перевод по переменной LANGUAGE. Переключаем процесс на доступную UTF-8 локаль:
+    if loc.as_deref().is_none_or(|l| l == b"C" || l == b"POSIX" || l == b"C.UTF-8" || l == b"C.utf8") {
+        loc = setlocale(LocaleCategory::LcAll, "en_US.UTF-8")
+            .or_else(|| setlocale(LocaleCategory::LcAll, "en_US.utf8"))
+            .or_else(|| setlocale(LocaleCategory::LcAll, "ru_RU.UTF-8"))
+            .or_else(|| setlocale(LocaleCategory::LcAll, "ru_RU.utf8"))
+            .or_else(|| setlocale(LocaleCategory::LcAll, "C.UTF-8"));
     }
 
     // 2. Установка языка приложения (LANGUAGE)

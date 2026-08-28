@@ -89,17 +89,16 @@ mod ui_testing {
             bind_textdomain_codeset, bindtextdomain, setlocale, textdomain, LocaleCategory,
         };
 
-        // 1. Инициализация локали libc с безопасным fallback на UTF-8
-        let loc = setlocale(LocaleCategory::LcAll, "");
-        if loc.as_deref().is_none_or(|l| l == b"C" || l == b"POSIX")
-            && setlocale(LocaleCategory::LcAll, "C.UTF-8").is_none()
-            && setlocale(LocaleCategory::LcAll, "C.utf8").is_none()
-        {
-            let _ = setlocale(LocaleCategory::LcAll, "en_US.UTF-8");
-        }
-
-        // 2. Установка русского языка через LANGUAGE
+        // 1. Очистка ограничивающих переменных и установка не-C локали libc для работы GNU gettext
+        std::env::remove_var("LC_ALL");
+        std::env::remove_var("LC_MESSAGES");
         std::env::set_var("LANGUAGE", "ru");
+
+        let _ = setlocale(LocaleCategory::LcAll, "en_US.UTF-8")
+            .or_else(|| setlocale(LocaleCategory::LcAll, "en_US.utf8"))
+            .or_else(|| setlocale(LocaleCategory::LcAll, "ru_RU.UTF-8"))
+            .or_else(|| setlocale(LocaleCategory::LcAll, "ru_RU.utf8"))
+            .or_else(|| setlocale(LocaleCategory::LcAll, ""));
 
         let configured_locale_dir = if std::path::Path::new(LOCALEDIR).is_relative() {
             std::env::current_dir()
