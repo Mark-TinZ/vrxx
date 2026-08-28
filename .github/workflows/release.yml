@@ -39,21 +39,94 @@ jobs:
       - name: Build Release
         run: cargo build --release
 
-      - name: Prepare Artifact
+      - name: Prepare Artifacts
         if: startsWith(github.ref, 'refs/tags/')
+        env:
+          SINGBOX_VERSION: "1.13.18"
         run: |
-          cd target/release
-          mv vrxx vrxx-linux-x86_64
-          tar -czf vrxx-linux-x86_64.tar.gz vrxx-linux-x86_64
+          BUNDLE_DIR="vrxx-linux-x86_64"
+          rm -rf "${BUNDLE_DIR}"
+          mkdir -p "${BUNDLE_DIR}"
+
+          # 1. Копируем бинарник VRXX
+          cp target/release/vrxx "${BUNDLE_DIR}/vrxx"
+          chmod +x "${BUNDLE_DIR}/vrxx"
+
+          # 2. Скачиваем официальный бинарник ядра sing-box
+          curl -sL "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz" | tar -xz
+          cp "sing-box-${SINGBOX_VERSION}-linux-amd64/sing-box" "${BUNDLE_DIR}/sing-box"
+          chmod +x "${BUNDLE_DIR}/sing-box"
+
+          # 3. Копируем иконку, .desktop файл, лицензию и документацию
+          cp data/icons/hicolor/scalable/apps/ru.mark.vrxx.svg "${BUNDLE_DIR}/ru.mark.vrxx.svg"
+          cp ru.mark.vrxx.desktop "${BUNDLE_DIR}/ru.mark.vrxx.desktop"
+          cp README.md "${BUNDLE_DIR}/README.md"
+          cp COPYING "${BUNDLE_DIR}/COPYING"
+
+          # 4. Создаем скрипт установки install.sh для архива
+          cat << 'EOF' > "${BUNDLE_DIR}/install.sh"
+          #!/bin/bash
+          set -e
+          GREEN='\033[0;32m'
+          BLUE='\033[0;34m'
+          NC='\033[0m'
+          SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+          echo -e "${BLUE}🚀 Установка VRXX в систему...${NC}"
+          sudo install -m 755 "${SCRIPT_DIR}/vrxx" /usr/local/bin/vrxx
+          if [ -f "${SCRIPT_DIR}/sing-box" ]; then
+              sudo install -m 755 "${SCRIPT_DIR}/sing-box" /usr/local/bin/sing-box
+          fi
+          sudo mkdir -p /usr/share/icons/hicolor/scalable/apps/
+          if [ -f "${SCRIPT_DIR}/ru.mark.vrxx.svg" ]; then
+              sudo install -m 644 "${SCRIPT_DIR}/ru.mark.vrxx.svg" /usr/share/icons/hicolor/scalable/apps/ru.mark.vrxx.svg
+          fi
+          sudo mkdir -p /usr/share/applications/
+          if [ -f "${SCRIPT_DIR}/ru.mark.vrxx.desktop" ]; then
+              sudo install -m 644 "${SCRIPT_DIR}/ru.mark.vrxx.desktop" /usr/share/applications/ru.mark.vrxx.desktop
+          fi
+          command -v gtk-update-icon-cache >/dev/null 2>&1 && sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
+          command -v update-desktop-database >/dev/null 2>&1 && sudo update-desktop-database /usr/share/applications || true
+          echo -e "${GREEN}✅ VRXX успешно установлен!${NC}"
+          EOF
+          chmod +x "${BUNDLE_DIR}/install.sh"
+
+          # 5. Создаем скрипт удаления uninstall.sh для архива
+          cat << 'EOF' > "${BUNDLE_DIR}/uninstall.sh"
+          #!/bin/bash
+          set -e
+          RED='\033[0;31m'
+          GREEN='\033[0;32m'
+          NC='\033[0m'
+
+          echo -e "${RED}🗑️ Удаление VRXX из системы...${NC}"
+          sudo rm -f /usr/local/bin/vrxx
+          sudo rm -f /usr/share/icons/hicolor/scalable/apps/ru.mark.vrxx.svg
+          sudo rm -f /usr/share/applications/ru.mark.vrxx.desktop
+          command -v gtk-update-icon-cache >/dev/null 2>&1 && sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
+          command -v update-desktop-database >/dev/null 2>&1 && sudo update-desktop-database /usr/share/applications || true
+          echo -e "${GREEN}✅ VRXX удален из системы.${NC}"
+          EOF
+          chmod +x "${BUNDLE_DIR}/uninstall.sh"
+
+          # 6. Упаковываем tar.gz архив
+          tar -czf vrxx-linux-x86_64.tar.gz "${BUNDLE_DIR}"
           sha256sum vrxx-linux-x86_64.tar.gz > vrxx-linux-x86_64.tar.gz.sha256
+
+          # 7. Подготавливаем отдельный бинарник
+          cp target/release/vrxx vrxx-linux-x86_64
+          chmod +x vrxx-linux-x86_64
+          sha256sum vrxx-linux-x86_64 > vrxx-linux-x86_64.sha256
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/release/vrxx-linux-x86_64.tar.gz
-            target/release/vrxx-linux-x86_64.tar.gz.sha256
+            vrxx-linux-x86_64.tar.gz
+            vrxx-linux-x86_64.tar.gz.sha256
+            vrxx-linux-x86_64
+            vrxx-linux-x86_64.sha256
           draft: false
           prerelease: false
         env:

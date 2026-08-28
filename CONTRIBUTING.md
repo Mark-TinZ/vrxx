@@ -97,7 +97,7 @@ sudo ./target/debug/vrxx --daemon &
    - Передает события, изменение статуса и логи клиентам через Server-Sent Events (`/api/events`).
 3. **Слой Domain (Бизнес-логика)**:
    - `src/domain/key_parser.rs`: парсинг ссылок протоколов (VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard) и валидация.
-   - `src/domain/singbox_config.rs`: генерация валидной конфигурации sing-box (с версионной поддержкой 1.8 - 1.13+).
+   - `src/domain/singbox_config.rs`: генерация валидной конфигурации sing-box (спецификация 1.13.18+).
    - `src/domain/exporter.rs`: генерация QR-кодов в векторном SVG и растровом PNG форматах в оперативной памяти.
 4. **Слой фоновых сервисов**:
    - `src/services/ping.rs`: замер сетевой задержки (4 алгоритма) и E2E Warm-Up проверка доступности туннеля.

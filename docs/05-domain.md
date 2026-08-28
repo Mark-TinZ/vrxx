@@ -4,7 +4,7 @@
 
 Слой Domain (`src/domain/`) отвечает за обработку VPN-данных независимо от того, кто их вызвал (графический интерфейс или демон). Его основные задачи:
 1. Парсинг пользовательских строк/URI в стандартизированную структуру.
-2. Трансляция этой структуры + настроек приложения в сложный JSON-формат конфигурации ядра Sing-box с динамической версионной адаптацией (от 1.8 до 1.13+).
+2. Трансляция этой структуры + настроек приложения в сложный JSON-формат конфигурации ядра Sing-box спецификации 1.13.18+.
 
 ## Поддерживаемые протоколы
 
@@ -16,7 +16,7 @@
 | **Shadowsocks**| `ss://[Base64 URL]@host:port` | ✅ Полный | ✅ Полный | 2022-blake3-aes-128/256-gcm, AEAD (chacha20, aes-gcm), `xudp` |
 | **Hysteria2** | `hy2://pass@host:port?params...` | ✅ Полный | ✅ Полный | `up_mbps`, `down_mbps`, obfs (salamander), uTLS, TLS |
 | **TUIC v5** | `tuic://uuid:pass@host:port?params...` | ✅ Полный | ✅ Полный | `congestion_control` (bbr), `udp_relay_mode` (native/quic) |
-| **WireGuard** | `wg://privkey@host:port?params...` | ✅ Полный | ✅ Полный | 1.13+ через верхнеуровневый массив `endpoints` / классический outbound |
+| **WireGuard** | `wg://privkey@host:port?params...` | ✅ Полный | ✅ Полный | 1.13.18+ через верхнеуровневый массив `endpoints` |
 
 > **Примечание:** Архитектура позволяет легко добавлять новые протоколы. Достаточно реализовать вариативный парсинг в `key_parser.rs` и сформировать соответствующий исходящий блок в `singbox_config.rs`.
 
@@ -51,18 +51,14 @@ pub struct ParsedKey {
 
 ## Генерация конфигурации Sing-box (singbox_config.rs)
 
+VRXX динамически генерирует полную JSON-конфигурацию с помощью `build_singbox_config(&ParsedKey, &AppSettings)` в строгом соответствии со спецификацией **Sing-box 1.13.18+**:
 
-VRXX динамически генерирует полную JSON-конфигурацию с помощью `build_singbox_config(&ParsedKey, &AppSettings)` и `build_singbox_config_with_version(...)`.
-
-### 1. Динамическая версионная адаптивность (1.8 – 1.13+)
-
-Функция `get_singbox_version()` определяет версию ядра (`sing-box version`). Код генератора адаптирует структуры JSON под особенности каждой версии:
-
-| Версия ядра | Inbounds TUN | WireGuard | DNS servers & rules | Route rules |
-| --- | --- | --- | --- | --- |
-| **sing-box >= 1.13** | `address: ["172.19.0.1/30", "fdfe:dcba:9876::1/126"]` | Верхнеуровневый массив `"endpoints"` | `type: "https"` / `type: "local"`, IPv6 `action: "reject"` | `default_domain_resolver`, `{"action": "hijack-dns"}` |
-| **sing-box == 1.12** | `address: [...]` | Классический outbound | `type: "https"` / `type: "local"`, `action: "reject"` | `default_domain_resolver: "local-dns"` |
-| **sing-box < 1.12** | `inet4_address`, `inet6_address` | Классический outbound | `address: "https://..."` / `address: "local"` | `sniff` в inbounds, `outbound: "dns-out"` |
+### 1. Архитектурные особенности спецификации 1.13.18+
+- **Сниффинг (Sniffing)**: объявляется как отдельное правило в цепочке маршрутизации `route.rules` (`{"action": "sniff"}`), что гарантирует корректную классификацию доменов и TLS SNI.
+- **Перехват DNS**: централизованный перехват через правило `{"action": "hijack-dns", "port": [53]}` в `route.rules`.
+- **DNS резолвер**: декларация `route.default_domain_resolver = "local-dns"` и DNS-серверы актуальных типов `type: "https"` (дистанционный DoH) и `type: "local"` (локальный).
+- **TUN интерфейс**: стек `gvisor` с объединенным пулом адресов `address: ["172.19.0.1/30", "fdfe:dcba:9876::1/126"]`.
+- **WireGuard**: верхнеуровневый массив `endpoints` со связкой через `detour: "direct"`.
 
 ### 2. Входящие соединения (Inbounds)
 - **SOCKS in**: порт из настроек (по умолчанию `10808`).
@@ -75,12 +71,13 @@ VRXX динамически генерирует полную JSON-конфиг�
 - **Shadowsocks**: поддержка протоколов 2022-blake3 и AEAD.
 - **Hysteria2**: лимиты пропускной способности `up_mbps` / `down_mbps`, `obfs` (`salamander`), uTLS.
 - **TUIC v5**: `congestion_control` (BBR), `udp_relay_mode` (native).
-- **WireGuard**: верхнеуровневый массив `"endpoints"` для sing-box 1.13+ с детуром через direct, либо прямое исходящее соединение `wireguard` для старых ядер.
+- **WireGuard**: современный верхнеуровневый массив `"endpoints"` с детуром через direct.
 
 ### 4. Настройка DNS и Маршрутизация
 - **DNS**: `remote-dns` (DoH 1.1.1.1 через proxy) и `local-dns` (local через direct).
-- **Сниффинг трафика**: правило `action: "sniff"` в `route.rules` для ядер >= 1.11.
-- **Перехват DNS**: правило `action: "hijack-dns"` для ядер >= 1.13.
+- **Сниффинг трафика**: правило `action: "sniff"` в `route.rules`.
+- **Перехват DNS**: правило `action: "hijack-dns"` в `route.rules`.
+- **Блокировка QUIC**: принудительное отключение UDP 443 для предотвращения деградации потоков.
 - **Обход LAN**: автоматический перевод локальных подсетей в `direct`.
 - **Удаленные наборы правил (Remote SRS Rule Sets)**: MetaCubeX geosite & geoip SRS для блокировки рекламы и регионального роутинга (RU, CN, IR, Antifilter).
 
