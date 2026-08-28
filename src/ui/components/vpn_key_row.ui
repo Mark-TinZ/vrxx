@@ -1,18 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<interface>
+<!-- vpn_key_row.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
+<interface domain="vrxx">
+  <!-- 
+    ========================================================================
+    Компонент строки списка VPN-ключей (VrxxVpnKeyRow).
+    
+    Содержит:
+    - Заголовок строки (AdwActionRow header_row): имя профиля и протокол
+    - Префикс: стек иконок состояний (icon_stack): 
+        * inactive (красный щит)
+        * active (зеленый щит)
+        * loading (крутящийся спиннер GtkSpinner)
+        * error (желтый щит предупреждения)
+    - Суффикс: кнопка вызова контекстного меню (view-more-symbolic)
+    - Выпадающий блок деталей (details_revealer): 
+        * Статистика входящего и исходящего трафика
+        * Время активности соединения
+        * Задержка (пинг) с кнопкой ручного обновления
+    - Контекстное меню (key_menu):
+        * Информация (_Info)
+        * Изменить (_Edit)
+        * Поделиться (_Share) -> открывает диалоговое окно Поделиться
+        * Удалить (_Delete)
+    ========================================================================
+  -->
   <template class="VrxxVpnKeyRow" parent="GtkListBoxRow">
     <property name="activatable">True</property>
     <property name="child">
       <object class="GtkBox">
         <property name="orientation">vertical</property>
 
+        <!-- Шапка строки ключа -->
         <child>
           <object class="AdwActionRow" id="header_row">
+            <property name="title-lines">1</property>
+            <property name="subtitle-lines">1</property>
+            <!-- Префикс: Индикатор состояния подключения (Стек иконок/спиннера) -->
             <child type="prefix">
               <object class="GtkStack" id="icon_stack">
                 <property name="transition-type">crossfade</property>
                 <property name="transition-duration">250</property>
 
+                <!-- Состояние: Неактивен (Красный щит) -->
                 <child>
                   <object class="GtkStackPage">
                     <property name="name">inactive</property>
@@ -25,6 +63,7 @@
                   </object>
                 </child>
 
+                <!-- Состояние: Подключен и активен (Зеленый щит) -->
                 <child>
                   <object class="GtkStackPage">
                     <property name="name">active</property>
@@ -37,6 +76,7 @@
                   </object>
                 </child>
 
+                <!-- Состояние: Процесс подключения (Колесико загрузки GtkSpinner) -->
                 <child>
                   <object class="GtkStackPage">
                     <property name="name">loading</property>
@@ -50,14 +90,14 @@
                   </object>
                 </child>
 
-                <!-- Состояние: Ошибка -->
+                <!-- Состояние: Ошибка подключения (Желтый щит) -->
                 <child>
                   <object class="GtkStackPage">
                     <property name="name">error</property>
                     <property name="child">
                       <object class="GtkImage">
                         <property name="icon-name">security-medium-symbolic</property>
-                        <style><class name="warning"/></style> <!-- Желтый цвет -->
+                        <style><class name="warning"/></style>
                       </object>
                     </property>
                   </object>
@@ -65,6 +105,7 @@
               </object>
             </child>
 
+            <!-- Суффикс: Кнопка открытия контекстного меню ключа -->
             <child type="suffix">
               <object class="GtkMenuButton">
                 <property name="icon-name">view-more-symbolic</property>
@@ -76,6 +117,7 @@
           </object>
         </child>
 
+        <!-- Выпадающий блок статистики и метрик активного ключа -->
         <child>
           <object class="GtkRevealer" id="details_revealer">
             <property name="transition-type">slide-down</property>
@@ -98,45 +140,45 @@
                     <property name="margin-bottom">12</property>
                     <property name="margin-start">16</property>
                     <property name="margin-end">16</property>
-                    <property name="column-spacing">24</property>
+                    <property name="column-spacing">12</property>
                     <property name="row-spacing">8</property>
 
-                    <!-- Down -->
+                    <!-- Метрика: Загрузка (Входящий трафик) -->
                     <child>
                       <object class="GtkBox">
-                        <property name="spacing">12</property>
+                        <property name="spacing">6</property>
                         <child><object class="GtkImage"><property name="icon-name">go-down-symbolic</property><style><class name="dim-label"/></style></object></child>
-                        <child><object class="GtkLabel" id="lbl_down"><property name="label">0 MB</property><style><class name="dim-label"/></style></object></child>
+                        <child><object class="GtkLabel" id="lbl_down"><property name="label">0 MB</property><property name="ellipsize">end</property><style><class name="dim-label"/></style></object></child>
                         <layout><property name="column">0</property><property name="row">0</property></layout>
                       </object>
                     </child>
 
-                    <!-- Up -->
+                    <!-- Метрика: Отдача (Исходящий трафик) -->
                     <child>
                       <object class="GtkBox">
-                        <property name="spacing">12</property>
+                        <property name="spacing">6</property>
                         <child><object class="GtkImage"><property name="icon-name">go-up-symbolic</property><style><class name="dim-label"/></style></object></child>
-                        <child><object class="GtkLabel" id="lbl_up"><property name="label">0 MB</property><style><class name="dim-label"/></style></object></child>
+                        <child><object class="GtkLabel" id="lbl_up"><property name="label">0 MB</property><property name="ellipsize">end</property><style><class name="dim-label"/></style></object></child>
                         <layout><property name="column">0</property><property name="row">1</property></layout>
                       </object>
                     </child>
 
-                    <!-- Time -->
+                    <!-- Метрика: Время сессии -->
                     <child>
                       <object class="GtkBox">
-                        <property name="spacing">12</property>
+                        <property name="spacing">6</property>
                         <child><object class="GtkImage"><property name="icon-name">alarm-symbolic</property><style><class name="dim-label"/></style></object></child>
-                        <child><object class="GtkLabel" id="lbl_time"><property name="label">00:00</property><style><class name="dim-label"/></style></object></child>
+                        <child><object class="GtkLabel" id="lbl_time"><property name="label">00:00</property><property name="ellipsize">end</property><style><class name="dim-label"/></style></object></child>
                         <layout><property name="column">1</property><property name="row">0</property></layout>
                       </object>
                     </child>
 
-                     <!-- Ping -->
+                    <!-- Метрика: Пинг и задержка -->
                      <child>
                       <object class="GtkBox">
-                        <property name="spacing">12</property>
+                        <property name="spacing">6</property>
                         <child><object class="GtkImage"><property name="icon-name">network-transmit-receive-symbolic</property><style><class name="dim-label"/></style></object></child>
-                        <child><object class="GtkLabel" id="lbl_ping"><property name="label">0 ms</property><style><class name="dim-label"/></style></object></child>
+                        <child><object class="GtkLabel" id="lbl_ping"><property name="label">0 ms</property><property name="ellipsize">end</property><style><class name="dim-label"/></style></object></child>
                         <child>
                           <object class="GtkButton" id="btn_refresh_ping">
                             <property name="icon-name">view-refresh-symbolic</property>
@@ -158,6 +200,7 @@
     </property>
   </template>
 
+  <!-- Контекстное меню строки ключа -->
   <menu id="key_menu">
     <section>
       <item>
@@ -168,22 +211,11 @@
         <attribute name="label" translatable="yes">_Edit</attribute>
         <attribute name="action">row.key_edit</attribute>
       </item>
+      <!-- Вызов единого диалогового окна Поделиться (Share) -->
       <item>
-        <attribute name="label" translatable="yes">_QR Code</attribute>
-        <attribute name="action">row.key_qr_code</attribute>
+        <attribute name="label" translatable="yes">_Share</attribute>
+        <attribute name="action">row.key_share</attribute>
       </item>
-      <submenu>
-
-        <attribute name="label" translatable="yes">_Copy</attribute>
-        <item>
-          <attribute name="label" translatable="yes">_Link</attribute>
-          <attribute name="action">row.key_copy_link</attribute>
-        </item>
-        <item>
-          <attribute name="label" translatable="yes">_JSON</attribute>
-          <attribute name="action">row.key_copy_json</attribute>
-        </item>
-      </submenu>
       <item>
         <attribute name="label" translatable="yes">_Delete</attribute>
         <attribute name="action">row.delete</attribute>

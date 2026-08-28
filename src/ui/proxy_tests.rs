@@ -1,3 +1,16 @@
+/* proxy_tests.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+//! # Модульные тесты для подсистемы управления системным и локальным прокси
+
 #[cfg(test)]
 mod proxy_testing {
     use crate::backend::{
@@ -5,6 +18,7 @@ mod proxy_testing {
         CoreBackend, DesktopEnvironment, SystemProxyResult,
     };
 
+    /// Проверяет корректность определения графического окружения пользователя (DE).
     #[test]
     fn test_desktop_environment_detection() {
         std::env::set_var("XDG_CURRENT_DESKTOP", "KDE");
@@ -27,6 +41,7 @@ mod proxy_testing {
         );
     }
 
+    /// Проверяет установку и очистку переменных окружения процесса (`HTTP_PROXY`, `HTTPS_PROXY`).
     #[test]
     fn test_process_proxy_env() {
         set_process_proxy_env(2080, true);
@@ -44,17 +59,17 @@ mod proxy_testing {
         assert!(std::env::var("HTTPS_PROXY").is_err());
     }
 
+    /// Проверяет безопасное переключение системного прокси без паник при отсутствии схемы GSettings.
     #[test]
     fn test_proxy_toggle_panic_free() {
         if gtk::init().is_err() {
             return;
         }
 
-        let backend = CoreBackend::new();
         let schema_available = is_gnome_proxy_schema_available();
 
-        let res_enable = backend.update_system_proxy(true);
-        let res_disable = backend.update_system_proxy(false);
+        let res_enable = CoreBackend::update_system_proxy(true);
+        let res_disable = CoreBackend::update_system_proxy(false);
 
         if schema_available {
             assert_eq!(res_enable, SystemProxyResult::Success);
@@ -62,11 +77,11 @@ mod proxy_testing {
         } else {
             match res_enable {
                 SystemProxyResult::SchemaUnavailable { .. } => {}
-                other => panic!("Expected SchemaUnavailable, got {:?}", other),
+                other => panic!("Ожидалось SchemaUnavailable, получено {:?}", other),
             }
             match res_disable {
                 SystemProxyResult::SchemaUnavailable { .. } => {}
-                other => panic!("Expected SchemaUnavailable, got {:?}", other),
+                other => panic!("Ожидалось SchemaUnavailable, получено {:?}", other),
             }
         }
     }

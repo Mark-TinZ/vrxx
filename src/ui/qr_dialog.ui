@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- qr_dialog.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
+<interface domain="vrxx">
+  <!-- 
+    ========================================================================
+    Виджет содержимого для диалога «Поделиться профилем» (Share Profile Content).
+    
+    Особенности и структура:
+    - Базовый класс AdwBin — нативный компонент содержимого Libadwaita
+    - Адаптивный зажим AdwClamp для управления шириной
+    - Рамка-карточка (qr_card) с размываемым QR-кодом для защиты приватности
+    - Контроллеры интерактивности (подключаются к qr_card в Rust):
+        * GestureClick: снятие/возврат блюра при клике в любой точке QR-кода (включая OSD-кнопку)
+        * EventControllerMotion: отслеживание наведения мыши для показа/скрытия кнопки-глазика
+    - Плавающая OSD-кнопка по центру (btn_toggle_blur): иконка глазика + статус «Показать QR-код» / «Скрыть QR-код»
+        (установлен can-target="False", чтобы клики прозрачно обрабатывались единым контроллером qr_card)
+    - Панель кнопок действий с иконками и текстом:
+        * «Ссылка» (btn_copy_link): скопировать URI профиля
+        * «JSON» (btn_copy_json): скопировать структурированный JSON профиля
+        * «Сохранить QR» (btn_save_qr): экспортировать QR-код в PNG или SVG
+    ========================================================================
+  -->
+  <template class="VrxxQrDialog" parent="AdwBin">
+    <property name="child">
+      <!-- Адаптивный контейнер-зажим (Clamp) -->
+      <object class="AdwClamp">
+        <property name="maximum-size">420</property>
+        <property name="tightening-threshold">320</property>
+
+        <child>
+          <!-- Основной вертикальный контейнер содержимого диалога -->
+          <object class="GtkBox">
+            <property name="orientation">vertical</property>
+            <property name="spacing">16</property>
+            <property name="halign">center</property>
+            <property name="margin-top">8</property>
+            <property name="margin-bottom">12</property>
+            <property name="margin-start">12</property>
+            <property name="margin-end">12</property>
+
+            <!-- Контрастная карточка-рамка с QR-кодом и защитой приватности -->
+            <child>
+              <object class="GtkBox" id="qr_card">
+                <property name="halign">center</property>
+                <property name="valign">center</property>
+                <property name="margin-top">4</property>
+                <property name="margin-bottom">4</property>
+                <property name="margin-start">4</property>
+                <property name="margin-end">4</property>
+                <style><class name="card"/></style>
+
+                <child>
+                  <object class="GtkBox">
+                    <property name="margin-top">10</property>
+                    <property name="margin-bottom">10</property>
+                    <property name="margin-start">10</property>
+                    <property name="margin-end">10</property>
+
+                    <!-- Наложение плавающей OSD-кнопки поверх изображения QR-кода -->
+                    <child>
+                      <object class="GtkOverlay">
+                        <!-- Изображение QR-кода (размыто по умолчанию через CSS) -->
+                        <child>
+                          <object class="GtkPicture" id="qr_picture">
+                            <property name="can-shrink">True</property>
+                            <property name="content-fit">contain</property>
+                            <property name="width-request">230</property>
+                            <property name="height-request">230</property>
+                            <property name="halign">center</property>
+                            <property name="valign">center</property>
+                            <style><class name="blurred-qr"/></style>
+                          </object>
+                        </child>
+
+                        <!-- Плавающая OSD-кнопка по центру карточки с глазиком -->
+                        <child type="overlay">
+                          <object class="GtkButton" id="btn_toggle_blur">
+                            <property name="can-target">False</property>
+                            <property name="halign">center</property>
+                            <property name="valign">center</property>
+                            <style>
+                              <class name="osd"/>
+                              <class name="pill"/>
+                            </style>
+
+                            <child>
+                              <object class="GtkBox">
+                                <property name="orientation">horizontal</property>
+                                <property name="spacing">8</property>
+
+                                <!-- Иконка глазика (view-reveal-symbolic / view-conceal-symbolic) -->
+                                <child>
+                                  <object class="GtkImage" id="img_blur_icon">
+                                    <property name="icon-name">view-reveal-symbolic</property>
+                                  </object>
+                                </child>
+
+                                <!-- Текстовый статус кнопки -->
+                                <child>
+                                  <object class="GtkLabel" id="lbl_blur_status">
+                                    <property name="label" translatable="yes">Show QR Code</property>
+                                  </object>
+                                </child>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- Сообщение об ошибке при генерации (скрыто при нормальной работе) -->
+            <child>
+              <object class="GtkLabel" id="lbl_error">
+                <property name="visible">False</property>
+                <property name="wrap">True</property>
+                <style><class name="error"/></style>
+              </object>
+            </child>
+
+            <!-- Текстовое превью URI-ссылки профиля -->
+            <child>
+              <object class="GtkLabel" id="lbl_uri">
+                <property name="selectable">True</property>
+                <property name="ellipsize">end</property>
+                <property name="max-width-chars">36</property>
+                <property name="halign">center</property>
+                <style>
+                  <class name="dim-label"/>
+                  <class name="caption"/>
+                </style>
+              </object>
+            </child>
+
+            <!-- Панель кнопок быстрых действий (Ссылка, JSON, Сохранить QR) -->
+            <child>
+              <object class="GtkBox">
+                <property name="orientation">horizontal</property>
+                <property name="spacing">8</property>
+                <property name="halign">center</property>
+                <property name="margin-top">4</property>
+
+                <!-- Кнопка «Ссылка» с иконкой и подписью -->
+                <child>
+                  <object class="GtkButton" id="btn_copy_link">
+                    <property name="tooltip-text" translatable="yes">Copy Link</property>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">6</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="icon-name">edit-copy-symbolic</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label" translatable="yes">Link</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <!-- Кнопка «JSON» с иконкой и подписью -->
+                <child>
+                  <object class="GtkButton" id="btn_copy_json">
+                    <property name="tooltip-text" translatable="yes">Copy JSON</property>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">6</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="icon-name">text-x-script-symbolic</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label" translatable="yes">JSON</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <!-- Кнопка «Сохранить QR» с иконкой и подписью -->
+                <child>
+                  <object class="GtkButton" id="btn_save_qr">
+                    <property name="tooltip-text" translatable="yes">Save QR Code as...</property>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">6</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="icon-name">document-save-as-symbolic</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="label" translatable="yes">Save QR</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+              </object>
+            </child>
+
+          </object>
+        </child>
+      </object>
+    </property>
+  </template>
+</interface>

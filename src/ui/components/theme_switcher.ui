@@ -1,5 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<interface>
+<!-- theme_switcher.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
+<interface domain="vrxx">
+  <!--
+    ============================================================================
+    КОМПОНЕНТ ПЕРЕКЛЮЧЕНИЯ ЦВЕТОВОЙ СХЕМЫ ТЕМЫ (VrxxThemeSwitcher)
+    ============================================================================
+
+    СТРУКТУРА МАКЕТА:
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ GtkBox (Горизонтальный ряд круглых селекторов темы, класс: themeselector)│
+    │ ├─ [Кнопка: btn_system] -> Системная тема (app.set-color-scheme='default')│
+    │ ├─ [Кнопка: btn_light]  -> Светлая тема (app.set-color-scheme='force-light')
+    │ └─ [Кнопка: btn_dark]   -> Тёмная тема (app.set-color-scheme='force-dark')│
+    └──────────────────────────────────────────────────────────────────────────┘
+  -->
+
   <template class="VrxxThemeSwitcher" parent="GtkBox">
     <property name="orientation">horizontal</property>
     <property name="halign">center</property>
@@ -8,40 +32,57 @@
     <property name="margin-bottom">6</property>
     <property name="margin-start">6</property>
     <property name="margin-end">6</property>
-    <property name="spacing">6</property>
+    <property name="spacing">12</property>
+    <style>
+      <class name="themeselector"/>
+    </style>
 
+    <!-- 1. Системная тема (автоматическое следование настройкам ОС) -->
     <child>
-      <object class="GtkToggleButton" id="btn_system">
-        <property name="icon-name">preferences-system-symbolic</property>
+      <object class="GtkCheckButton" id="btn_system">
         <property name="tooltip-text" translatable="yes">System</property>
         <property name="action-name">app.set-color-scheme</property>
         <property name="action-target">'default'</property>
+        <property name="hexpand">true</property>
+        <property name="halign">center</property>
+        <property name="focus-on-click">false</property>
         <style>
-          <class name="circular"/>
+          <class name="theme-selector"/>
+          <class name="follow"/>
         </style>
       </object>
     </child>
+
+    <!-- 2. Принудительная светлая тема -->
     <child>
-      <object class="GtkToggleButton" id="btn_light">
-        <property name="icon-name">weather-clear-symbolic</property>
+      <object class="GtkCheckButton" id="btn_light">
         <property name="tooltip-text" translatable="yes">Light</property>
         <property name="action-name">app.set-color-scheme</property>
         <property name="action-target">'force-light'</property>
         <property name="group">btn_system</property>
+        <property name="hexpand">true</property>
+        <property name="halign">center</property>
+        <property name="focus-on-click">false</property>
         <style>
-          <class name="circular"/>
+          <class name="theme-selector"/>
+          <class name="light"/>
         </style>
       </object>
     </child>
+
+    <!-- 3. Принудительная тёмная тема -->
     <child>
-      <object class="GtkToggleButton" id="btn_dark">
-        <property name="icon-name">weather-clear-night-symbolic</property>
+      <object class="GtkCheckButton" id="btn_dark">
         <property name="tooltip-text" translatable="yes">Dark</property>
         <property name="action-name">app.set-color-scheme</property>
         <property name="action-target">'force-dark'</property>
         <property name="group">btn_system</property>
+        <property name="hexpand">true</property>
+        <property name="halign">center</property>
+        <property name="focus-on-click">false</property>
         <style>
-          <class name="circular"/>
+          <class name="theme-selector"/>
+          <class name="dark"/>
         </style>
       </object>
     </child>

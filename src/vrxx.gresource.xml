@@ -5,16 +5,22 @@
     <file preprocess="xml-stripblanks">shortcuts-dialog.ui</file>
     <file preprocess="xml-stripblanks">ui/menus.ui</file>
 
+    <!-- Стили -->
+    <file>style.css</file>
+
     <!-- Страницы интерфейса -->
     <file preprocess="xml-stripblanks">ui/pages/vpn_page.ui</file>
     <file preprocess="xml-stripblanks">ui/pages/proxy_page.ui</file>
-    <file preprocess="xml-stripblanks">ui/pages/whitelist_page.ui</file>
+    <file preprocess="xml-stripblanks">ui/pages/routing_page.ui</file>
     <file preprocess="xml-stripblanks">ui/pages/settings_page.ui</file>
 
-    <!-- Компоненты -->
+    <!-- Компоненты и Диалоги -->
     <file preprocess="xml-stripblanks">ui/components/vpn_key_row.ui</file>
+    <file preprocess="xml-stripblanks">ui/components/routing_rule_row.ui</file>
     <file preprocess="xml-stripblanks">ui/components/theme_switcher.ui</file>
     <file preprocess="xml-stripblanks">ui/components/log_window.ui</file>
+    <file preprocess="xml-stripblanks">ui/qr_dialog.ui</file>
+    <file preprocess="xml-stripblanks">ui/rule_dialog.ui</file>
 
      <!-- Иконки -->
     <file alias="icons/scalable/apps/ru.mark.vrxx.svg">../data/icons/hicolor/scalable/apps/ru.mark.vrxx.svg</file>

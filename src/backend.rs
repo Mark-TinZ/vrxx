@@ -1,21 +1,42 @@
+/* backend.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+//! # Бэкенд управления ядром VPN и системным окружением (CoreBackend)
+//!
+//! Отвечает за:
+//! - Взаимодействие GUI приложения с системным демоном через [`DaemonClient`]
+//! - Определение графического окружения рабочего стола (GNOME, KDE Plasma, XFCE, Sway)
+//! - Безопасную установку и сброс системного прокси GNOME GSettings без зависания UI
+//! - Экспорт переменных окружения `HTTP_PROXY` и `HTTPS_PROXY` для текущего процесса
+
 use crate::ipc::DaemonClient;
 use crate::settings::SettingsManager;
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 
-/// Интерфейс для управления ядром VPN.
+/// Интерфейс для абстрактного управления ядром VPN.
 pub trait VpnCore: Send + Sync + std::fmt::Debug {
-    /// Запуск ядра с заданной конфигурацией.
+    /// Запуск ядра с заданной JSON конфигурацией.
     #[allow(dead_code)]
     fn start(&self, config_json: &str) -> Result<()>;
-    /// Остановка ядра.
+    /// Остановка запущенного ядра.
     #[allow(dead_code)]
     fn stop(&self) -> Result<()>;
-    /// Проверка, запущено ли ядро.
+    /// Проверка активного состояния ядра.
+    #[allow(dead_code)]
     fn is_running(&self) -> bool;
 }
 
+/// Поддерживаемые типы окружения рабочего стола Linux.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DesktopEnvironment {
     Gnome,
@@ -37,7 +58,7 @@ impl std::fmt::Display for DesktopEnvironment {
     }
 }
 
-/// Определяет текущую рабочую среду окружения на основе XDG_CURRENT_DESKTOP.
+/// Определяет текущую рабочую среду пользователя по переменным `XDG_CURRENT_DESKTOP` / `XDG_SESSION_DESKTOP`.
 pub fn detect_desktop_environment() -> DesktopEnvironment {
     let desktop = std::env::var("XDG_CURRENT_DESKTOP")
         .or_else(|_| std::env::var("XDG_SESSION_DESKTOP"))
@@ -59,7 +80,7 @@ pub fn detect_desktop_environment() -> DesktopEnvironment {
     }
 }
 
-/// Безопасно проверяет доступность схемы GSettings `org.gnome.system.proxy` без вызова паники.
+/// Безопасно проверяет доступность схемы GSettings `org.gnome.system.proxy` без паники.
 #[allow(dead_code)]
 pub fn is_gnome_proxy_schema_available() -> bool {
     if let Some(source) = gtk::gio::SettingsSchemaSource::default() {
@@ -69,15 +90,18 @@ pub fn is_gnome_proxy_schema_available() -> bool {
     }
 }
 
-/// Результат установки системного прокси.
+/// Результат применения настроек системного прокси.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SystemProxyResult {
+    /// Успешно применено в GSettings
     Success,
+    /// Схема GSettings отсутствует в данном десктопном окружении (требуется fallback на TUN)
     SchemaUnavailable { desktop: DesktopEnvironment },
+    /// Ошибка записи параметров
     Error(String),
 }
 
-/// Устанавливает переменные окружения HTTP_PROXY и HTTPS_PROXY для текущего процесса.
+/// Устанавливает или удаляет переменные окружения `HTTP_PROXY` и `HTTPS_PROXY` для текущего процесса.
 pub fn set_process_proxy_env(http_port: u16, enable: bool) {
     if enable {
         let proxy_val = format!("http://127.0.0.1:{}", http_port);
@@ -86,7 +110,7 @@ pub fn set_process_proxy_env(http_port: u16, enable: bool) {
         std::env::set_var("http_proxy", &proxy_val);
         std::env::set_var("https_proxy", &proxy_val);
         tracing::info!(
-            "Set HTTP_PROXY and HTTPS_PROXY environment variables to {}",
+            "Set environment variables HTTP_PROXY and HTTPS_PROXY: {}",
             proxy_val
         );
     } else {
@@ -94,11 +118,11 @@ pub fn set_process_proxy_env(http_port: u16, enable: bool) {
         std::env::remove_var("HTTPS_PROXY");
         std::env::remove_var("http_proxy");
         std::env::remove_var("https_proxy");
-        tracing::info!("Cleared HTTP_PROXY and HTTPS_PROXY environment variables");
+        tracing::info!("Cleared environment variables HTTP_PROXY and HTTPS_PROXY");
     }
 }
 
-/// Возвращает текстовую команду экпорта переменных окружения для терминала.
+/// Возвращает текстовую shell-команду для экспорта переменных окружения прокси в терминале.
 #[allow(dead_code)]
 pub fn get_proxy_env_export_cmd(http_port: u16) -> String {
     format!(
@@ -107,7 +131,7 @@ pub fn get_proxy_env_export_cmd(http_port: u16) -> String {
     )
 }
 
-/// Высокоуровневый бэкенд, взаимодействующий с привилегированным демоном.
+/// Высокоуровневый бэкенд, связывающий GUI с REST API системного демона.
 #[derive(Debug)]
 pub struct CoreBackend {
     rt: Arc<Runtime>,
@@ -121,51 +145,81 @@ impl Default for CoreBackend {
 }
 
 impl CoreBackend {
+    /// Создает экземпляр бэкенда, запускает внутренний Tokio Runtime и фоновую проверку доступности демона.
     pub fn new() -> Self {
-        let rt = Runtime::new().expect("Failed to create tokio runtime");
         let client = DaemonClient::new();
+        let rt = match Runtime::new() {
+            Ok(r) => Arc::new(r),
+            Err(e) => {
+                tracing::error!(
+                    "Не удалось создать multi-thread Tokio Runtime для CoreBackend: {e}"
+                );
+                match tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                {
+                    Ok(current_rt) => Arc::new(current_rt),
+                    Err(err) => {
+                        tracing::error!(
+                            "Критическая ошибка создания current_thread Tokio Runtime: {err}"
+                        );
+                        // Возвращаем дефолтный пустой runtime через builders
+                        Arc::new(
+                            tokio::runtime::Builder::new_current_thread()
+                                .build()
+                                .unwrap_or_else(|_| {
+                                    tracing::error!("Фатальный сбой runtime");
+                                    Runtime::new().unwrap_or_else(|_| std::process::exit(1))
+                                }),
+                        )
+                    }
+                }
+            }
+        };
 
-        // --- Раздел: Проверка окружения ---
-        let rt_clone = Arc::new(rt);
-        let rt_bg = rt_clone.clone();
+        // Фоновая проверка доступности демона без блокировки основного потока
+        let rt_bg = rt.clone();
         let client_bg = client.clone();
         std::thread::spawn(move || {
             rt_bg.block_on(async {
                 match client_bg.ping().await {
                     Ok(pong) => tracing::info!(
-                        "REST API Daemon availability checked on initialization: {}",
+                        "REST API системного демона успешно проверено при старте: {}",
                         pong
                     ),
                     Err(e) => {
-                        tracing::warn!("REST API Daemon not available on initialization: {}", e)
+                        tracing::warn!("REST API системного демона недоступно при старте: {}", e)
                     }
                 }
             });
         });
-        // ================================
 
-        Self {
-            rt: rt_clone,
-            client,
-        }
+        Self { rt, client }
     }
 
-    /// Безопасное переключение системного прокси с поддержкой кросс-десктопных сред (KDE/XFCE/Sway).
-    pub fn update_system_proxy(&self, enable: bool) -> SystemProxyResult {
+    /// Безопасное переключение системного прокси с поддержкой кросс-десктопных сред (GNOME/KDE/XFCE/Sway).
+    /// Является статической функцией, не создающей экземпляр Tokio Runtime.
+    pub fn update_system_proxy(enable: bool) -> SystemProxyResult {
         use gtk::gio::{Settings, SettingsBackend, SettingsSchemaSource};
         use gtk::prelude::SettingsExt;
 
         let desktop = detect_desktop_environment();
+        let app_settings = SettingsManager::new().load();
+
         tracing::info!(
-            "Updating system proxy. Desktop: {:?}, target state: {}",
+            "Updating system proxy. Desktop: {:?}, enable: {}, SOCKS: {}, HTTP: {}",
             desktop,
-            enable
+            enable,
+            app_settings.socks_port,
+            app_settings.http_port
         );
 
         let source = match SettingsSchemaSource::default() {
             Some(s) => s,
             None => {
-                tracing::warn!("Default GSettingsSchemaSource is None. Safe fallback active.");
+                tracing::warn!(
+                    "GSettingsSchemaSource default is unavailable. Safe fallback activated."
+                );
                 return SystemProxyResult::SchemaUnavailable { desktop };
             }
         };
@@ -174,7 +228,7 @@ impl CoreBackend {
             Some(s) => s,
             None => {
                 tracing::warn!(
-                    "GSettings schema 'org.gnome.system.proxy' is missing on desktop '{}'. Safe fallback active.",
+                    "GSettings schema 'org.gnome.system.proxy' missing in environment '{}'. Safe fallback activated.",
                     desktop
                 );
                 return SystemProxyResult::SchemaUnavailable { desktop };
@@ -182,59 +236,136 @@ impl CoreBackend {
         };
 
         let settings = Settings::new_full(&schema, None::<&SettingsBackend>, None);
-        let mode = if enable { "manual" } else { "none" };
-        if let Err(e) = settings.set_string("mode", mode) {
-            tracing::error!("Failed to set GNOME system proxy: {}", e);
-            SystemProxyResult::Error(e.to_string())
+
+        let res = if enable {
+            // Настройка SOCKS5 прокси
+            if let Some(socks_schema) = source.lookup("org.gnome.system.proxy.socks", true) {
+                let socks = Settings::new_full(&socks_schema, None::<&SettingsBackend>, None);
+                let _ = socks.set_string("host", "127.0.0.1");
+                let _ = socks.set_int("port", app_settings.socks_port as i32);
+            }
+            // Настройка HTTP прокси
+            if let Some(http_schema) = source.lookup("org.gnome.system.proxy.http", true) {
+                let http = Settings::new_full(&http_schema, None::<&SettingsBackend>, None);
+                let _ = http.set_string("host", "127.0.0.1");
+                let _ = http.set_int("port", app_settings.http_port as i32);
+                let _ = http.set_boolean("enabled", true);
+            }
+            // Настройка HTTPS прокси
+            if let Some(https_schema) = source.lookup("org.gnome.system.proxy.https", true) {
+                let https = Settings::new_full(&https_schema, None::<&SettingsBackend>, None);
+                let _ = https.set_string("host", "127.0.0.1");
+                let _ = https.set_int("port", app_settings.http_port as i32);
+            }
+
+            let mode = "manual";
+            if let Err(e) = settings.set_string("mode", mode) {
+                tracing::error!("Failed to set GNOME system proxy mode: {}", e);
+                SystemProxyResult::Error(e.to_string())
+            } else {
+                tracing::info!(
+                    "GNOME system proxy mode successfully set to 'manual' (SOCKS: {}, HTTP: {})",
+                    app_settings.socks_port,
+                    app_settings.http_port
+                );
+                SystemProxyResult::Success
+            }
         } else {
-            tracing::info!("GNOME system proxy mode successfully set to: {}", mode);
-            SystemProxyResult::Success
-        }
+            let mode = "none";
+            if let Err(e) = settings.set_string("mode", mode) {
+                tracing::error!("Failed to reset GNOME system proxy mode: {}", e);
+                SystemProxyResult::Error(e.to_string())
+            } else {
+                tracing::info!("GNOME system proxy mode successfully reset to '{}'", mode);
+                SystemProxyResult::Success
+            }
+        };
+
+        // Запуск команд gsettings CLI в фоновом потоке, чтобы никогда не блокировать главный GTK поток
+        let socks_port_str = app_settings.socks_port.to_string();
+        let http_port_str = app_settings.http_port.to_string();
+        std::thread::spawn(move || {
+            if enable {
+                let _ = std::process::Command::new("gsettings")
+                    .args(["set", "org.gnome.system.proxy.socks", "host", "127.0.0.1"])
+                    .output();
+                let _ = std::process::Command::new("gsettings")
+                    .args([
+                        "set",
+                        "org.gnome.system.proxy.socks",
+                        "port",
+                        &socks_port_str,
+                    ])
+                    .output();
+                let _ = std::process::Command::new("gsettings")
+                    .args(["set", "org.gnome.system.proxy.http", "host", "127.0.0.1"])
+                    .output();
+                let _ = std::process::Command::new("gsettings")
+                    .args(["set", "org.gnome.system.proxy.http", "port", &http_port_str])
+                    .output();
+                let _ = std::process::Command::new("gsettings")
+                    .args(["set", "org.gnome.system.proxy.https", "host", "127.0.0.1"])
+                    .output();
+                let _ = std::process::Command::new("gsettings")
+                    .args([
+                        "set",
+                        "org.gnome.system.proxy.https",
+                        "port",
+                        &http_port_str,
+                    ])
+                    .output();
+                let _ = std::process::Command::new("gsettings")
+                    .args(["set", "org.gnome.system.proxy", "mode", "manual"])
+                    .output();
+            } else {
+                let _ = std::process::Command::new("gsettings")
+                    .args(["set", "org.gnome.system.proxy", "mode", "none"])
+                    .output();
+            }
+        });
+
+        res
     }
 }
 
 impl VpnCore for CoreBackend {
-    /// Запускает ядро через REST API демон
+    /// Отправляет команду демону на запуск ядра sing-box с переданной JSON-конфигурацией.
     fn start(&self, config_json: &str) -> Result<()> {
         let settings = SettingsManager::new().load();
         let tun_mode = settings.tun_mode;
 
-        // --- Раздел: Логирование для отладки (God Tier Backend) ---
-        // Эти логи помогут детально отслеживать старт ядра в консоли.
-        tracing::debug!(
-            "Preparing to start proxy. Core Type: sing-box, TUN Mode: {}",
-            tun_mode
-        );
-        tracing::debug!("Generated sing-box config:\n{}", config_json);
+        tracing::debug!("Preparing to start sing-box core. TUN mode: {}", tun_mode);
+        tracing::debug!("Generated sing-box JSON config:\n{}", config_json);
 
-        tracing::info!("Requesting daemon to start proxy (core: sing-box)...");
+        tracing::info!("Sending request to daemon to start proxy (sing-box core)...");
 
         self.rt.block_on(async {
             self.client
                 .start_proxy("sing-box".to_string(), config_json.to_string(), tun_mode)
                 .await
                 .map_err(|e| {
-                    tracing::error!("Failed to start proxy via Daemon REST API: {}", e);
+                    tracing::error!("Failed to start proxy via daemon REST API: {}", e);
                     anyhow::anyhow!("REST API error: {e}")
                 })?;
-            tracing::debug!("Proxy started successfully via Daemon");
+            tracing::debug!("Proxy started successfully via system daemon");
             Ok(())
         })
     }
 
-    /// Останавливает ядро через REST API демон
+    /// Отправляет команду демону на остановку ядра sing-box.
     fn stop(&self) -> Result<()> {
-        tracing::info!("Requesting daemon to stop proxy...");
+        tracing::info!("Sending request to daemon to stop proxy...");
 
         self.rt.block_on(async {
             self.client
                 .stop_proxy()
                 .await
-                .map_err(|e| anyhow::anyhow!("REST API error: {e}"))?;
+                .map_err(|e| anyhow::anyhow!("Ошибка REST API: {e}"))?;
             Ok(())
         })
     }
 
+    /// Проверяет статус активности ядра в системном демоне.
     fn is_running(&self) -> bool {
         self.rt
             .block_on(async { self.client.is_running().await.unwrap_or(false) })

@@ -1,3 +1,13 @@
+# meson.build
+#
+# Copyright 2026 Mark
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# SPDX-License-Identifier: MPL-2.0
+
 desktop_file = i18n.merge_file(
         input: 'ru.mark.vrxx.desktop.in',
        output: 'ru.mark.vrxx.desktop',

@@ -1,6 +1,6 @@
 /* main.rs
  *
- * Copyright 2026 Unknown
+ * Copyright 2026 Mark
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,48 +9,93 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
+//! # Точка входа в приложение VRXX
+//!
+//! Отвечает за:
+//! - Разбор аргументов командной строки (`--daemon`, `--tui`, GUI по умолчанию)
+//! - Ротацию и настройку подсистемы логирования `tracing` (`~/.local/share/vrxx/logs/`)
+//! - Инициализацию подсистемы интернационализации `gettext` и локалей
+//! - Регистрацию скомпилированных ресурсов GResource (`vrxx.gresource`)
+//! - Перенаправление системных логов GLib/GTK в `tracing`
+
 mod application;
 mod backend;
 mod config;
+pub mod crypto;
 pub mod daemon;
 pub mod domain;
 pub mod ipc;
 mod protocol;
 pub mod services;
-mod settings;
+pub mod settings;
 pub mod tui;
 
 mod ui;
 mod window;
 
 use self::application::VrxxApplication;
+use clap::{Parser, Subcommand};
 use config::{GETTEXT_PACKAGE, LOCALEDIR};
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, setlocale, textdomain, LocaleCategory};
 use gtk::prelude::*;
 use gtk::{gio, glib};
 
-struct MultiWriter<W1: std::io::Write, W2: std::io::Write> {
-    app_log: W1,
-    all_log: W2,
+/// Структура аргументов командной строки приложения VRXX.
+#[derive(Parser, Debug)]
+#[command(author, version, about = "VRXX - Клиент управления VPN и сетевыми прокси", long_about = None)]
+struct Cli {
+    /// Запуск в режиме привилегированного фонового демона
+    #[arg(long)]
+    daemon: bool,
+
+    /// Запуск в режиме консольного терминального интерфейса (TUI)
+    #[arg(long)]
+    tui: bool,
+
+    /// Опциональная подкоманда (tui, daemon)
+    #[command(subcommand)]
+    command: Option<Commands>,
 }
-impl<W1: std::io::Write, W2: std::io::Write> std::io::Write for MultiWriter<W1, W2> {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        let _ = self.app_log.write_all(buf);
-        let _ = self.all_log.write_all(buf);
-        Ok(buf.len())
-    }
-    fn flush(&mut self) -> std::io::Result<()> {
-        let _ = self.app_log.flush();
-        let _ = self.all_log.flush();
-        Ok(())
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Запуск в режиме консольного терминального интерфейса (TUI)
+    Tui,
+    /// Запуск в режиме привилегированного фонового демона
+    Daemon,
+}
+
+/// Очищает файлы логов старше 3 дней для предотвращения раздувания дискового пространства.
+fn cleanup_old_logs(log_dir: &std::path::Path) {
+    if let Ok(entries) = std::fs::read_dir(log_dir) {
+        let max_age = std::time::Duration::from_secs(3 * 24 * 3600); // 3 дня
+        let now = std::time::SystemTime::now();
+
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Ok(metadata) = entry.metadata() {
+                    if let Ok(modified) = metadata.modified() {
+                        if let Ok(age) = now.duration_since(modified) {
+                            if age > max_age {
+                                let _ = std::fs::remove_file(&path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
 fn main() -> glib::ExitCode {
-    // Точка входа в приложение
-    let args: Vec<String> = std::env::args().collect();
+    // Разбор аргументов командной строки
+    let cli = Cli::parse();
 
-    // --- Раздел: Логирование с авторотацией в ~/.local/share/vrxx/logs/ ---
+    let is_daemon = cli.daemon || matches!(cli.command, Some(Commands::Daemon));
+    let is_tui = cli.tui || matches!(cli.command, Some(Commands::Tui));
+
+    // Настройка каталога и ротации логов в ~/.local/share/vrxx/logs/
     let log_dir = dirs::data_local_dir()
         .unwrap_or_else(|| {
             dirs::home_dir()
@@ -60,39 +105,45 @@ fn main() -> glib::ExitCode {
         .join("vrxx")
         .join("logs");
     std::fs::create_dir_all(&log_dir).ok();
+    cleanup_old_logs(&log_dir);
 
-    let is_daemon = args.iter().any(|arg| arg == "--daemon");
-    let is_tui = args.iter().any(|arg| arg == "tui");
-
-    if is_tui {
-        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-        if let Err(e) = rt.block_on(tui::run_tui()) {
-            tracing::error!("Error running TUI: {e}");
-            std::process::exit(1);
-        }
-        std::process::exit(0);
-    }
-
-    let log_prefix = if is_daemon { "daemon.log" } else { "app.log" };
-
-    let log_file = tracing_appender::rolling::daily(&log_dir, log_prefix);
-    let all_log_file = tracing_appender::rolling::daily(&log_dir, "all.log");
-
-    let multi_writer = MultiWriter {
-        app_log: log_file,
-        all_log: all_log_file,
+    let log_prefix = if is_tui {
+        "tui.log"
+    } else if is_daemon {
+        "daemon.log"
+    } else {
+        "app.log"
     };
 
-    let (non_blocking, _guard) = tracing_appender::non_blocking(multi_writer);
+    let log_file = tracing_appender::rolling::daily(&log_dir, log_prefix);
+    let (non_blocking, _guard) = tracing_appender::non_blocking(log_file);
 
-    // --- Раздел: Архитектурное логирование (Tracing Layers) ---
+    // Архитектурная настройка слоев TracingSubscriber
     use tracing_subscriber::prelude::*;
     let fmt_layer = tracing_subscriber::fmt::layer()
         .with_writer(non_blocking)
         .with_ansi(false);
 
+    if is_tui {
+        // Инициализация Tracing для TUI: вывод направляется в файл, а не в stdout/stderr терминала
+        tracing_subscriber::registry().with(fmt_layer).init();
+
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(runtime) => runtime,
+            Err(e) => {
+                tracing::error!("Не удалось создать Tokio Runtime для TUI: {e}");
+                std::process::exit(1);
+            }
+        };
+        if let Err(e) = rt.block_on(tui::run_tui()) {
+            tracing::error!("Ошибка выполнения TUI: {e}");
+            std::process::exit(1);
+        }
+        std::process::exit(0);
+    }
+
     if is_daemon {
-        // Для демона создаем менеджер событий заранее, чтобы подключить его к tracing
+        // Инициализация для системного демона: прикрепление SSE-слоя для трансляции событий в GUI
         let (event_manager, _) = daemon::events::EventManager::new(100);
         let event_manager = std::sync::Arc::new(event_manager);
         let sse_layer = daemon::events::SseTracingLayer::new(event_manager.clone());
@@ -105,66 +156,123 @@ fn main() -> glib::ExitCode {
         match tokio::runtime::Runtime::new() {
             Ok(rt) => {
                 if let Err(e) = rt.block_on(daemon::run_with_manager(event_manager)) {
-                    tracing::error!("Daemon failed: {e}");
+                    tracing::error!("Аварийная остановка системного демона: {e}");
                     std::process::exit(1);
                 }
                 std::process::exit(0);
             }
             Err(e) => {
-                tracing::error!("Failed to initialize tokio runtime: {e}");
+                tracing::error!("Не удалось создать Tokio Runtime для системного демона: {e}");
                 std::process::exit(1);
             }
         }
     } else {
         tracing_subscriber::registry().with(fmt_layer).init();
     }
-    // ================================
 
+    // Фоновая проверка обновления баз GeoIP и GeoSite
     crate::services::geo_updater::spawn_background_updater();
 
-    // Устанавливаем язык ДО любой инициализации GTK и gettext
+    // Инициализация подсистемы интернационализации (Gettext) и системной локали
+    // 1. Инициализируем локаль libc
+    let mut loc = setlocale(LocaleCategory::LcAll, "");
+
+    // Если локаль не была установлена (None) или сбросилась в голый ASCII "C" / "POSIX",
+    // gettext в glibc отключает перевод. Переключаем процесс на доступную UTF-8 локаль:
+    if loc.as_deref().is_none_or(|l| l == b"C" || l == b"POSIX") {
+        if setlocale(LocaleCategory::LcAll, "C.UTF-8").is_none()
+            && setlocale(LocaleCategory::LcAll, "C.utf8").is_none()
+        {
+            let _ = setlocale(LocaleCategory::LcAll, "en_US.UTF-8");
+        }
+        loc = setlocale(LocaleCategory::LcAll, "");
+    }
+
+    // 2. Установка языка приложения (LANGUAGE)
     let manager = settings::SettingsManager::new();
     let app_settings = manager.load();
-    if app_settings.language != "system" {
-        let lang = if app_settings.language == "ru" {
-            "ru_RU.UTF-8"
-        } else {
-            &app_settings.language
-        };
-        std::env::set_var("LANGUAGE", lang);
-        std::env::set_var("LC_ALL", lang);
-        std::env::set_var("LANG", lang);
-        std::env::set_var("LC_MESSAGES", lang);
+
+    match app_settings.language.as_str() {
+        "ru" => {
+            std::env::set_var("LANGUAGE", "ru");
+        }
+        "en" => {
+            std::env::set_var("LANGUAGE", "en");
+        }
+        _ => {
+            // "system": если в системном LANG указан русский (ru), но в системе нет сгенерированной ru_RU локали
+            // и LANGUAGE не был задан явно, активируем LANGUAGE=ru
+            if let Ok(sys_lang) = std::env::var("LANG") {
+                if sys_lang.starts_with("ru") && std::env::var("LANGUAGE").is_err() {
+                    std::env::set_var("LANGUAGE", "ru");
+                }
+            }
+        }
     }
 
-    tracing::info!("Vrxx Application Started");
+    tracing::info!(
+        "Приложение VRXX запущено (локаль: {:?}, язык: {})",
+        loc.as_deref()
+            .map(|b| String::from_utf8_lossy(b).into_owned()),
+        app_settings.language
+    );
 
-    // Инициализируем Gettext
-    setlocale(LocaleCategory::LcAll, "");
-
-    // --- Раздел: Локализация ---
-    // Указываем GTK/GLib использовать локализацию и настраиваем gettext
+    // 3. Каскадный поиск каталога файлов локализации (.mo)
     gtk::glib::set_application_name("Vrxx");
 
-    if let Err(e) = bindtextdomain(GETTEXT_PACKAGE, LOCALEDIR) {
-        tracing::warn!("Unable to bind the text domain: {}", e);
-    }
-    if let Err(e) = bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8") {
-        tracing::warn!("Unable to set the text domain encoding: {}", e);
-    }
-    if let Err(e) = textdomain(GETTEXT_PACKAGE) {
-        tracing::warn!("Unable to switch to the text domain: {}", e);
+    let configured_locale_dir = if std::path::Path::new(LOCALEDIR).is_relative() {
+        std::env::current_dir()
+            .map(|p| p.join(LOCALEDIR))
+            .unwrap_or_else(|_| std::path::PathBuf::from(LOCALEDIR))
+    } else {
+        std::path::PathBuf::from(LOCALEDIR)
+    };
+
+    let candidate_dirs = [
+        configured_locale_dir.clone(),
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.join("../share/locale")))
+            .unwrap_or_default(),
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.join("locale")))
+            .unwrap_or_default(),
+        std::env::current_dir()
+            .map(|p| p.join("locale"))
+            .unwrap_or_default(),
+    ];
+
+    let mut locale_dir = configured_locale_dir;
+    for dir in &candidate_dirs {
+        if dir.exists()
+            && (dir.join("ru/LC_MESSAGES/vrxx.mo").exists()
+                || dir.join("en/LC_MESSAGES/vrxx.mo").exists())
+        {
+            locale_dir = dir.clone();
+            break;
+        }
     }
 
-    // Загружаем ресурсы
+    if let Err(e) = bindtextdomain(GETTEXT_PACKAGE, &locale_dir) {
+        tracing::warn!("Не удалось привязать домен локализации gettext: {}", e);
+    }
+    if let Err(e) = bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8") {
+        tracing::warn!("Не удалось установить кодировку домена gettext: {}", e);
+    }
+    if let Err(e) = textdomain(GETTEXT_PACKAGE) {
+        tracing::warn!("Не удалось переключить домен gettext: {}", e);
+    }
+
+    // Загрузка скомпилированных ресурсов GResource
     let res_data = include_bytes!(concat!(env!("OUT_DIR"), "/vrxx.gresource"));
     if let Ok(res) = gio::Resource::from_data(&glib::Bytes::from(res_data)) {
         gio::resources_register(&res);
     } else {
-        tracing::error!("Failed to load compiled resources");
+        tracing::error!("Не удалось загрузить скомпилированные ресурсы GResource");
     }
 
-    // Устанавливаем перехватчик логов GLib/GTK
+    // Перехват системных логов GLib/GTK и перенаправление в tracing
     glib::log_set_writer_func(move |log_level, log_fields| {
         let mut message = String::new();
         let mut domain = String::new();
@@ -190,10 +298,16 @@ fn main() -> glib::ExitCode {
         glib::LogWriterOutput::Handled
     });
 
-    let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(runtime) => runtime,
+        Err(e) => {
+            tracing::error!("Не удалось создать Tokio Runtime для GUI: {e}");
+            return glib::ExitCode::FAILURE;
+        }
+    };
     let _guard = rt.enter();
 
-    // Запускаем приложение
+    // Запуск графического приложения GTK4
     let app = VrxxApplication::new("ru.mark.vrxx", &gio::ApplicationFlags::empty());
     app.run()
 }

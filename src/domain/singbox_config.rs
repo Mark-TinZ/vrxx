@@ -1,114 +1,34 @@
+/* singbox_config.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+//! # Генератор конфигураций сетевого ядра sing-box (Sing-Box 1.13.18+ Config Builder)
+//!
+//! Модуль отвечает за:
+//! - Формирование валидного JSON-документа конфигурации `sing-box` современной спецификации (1.13.18+)
+//! - Использование актуального формата DNS (`type: "https"`, `type: "local"`, `type: "fakeip"`)
+//! - Безопасную маршрутизацию доменов через `route.default_domain_resolver = "local-dns"`
+//! - Перехват DNS-запросов через `action: "hijack-dns"` в `route.rules`
+//! - Генерацию изолированных микро-конфигураций (L7 Probe) для проверки работоспособности ключей
+
 use crate::domain::key_parser::ParsedKey;
 use crate::settings::AppSettings;
 use serde_json::json;
 use std::str::FromStr;
 
-/// Определяет версию установленного в системе sing-box.
-/// Возвращает кортеж (Major, Minor, Patch). По умолчанию (1, 8, 0).
-fn get_singbox_version() -> (u32, u32, u32) {
-    let mut bin_path = std::path::PathBuf::from("sing-box");
-    if let Some(local_dir) = dirs::data_local_dir() {
-        let local_bin = local_dir.join("vrxx").join("bin").join("sing-box");
-        if local_bin.exists() {
-            bin_path = local_bin;
-        }
-    }
-
-    if let Ok(output) = std::process::Command::new(&bin_path)
-        .arg("version")
-        .output()
-    {
-        if let Ok(ver_str) = String::from_utf8(output.stdout) {
-            if let Some(version_line) = ver_str.lines().next() {
-                if let Some(v_str) = version_line.strip_prefix("sing-box version ") {
-                    let parts: Vec<&str> = v_str.trim().split('.').collect();
-                    if parts.len() >= 2 {
-                        let major = parts[0].parse().unwrap_or(1);
-                        let minor = parts[1].parse().unwrap_or(8);
-                        let patch = parts
-                            .get(2)
-                            .and_then(|p| p.split('-').next())
-                            .and_then(|p| p.parse().ok())
-                            .unwrap_or(0);
-                        return (major, minor, patch);
-                    }
-                }
-            }
-        }
-    }
-    (1, 8, 0)
-}
-
-/// Генерирует JSON-конфигурацию для sing-box на основе выбранного ключа и настроек приложения с автоматическим определением версии ядра.
-pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> String {
-    let version = get_singbox_version();
-    build_singbox_config_with_version(parsed_key, settings, version)
-}
-
-/// Генерирует JSON-конфигурацию для sing-box с явно заданной версией ядра (используется для генерации и версионных тестов).
-pub fn build_singbox_config_with_version(
+/// Извлекает и формирует исходящий узел (Outbound) и endpoints (для WireGuard) для заданного ключа.
+pub fn build_proxy_outbound_and_endpoints(
     parsed_key: &ParsedKey,
-    settings: &AppSettings,
-    sb_version: (u32, u32, u32),
-) -> String {
-    let mut actual_http_port = settings.http_port;
-    if actual_http_port == settings.socks_port {
-        actual_http_port += 1;
-    }
-
-    let is_1_11_or_newer = sb_version.0 > 1 || (sb_version.0 == 1 && sb_version.1 >= 11);
-    let is_1_12_or_newer = sb_version.0 > 1 || (sb_version.0 == 1 && sb_version.1 >= 12);
-    let is_1_13_or_newer = sb_version.0 > 1 || (sb_version.0 == 1 && sb_version.1 >= 13);
-
-    // 1. Inbounds
-    let mut socks_inbound = json!({
-        "type": "socks",
-        "tag": "socks-in",
-        "listen": if settings.allow_lan { "0.0.0.0" } else { "127.0.0.1" },
-        "listen_port": settings.socks_port,
-    });
-
-    if !is_1_11_or_newer {
-        socks_inbound["sniff"] = json!(settings.enable_sniffing);
-        socks_inbound["sniff_override_destination"] = json!(settings.enable_sniffing);
-    }
-
-    let mut inbounds = vec![
-        socks_inbound,
-        json!({
-            "type": "http",
-            "tag": "http-in",
-            "listen": if settings.allow_lan { "0.0.0.0" } else { "127.0.0.1" },
-            "listen_port": actual_http_port
-        }),
-    ];
-
-    if settings.tun_mode {
-        let mut tun_inbound = json!({
-            "type": "tun",
-            "tag": "tun-in",
-            "interface_name": "vrxx-tun",
-            "auto_route": true,
-            "strict_route": true,
-            "stack": "gvisor",
-        });
-
-        if is_1_12_or_newer {
-            tun_inbound["address"] = json!(["172.19.0.1/30", "fdfe:dcba:9876::1/126"]);
-        } else {
-            tun_inbound["inet4_address"] = json!("172.19.0.1/30");
-            tun_inbound["inet6_address"] = json!("fdfe:dcba:9876::1/126");
-        }
-
-        if !is_1_11_or_newer {
-            tun_inbound["sniff"] = json!(settings.enable_sniffing);
-            tun_inbound["sniff_override_destination"] = json!(settings.enable_sniffing);
-        }
-
-        inbounds.push(tun_inbound);
-    }
-
-    // 2. Outbounds & Endpoints
+    enable_mux: bool,
+    mux_concurrency: i32,
+) -> (serde_json::Value, Vec<serde_json::Value>) {
     let qp = &parsed_key.query_params;
     let proto_lower = parsed_key.protocol.to_lowercase();
     let security = qp.get("security").map(|s| s.as_str()).unwrap_or("none");
@@ -164,7 +84,6 @@ pub fn build_singbox_config_with_version(
                 "server_port": parsed_key.port,
                 "method": method,
                 "password": parsed_key.uuid,
-                "packet_encoding": "xudp"
             })
         }
         "hysteria2" | "hy2" => {
@@ -224,39 +143,22 @@ pub fn build_singbox_config_with_version(
                 .unwrap_or_else(|| "10.0.0.2/32".to_string());
             let peer_pub = qp.get("public_key").cloned().unwrap_or_default();
 
-            if is_1_13_or_newer {
-                endpoints.push(json!({
-                    "type": "wireguard",
-                    "tag": "wg-ep",
-                    "system_interface": false,
-                    "interface_name": "wg-vrxx",
-                    "local_address": [local_ip],
-                    "private_key": parsed_key.uuid,
-                    "peers": [{
-                        "server": parsed_key.host,
-                        "server_port": parsed_key.port,
-                        "public_key": peer_pub,
-                        "allowed_ips": ["0.0.0.0/0", "::/0"]
-                    }]
-                }));
-                json!({
-                    "type": "direct",
-                    "tag": "proxy",
-                    "detour": "wg-ep"
-                })
-            } else {
-                json!({
-                    "type": "wireguard",
-                    "tag": "proxy",
-                    "server": parsed_key.host,
-                    "server_port": parsed_key.port,
-                    "system_interface": false,
-                    "interface_name": "wg-vrxx",
-                    "local_address": [local_ip],
-                    "private_key": parsed_key.uuid,
-                    "peer_public_key": peer_pub,
-                })
-            }
+            endpoints.push(json!({
+                "type": "wireguard",
+                "tag": "proxy",
+                "address": [local_ip],
+                "private_key": parsed_key.uuid,
+                "peers": [{
+                    "address": parsed_key.host,
+                    "port": parsed_key.port,
+                    "public_key": peer_pub,
+                    "allowed_ips": ["0.0.0.0/0", "::/0"]
+                }]
+            }));
+            json!({
+                "type": "direct",
+                "tag": "proxy-dummy"
+            })
         }
         _ => json!({
             "type": "direct",
@@ -264,132 +166,187 @@ pub fn build_singbox_config_with_version(
         }),
     };
 
-    if is_1_12_or_newer && std::net::IpAddr::from_str(&parsed_key.host).is_err() {
-        proxy_outbound["domain_resolver"] = json!("remote-dns");
-    }
-
-    // TLS configuration
-    if security == "tls"
-        || security == "reality"
-        || proto_lower == "hysteria2"
-        || proto_lower == "tuic"
-    {
+    // Настройка TLS и Reality
+    let is_tls_proto = proto_lower == "hysteria2" || proto_lower == "hy2" || proto_lower == "tuic";
+    if security == "tls" || security == "reality" || is_tls_proto {
         let mut tls = json!({
             "enabled": true,
-            "server_name": qp.get("sni").unwrap_or(&parsed_key.host),
-            "alpn": qp.get("alpn").map(|s| s.split(',').collect::<Vec<&str>>()).unwrap_or_else(|| vec!["h2", "http/1.1"])
+            "server_name": qp.get("sni").or_else(|| qp.get("peer")).unwrap_or(&parsed_key.host),
+            "insecure": qp.get("allowInsecure").map(|v| v == "1" || v == "true").unwrap_or(false),
         });
 
+        // uTLS Fingerprint: если задан в ключе (fp=...), используем его; если нет — форсируем "chrome"
         let fp = qp
             .get("fp")
-            .or_else(|| qp.get("fingerprint"))
             .map(|s| s.as_str())
+            .filter(|s| !s.is_empty())
             .unwrap_or("chrome");
-        if !fp.is_empty() {
-            tls["utls"] = json!({
-                "enabled": true,
-                "fingerprint": fp
-            });
-        }
+        tls["utls"] = json!({
+            "enabled": true,
+            "fingerprint": fp
+        });
 
         if security == "reality" {
-            tls["reality"] = json!({
+            let mut reality = json!({
                 "enabled": true,
-                "public_key": qp.get("pbk").map(|s| s.as_str()).unwrap_or(""),
-                "short_id": qp.get("sid").map(|s| s.as_str()).unwrap_or("")
+                "public_key": qp.get("pbk").unwrap_or(&"".to_string()),
             });
+            if let Some(sid) = qp.get("sid") {
+                reality["short_id"] = json!(sid);
+            }
+            tls["reality"] = reality;
         }
 
         proxy_outbound["tls"] = tls;
     }
 
-    // Transports
-    if net == "grpc" {
-        proxy_outbound["transport"] = json!({
-            "type": "grpc",
-            "service_name": qp.get("serviceName").map(|s| s.as_str()).unwrap_or("")
-        });
-    } else if net == "ws" {
-        proxy_outbound["transport"] = json!({
-            "type": "ws",
-            "path": qp.get("path").map(|s| s.as_str()).unwrap_or("/"),
-            "headers": {
-                "Host": qp.get("host").unwrap_or(&parsed_key.host)
+    // Настройка протоколов транспорта (WebSocket, gRPC, HTTPUpgrade)
+    match net {
+        "ws" => {
+            let mut ws = json!({
+                "type": "ws",
+                "path": qp.get("path").unwrap_or(&"/".to_string()),
+            });
+            if let Some(host) = qp.get("host") {
+                ws["headers"] = json!({ "Host": host });
             }
-        });
+            proxy_outbound["transport"] = ws;
+        }
+        "grpc" => {
+            proxy_outbound["transport"] = json!({
+                "type": "grpc",
+                "service_name": qp.get("serviceName").unwrap_or(&"".to_string()),
+            });
+        }
+        "httpupgrade" => {
+            let mut hu = json!({
+                "type": "httpupgrade",
+                "path": qp.get("path").unwrap_or(&"/".to_string()),
+            });
+            if let Some(host) = qp.get("host") {
+                hu["host"] = json!(host);
+            }
+            proxy_outbound["transport"] = hu;
+        }
+        _ => {}
     }
 
-    // Multiplexing
-    if settings.enable_mux
-        && security != "reality"
-        && proto_lower != "hysteria2"
-        && proto_lower != "tuic"
-    {
+    // Мультиплексирование (Mux)
+    if enable_mux && proto_lower != "wireguard" && proto_lower != "wg" {
         proxy_outbound["multiplex"] = json!({
             "enabled": true,
-            "protocol": "smux"
+            "protocol": "h2mux",
+            "max_connections": mux_concurrency,
+            "min_streams": 4,
+            "padding": true
         });
     }
 
-    if !is_1_12_or_newer && settings.disable_ipv6 {
-        proxy_outbound["domain_strategy"] = json!("ipv4_only");
+    (proxy_outbound, endpoints)
+}
+
+/// Генерирует полную JSON-конфигурацию для sing-box 1.13.18+ на основе ключа и настроек приложения.
+pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> String {
+    let socks_port = settings.socks_port;
+    let http_port = if settings.http_port == settings.socks_port {
+        settings.http_port + 1
+    } else {
+        settings.http_port
+    };
+
+    // =========================================================================
+    // 1. ВХОДЯЩИЕ ПОДКЛЮЧЕНИЯ (INBOUNDS)
+    // =========================================================================
+    let mut inbounds = vec![
+        json!({
+            "type": "socks",
+            "tag": "socks-in",
+            "listen": if settings.allow_lan { "0.0.0.0" } else { "127.0.0.1" },
+            "listen_port": socks_port,
+        }),
+        json!({
+            "type": "http",
+            "tag": "http-in",
+            "listen": if settings.allow_lan { "0.0.0.0" } else { "127.0.0.1" },
+            "listen_port": http_port
+        }),
+    ];
+
+    if settings.tun_mode {
+        inbounds.push(json!({
+            "type": "tun",
+            "tag": "tun-in",
+            "interface_name": "vrxx-tun",
+            "auto_route": true,
+            "strict_route": true,
+            "stack": "gvisor",
+            "address": ["172.19.0.1/30", "fdfe:dcba:9876::1/126"]
+        }));
     }
 
-    // 3. Routing rules
-    let mut rules = vec![];
+    // =========================================================================
+    // 2. ИСХОДЯЩИЕ ПОДКЛЮЧЕНИЯ И ЭНДПОИНТЫ (OUTBOUNDS & ENDPOINTS)
+    // =========================================================================
+    let proto_lower = parsed_key.protocol.to_lowercase();
+    let (proxy_outbound, endpoints) = build_proxy_outbound_and_endpoints(
+        parsed_key,
+        settings.enable_mux,
+        settings.mux_concurrency,
+    );
 
-    if is_1_11_or_newer && settings.enable_sniffing {
+    let mut outbounds = vec![
+        proxy_outbound,
+        json!({ "type": "direct", "tag": "direct" }),
+        json!({ "type": "block", "tag": "block" }),
+    ];
+
+    if proto_lower == "wireguard" || proto_lower == "wg" {
+        outbounds.retain(|o| o.get("tag").and_then(|t| t.as_str()) != Some("proxy-dummy"));
+    }
+
+    // =========================================================================
+    // 3. ПРАВИЛА МАРШРУТИЗАЦИИ (ROUTING RULES)
+    // =========================================================================
+    let mut rules = vec![];
+    let mut rule_sets = vec![];
+
+    // Блокировка QUIC (UDP 443) для принудительного использования стабильного TCP/TLS
+    if settings.block_quic {
+        rules.push(json!({
+            "action": "reject",
+            "network": "udp",
+            "port": [443]
+        }));
+    }
+
+    // Перехват DNS через action: hijack-dns
+    rules.push(json!({
+        "action": "hijack-dns",
+        "port": [53]
+    }));
+
+    // Сниффинг протоколов и доменов через action: sniff (sing-box 1.13.18+)
+    if settings.enable_sniffing {
         rules.push(json!({
             "action": "sniff"
         }));
     }
 
-    if is_1_13_or_newer {
-        rules.push(json!({
-            "protocol": "dns",
-            "action": "hijack-dns"
-        }));
-    }
+    let geodata_dir = dirs::data_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("/tmp"))
+        .join("vrxx")
+        .join("geodata");
 
-    if settings.disable_ipv6 {
-        rules.push(json!({
-            "ip_cidr": ["::/0"],
-            "outbound": "block"
-        }));
-    }
-
-    if settings.bypass_lan {
-        rules.push(json!({
-            "ip_is_private": true,
-            "outbound": "direct"
-        }));
-        rules.push(json!({
-            "ip_cidr": ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
-            "outbound": "direct"
-        }));
-    }
-
-    let mut rule_sets = vec![];
-    let mut active_rule_sets = vec![];
-
-    if settings.block_ads {
-        let tag = "geosite-category-ads-all";
-        rule_sets.push(json!({
-            "tag": tag,
-            "type": "remote",
-            "format": "binary",
-            "url": "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/geosite-category-ads-all.srs",
-            "download_detour": "direct"
-        }));
-        rules.push(json!({
-            "rule_set": [tag],
-            "outbound": "block"
-        }));
-    }
-
-    if settings.enable_routing {
-        let mut add_region = |tag: &str, url: &str| {
-            active_rule_sets.push(tag.to_string());
+    let mut add_rule_set = |tag: &str, url: &str, file_name: &str| {
+        let local_path = geodata_dir.join(file_name);
+        if local_path.exists() {
+            rule_sets.push(json!({
+                "tag": tag,
+                "type": "local",
+                "format": "binary",
+                "path": local_path.to_string_lossy()
+            }));
+        } else {
             rule_sets.push(json!({
                 "tag": tag,
                 "type": "remote",
@@ -397,175 +354,464 @@ pub fn build_singbox_config_with_version(
                 "url": url,
                 "download_detour": "direct"
             }));
-        };
+        }
+    };
 
-        if settings.route_ru {
-            add_region("geosite-ru", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/geosite-ru.srs");
-            add_region("geoip-ru", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/geoip-ru.srs");
-        }
-        if settings.route_cn {
-            add_region("geosite-cn", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/geosite-cn.srs");
-            add_region("geoip-cn", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/geoip-cn.srs");
-        }
-        if settings.route_ir {
-            add_region("geosite-ir", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/geosite-ir.srs");
-            add_region("geoip-ir", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geoip/geoip-ir.srs");
-        }
-        if settings.route_antifilter {
-            add_region("geosite-antifilter", "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/refs/heads/sing/geo/geosite/geosite-antifilter.srs");
-        }
+    // Блокировка рекламы
+    if settings.block_ads {
+        add_rule_set(
+            "geosite-ads",
+            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ads-all.srs",
+            "geosite-ads.srs",
+        );
+        rules.push(json!({
+            "rule_set": ["geosite-ads"],
+            "outbound": "block"
+        }));
+    }
 
-        if !active_rule_sets.is_empty() {
-            let target_tag = if settings.routing_mode == "proxy" {
-                "proxy"
-            } else {
-                "direct"
-            };
+    // Приоритетная защита Google и критических глобальных сервисов (исключение утечек через GGC)
+    // Должно выполняться СТРОГО ДО региональных правил РФ
+    add_rule_set(
+        "geosite-google",
+        "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/google.srs",
+        "geosite-google.srs",
+    );
+    rules.push(json!({
+        "rule_set": ["geosite-google"],
+        "outbound": "proxy"
+    }));
+
+    // Дополнительный fallback по доменным суффиксам Google / YouTube / Telegram
+    rules.push(json!({
+        "domain_suffix": [
+            "google.com",
+            "google.ru",
+            "gstatic.com",
+            "googleapis.com",
+            "googlevideo.com",
+            "googleusercontent.com",
+            "googleadservices.com",
+            "googletagmanager.com",
+            "youtube.com",
+            "ytimg.com",
+            "ggpht.com",
+            "gvt1.com",
+            "1e100.net",
+            "t.me",
+            "telegram.org"
+        ],
+        "outbound": "proxy"
+    }));
+
+    // Региональные правила маршрутизации (RU, CN, IR, Antifilter)
+    if settings.enable_routing {
+        // Сайты РФ (category-ru)
+        if settings.route_ru_sites {
+            add_rule_set(
+                "geosite-ru",
+                "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ru.srs",
+                "geosite-ru.srs",
+            );
             rules.push(json!({
-                "rule_set": active_rule_sets,
-                "outbound": target_tag
+                "rule_set": ["geosite-ru"],
+                "outbound": "direct"
             }));
-
-            if settings.routing_mode == "proxy" {
-                rules.push(json!({
-                    "outbound": "direct"
-                }));
-            }
         }
 
-        for rule in &settings.routing_rules {
-            let action_tag = if rule.action == "direct" {
-                "direct"
-            } else if rule.action == "block" {
-                "block"
-            } else {
-                "proxy"
-            };
+        // IP РФ (ru)
+        if settings.route_ru_ips {
+            add_rule_set(
+                "geoip-ru",
+                "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/ru.srs",
+                "geoip-ru.srs",
+            );
+            rules.push(json!({
+                "rule_set": ["geoip-ru"],
+                "outbound": "direct"
+            }));
+        }
 
-            if rule.type_ == "domain" {
-                rules.push(json!({
-                    "domain": [rule.value.clone()],
-                    "outbound": action_tag
-                }));
-            } else if rule.type_ == "ip" {
-                rules.push(json!({
-                    "ip_cidr": [rule.value.clone()],
-                    "outbound": action_tag
-                }));
-            } else if rule.type_ == "srs_url" {
-                let srs_tag = format!("srs-{}", rule.name.replace(' ', "-").to_lowercase());
-                rule_sets.push(json!({
-                    "tag": srs_tag.clone(),
-                    "type": "remote",
-                    "format": "binary",
-                    "url": rule.value.clone(),
-                    "download_detour": "direct"
-                }));
-                rules.push(json!({
-                    "rule_set": [srs_tag],
-                    "outbound": action_tag
-                }));
-            }
+        // Сайты Китая (cn)
+        if settings.route_cn_sites {
+            add_rule_set(
+                "geosite-cn",
+                "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/cn.srs",
+                "geosite-cn.srs",
+            );
+            rules.push(json!({
+                "rule_set": ["geosite-cn"],
+                "outbound": "direct"
+            }));
+        }
+
+        // IP Китая (cn)
+        if settings.route_cn_ips {
+            add_rule_set(
+                "geoip-cn",
+                "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.srs",
+                "geoip-cn.srs",
+            );
+            rules.push(json!({
+                "rule_set": ["geoip-cn"],
+                "outbound": "direct"
+            }));
+        }
+
+        // Сайты Ирана (category-ir)
+        if settings.route_ir_sites {
+            add_rule_set(
+                "geosite-ir",
+                "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ir.srs",
+                "geosite-ir.srs",
+            );
+            rules.push(json!({
+                "rule_set": ["geosite-ir"],
+                "outbound": "direct"
+            }));
+        }
+
+        // IP Ирана (ir)
+        if settings.route_ir_ips {
+            add_rule_set(
+                "geoip-ir",
+                "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/ir.srs",
+                "geoip-ir.srs",
+            );
+            rules.push(json!({
+                "rule_set": ["geoip-ir"],
+                "outbound": "direct"
+            }));
+        }
+
+        // Antifilter (через proxy)
+        if settings.route_antifilter {
+            add_rule_set(
+                "geosite-antifilter",
+                "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/antifilter.srs",
+                "geosite-antifilter.srs",
+            );
+            rules.push(json!({
+                "rule_set": ["geosite-antifilter"],
+                "outbound": "proxy"
+            }));
         }
     }
 
-    let mut direct_outbound = json!({
-        "type": "direct",
-        "tag": "direct"
+    // Пользовательские правила маршрутизации
+    for rule in &settings.routing_rules {
+        match rule.type_.as_str() {
+            "domain" | "Domain" | "domain_suffix" | "DomainSuffix" => {
+                rules.push(json!({
+                    "domain_suffix": [rule.value],
+                    "outbound": rule.action
+                }));
+            }
+            "domain_keyword" | "DomainKeyword" => {
+                rules.push(json!({
+                    "domain_keyword": [rule.value],
+                    "outbound": rule.action
+                }));
+            }
+            "ip_cidr" | "IP" => {
+                rules.push(json!({
+                    "ip_cidr": [rule.value],
+                    "outbound": rule.action
+                }));
+            }
+            "geoip" | "GeoIP" => {
+                let tag = format!("geoip-{}", rule.value.to_lowercase());
+                let file_name = format!("{tag}.srs");
+                add_rule_set(&tag, &rule.value, &file_name);
+                rules.push(json!({
+                    "rule_set": [tag],
+                    "outbound": rule.action
+                }));
+            }
+            "geosite" | "GeoSite" => {
+                let tag = format!("geosite-{}", rule.value.to_lowercase());
+                let file_name = format!("{tag}.srs");
+                add_rule_set(&tag, &rule.value, &file_name);
+                rules.push(json!({
+                    "rule_set": [tag],
+                    "outbound": rule.action
+                }));
+            }
+            "ruleset" | "RuleSet" => {
+                let tag = if rule.name.is_empty() {
+                    "custom-ruleset".to_string()
+                } else {
+                    format!(
+                        "ruleset-{}",
+                        rule.name
+                            .to_lowercase()
+                            .replace(|c: char| !c.is_alphanumeric(), "-")
+                    )
+                };
+                let file_name = format!("{tag}.srs");
+                add_rule_set(&tag, &rule.value, &file_name);
+                rules.push(json!({
+                    "rule_set": [tag],
+                    "outbound": rule.action
+                }));
+            }
+            _ => {}
+        }
+    }
+
+    // Локальная сеть
+    if settings.bypass_lan {
+        add_rule_set(
+            "geoip-private",
+            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/private.srs",
+            "geoip-private.srs",
+        );
+        rules.push(json!({
+            "rule_set": ["geoip-private"],
+            "outbound": "direct"
+        }));
+    }
+
+    // Блокировка IPv6 на уровне маршрутизации
+    if settings.disable_ipv6 {
+        rules.push(json!({
+            "ip_version": 6,
+            "action": "reject"
+        }));
+    }
+
+    // Обход самого адреса прокси-сервера (direct)
+    if !parsed_key.host.is_empty() {
+        if std::net::IpAddr::from_str(&parsed_key.host).is_ok() {
+            rules.push(json!({
+                "ip_cidr": [format!("{}/32", parsed_key.host)],
+                "outbound": "direct"
+            }));
+        } else {
+            rules.push(json!({
+                "domain": [parsed_key.host],
+                "outbound": "direct"
+            }));
+        }
+    }
+
+    let default_outbound = if settings.routing_mode == "bypass" {
+        "proxy"
+    } else {
+        "direct"
+    };
+
+    let route_obj = json!({
+        "rules": rules,
+        "rule_set": rule_sets,
+        "default_domain_resolver": "local-dns",
+        "final": default_outbound,
+        "auto_detect_interface": true
     });
-    if !is_1_12_or_newer && settings.disable_ipv6 {
-        direct_outbound["domain_strategy"] = json!("ipv4_only");
+
+    // =========================================================================
+    // 4. КОНФИГУРАЦИЯ DNS (DNS SUB-CONFIG)
+    // =========================================================================
+    let mut dns_rules = vec![];
+
+    // Прямой резолвинг хоста прокси через local-dns
+    if !parsed_key.host.is_empty() && std::net::IpAddr::from_str(&parsed_key.host).is_err() {
+        dns_rules.push(json!({
+            "domain": [parsed_key.host],
+            "server": "local-dns"
+        }));
     }
 
-    let outbounds = vec![
-        proxy_outbound,
-        direct_outbound,
+    if settings.disable_ipv6 {
+        dns_rules.push(json!({
+            "query_type": ["AAAA"],
+            "action": "reject"
+        }));
+    }
+
+    // Принудительный резолвинг Google через remote-dns (или fake-dns)
+    dns_rules.push(json!({
+        "rule_set": ["geosite-google"],
+        "server": if settings.enable_fake_dns { "fake-dns" } else { "remote-dns" }
+    }));
+    dns_rules.push(json!({
+        "domain_suffix": [
+            "google.com",
+            "google.ru",
+            "gstatic.com",
+            "googleapis.com",
+            "googlevideo.com",
+            "youtube.com",
+            "1e100.net"
+        ],
+        "server": if settings.enable_fake_dns { "fake-dns" } else { "remote-dns" }
+    }));
+
+    // Сайты РФ резолвим через local-dns
+    if settings.route_ru_sites {
+        dns_rules.push(json!({
+            "rule_set": ["geosite-ru"],
+            "server": "local-dns"
+        }));
+    }
+
+    let mut dns_servers = vec![
         json!({
-            "type": "block",
-            "tag": "block"
+            "tag": "remote-dns",
+            "type": "https",
+            "server": "1.1.1.1",
+            "detour": "proxy"
+        }),
+        json!({
+            "tag": "local-dns",
+            "type": "local"
         }),
     ];
 
-    let mut route_config = json!({
-        "rules": rules,
-        "auto_detect_interface": true,
-        "final": "proxy"
-    });
-
-    if is_1_12_or_newer {
-        route_config["default_domain_resolver"] = json!("remote-dns");
-    }
-
-    if !rule_sets.is_empty() {
-        route_config["rule_set"] = json!(rule_sets);
-    }
-
-    // 4. DNS config
-    let remote_dns = json!({
-        "tag": "remote-dns",
-        "type": "https",
-        "server": "1.1.1.1",
-        "detour": "proxy"
-    });
-
-    let local_dns = json!({
-        "tag": "local-dns",
-        "type": "local",
-        "detour": "direct"
-    });
-
-    let mut dns_rules = vec![];
-
-    if is_1_12_or_newer && settings.disable_ipv6 {
+    if settings.enable_fake_dns {
+        dns_servers.push(json!({
+            "tag": "fake-dns",
+            "type": "fakeip",
+            "inet4_range": "198.18.0.0/15",
+            "inet6_range": "fc00::/18"
+        }));
         dns_rules.push(json!({
-            "query_type": ["AAAA"],
-            "action": "reject",
-            "method": "drop"
+            "inbound": ["tun-in", "socks-in", "http-in"],
+            "server": "fake-dns"
         }));
     }
 
-    if !active_rule_sets.is_empty() {
-        dns_rules.push(json!({
-            "rule_set": active_rule_sets.clone(),
-            "server": "local-dns"
-        }));
-    }
-
-    if !is_1_12_or_newer && active_rule_sets.is_empty() {
-        dns_rules.push(json!({
-            "outbound": "any",
-            "server": "local-dns"
-        }));
-    }
-
-    let dns_config = json!({
-        "servers": [
-            remote_dns,
-            local_dns
-        ],
+    let mut dns_obj = json!({
+        "servers": dns_servers,
         "rules": dns_rules,
-        "final": "remote-dns",
-        "independent_cache": true
+        "final": "remote-dns"
     });
 
-    // 5. Final Root Assembly
+    let strategy_lower = match settings
+        .domain_strategy
+        .to_lowercase()
+        .replace('-', "_")
+        .as_str()
+    {
+        "preferipv4" | "prefer_ipv4" => "prefer_ipv4",
+        "preferipv6" | "prefer_ipv6" => "prefer_ipv6",
+        "ipv4only" | "ipv4_only" => "ipv4_only",
+        "ipv6only" | "ipv6_only" => "ipv6_only",
+        _ => "",
+    };
+
+    if !strategy_lower.is_empty() {
+        dns_obj["strategy"] = json!(strategy_lower);
+    }
+
+    // =========================================================================
+    // 5. ИТОГОВАЯ СБОРКА КОРНЕВОГО JSON ДОКУМЕНТА
+    // =========================================================================
     let mut root = json!({
         "log": {
             "level": settings.log_level,
             "timestamp": true
         },
-        "dns": dns_config,
         "inbounds": inbounds,
         "outbounds": outbounds,
-        "route": route_config,
+        "route": route_obj,
+        "dns": dns_obj,
         "experimental": {
             "clash_api": {
-                "external_controller": "127.0.0.1:9090"
+                "external_controller": "127.0.0.1:9090",
+                "secret": ""
             }
         }
     });
 
-    if is_1_13_or_newer && !endpoints.is_empty() {
+    if !endpoints.is_empty() {
+        root["endpoints"] = json!(endpoints);
+    }
+
+    serde_json::to_string_pretty(&root).unwrap_or_else(|_| "{}".to_string())
+}
+
+/// Генерирует ультра-легковесный JSON-конфиг для изолированной L7 проверки (Sandbox Probe) отдельного ключа.
+pub fn build_singbox_probe_config(parsed_key: &ParsedKey, probe_port: u16) -> String {
+    let proto_lower = parsed_key.protocol.to_lowercase();
+    let (proxy_outbound, endpoints) = build_proxy_outbound_and_endpoints(parsed_key, false, 8);
+
+    let mut outbounds = vec![
+        proxy_outbound,
+        json!({ "type": "direct", "tag": "direct" }),
+        json!({ "type": "block", "tag": "block" }),
+    ];
+
+    if proto_lower == "wireguard" || proto_lower == "wg" {
+        outbounds.retain(|o| o.get("tag").and_then(|t| t.as_str()) != Some("proxy-dummy"));
+    }
+
+    let mut dns_rules = vec![];
+    if !parsed_key.host.is_empty() && std::net::IpAddr::from_str(&parsed_key.host).is_err() {
+        dns_rules.push(json!({
+            "domain": [parsed_key.host],
+            "server": "local-dns"
+        }));
+    }
+
+    let mut route_rules = vec![json!({
+        "action": "hijack-dns",
+        "port": [53]
+    })];
+
+    if !parsed_key.host.is_empty() {
+        if std::net::IpAddr::from_str(&parsed_key.host).is_ok() {
+            route_rules.push(json!({
+                "ip_cidr": [format!("{}/32", parsed_key.host)],
+                "outbound": "direct"
+            }));
+        } else {
+            route_rules.push(json!({
+                "domain": [parsed_key.host],
+                "outbound": "direct"
+            }));
+        }
+    }
+
+    let mut root = json!({
+        "log": {
+            "level": "warn",
+            "timestamp": false
+        },
+        "inbounds": [
+            {
+                "type": "socks",
+                "tag": "socks-probe",
+                "listen": "127.0.0.1",
+                "listen_port": probe_port
+            }
+        ],
+        "outbounds": outbounds,
+        "route": {
+            "rules": route_rules,
+            "default_domain_resolver": "local-dns",
+            "final": "proxy",
+            "auto_detect_interface": true
+        },
+        "dns": {
+            "servers": [
+                {
+                    "tag": "remote-dns",
+                    "type": "https",
+                    "server": "1.1.1.1",
+                    "detour": "proxy"
+                },
+                {
+                    "tag": "local-dns",
+                    "type": "local"
+                }
+            ],
+            "rules": dns_rules,
+            "final": "remote-dns"
+        }
+    });
+
+    if !endpoints.is_empty() {
         root["endpoints"] = json!(endpoints);
     }
 
@@ -578,143 +824,305 @@ mod tests {
     use crate::domain::key_parser::parse_vpn_key;
 
     #[test]
-    fn test_singbox_config_validity() {
-        let key = parse_vpn_key("vless://my-uuid@1.1.1.1:443?security=reality&pbk=pubkey&sid=sid&sni=google.com&flow=xtls-rprx-vision#TestVLESS")
-            .expect("Valid key");
-        let settings = AppSettings::default();
+    fn test_build_config_vless_modern() {
+        let key = parse_vpn_key("vless://my-uuid@1.1.1.1:443?security=reality&pbk=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&sid=abcd&sni=google.com&flow=xtls-rprx-vision#TestVLESS")
+            .expect("Валидный ключ");
+        let settings = AppSettings::new();
 
         let json_str = build_singbox_config(&key, &settings);
-        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Valid JSON");
+        let val: serde_json::Value =
+            serde_json::from_str(&json_str).expect("Должен быть валидный JSON");
 
-        assert!(parsed.get("inbounds").is_some());
-        assert!(parsed.get("outbounds").is_some());
-        assert!(parsed.get("route").is_some());
-        assert!(parsed.get("dns").is_some());
+        // Проверка DNS
+        let dns_servers = val["dns"]["servers"].as_array().expect("Массив серверов");
+        let local_dns = dns_servers
+            .iter()
+            .find(|s| s["tag"] == "local-dns")
+            .unwrap();
+        assert_eq!(local_dns["type"], "local");
+        assert!(local_dns.get("detour").is_none());
+
+        let remote_dns = dns_servers
+            .iter()
+            .find(|s| s["tag"] == "remote-dns")
+            .unwrap();
+        assert_eq!(remote_dns["type"], "https");
+        assert_eq!(remote_dns["server"], "1.1.1.1");
+        assert_eq!(remote_dns["detour"], "proxy");
+
+        // Проверка Route
+        assert_eq!(val["route"]["default_domain_resolver"], "local-dns");
     }
 
     #[test]
-    fn test_singbox_version_1_13_adaptation() {
-        let key = parse_vpn_key(
-            "wg://my-priv-key@1.1.1.1:51820?public_key=peer_pub&ip=10.0.0.2/32#TestWG",
-        )
-        .expect("Valid WG key");
-        let mut settings = AppSettings::default();
-        settings.tun_mode = true;
-        settings.disable_ipv6 = true;
+    fn test_build_config_wireguard_endpoints() {
+        let key =
+            parse_vpn_key("wg://privkey@1.1.1.1:51820?public_key=pubkey&ip=10.0.0.2/32#TestWG")
+                .expect("Валидный ключ");
+        let settings = AppSettings::new();
 
-        let json_str = build_singbox_config_with_version(&key, &settings, (1, 13, 0));
-        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Valid JSON");
+        let json_str = build_singbox_config(&key, &settings);
+        let val: serde_json::Value = serde_json::from_str(&json_str).expect("Валидный JSON");
 
-        // Verify endpoints array for 1.13+ WireGuard
-        assert!(
-            parsed.get("endpoints").is_some(),
-            "Should contain endpoints in 1.13+"
-        );
+        assert!(val.get("endpoints").is_some());
+        let endpoints = val["endpoints"].as_array().unwrap();
+        assert_eq!(endpoints[0]["type"], "wireguard");
+        assert_eq!(endpoints[0]["tag"], "proxy");
+    }
 
-        // Verify TUN address array in 1.13+
-        let inbounds = parsed
-            .get("inbounds")
-            .and_then(|i| i.as_array())
-            .expect("Inbounds array");
-        let tun = inbounds
+    #[test]
+    fn test_build_config_fakedns() {
+        let key = parse_vpn_key("vless://my-uuid@1.1.1.1:443#TestFakeDns").expect("Валидный ключ");
+        let mut settings = AppSettings::new();
+        settings.enable_fake_dns = true;
+
+        let json_str = build_singbox_config(&key, &settings);
+        let val: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        assert!(val["dns"].get("fakeip").is_none());
+
+        let servers = val["dns"]["servers"].as_array().unwrap();
+        let fake_server = servers.iter().find(|s| s["tag"] == "fake-dns").unwrap();
+        assert_eq!(fake_server["type"], "fakeip");
+        assert_eq!(fake_server["inet4_range"], "198.18.0.0/15");
+    }
+
+    #[test]
+    fn test_build_config_sniffing_modern() {
+        let key = parse_vpn_key("vless://a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0@1.1.1.1:443?security=reality&pbk=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&sid=abcd&sni=google.com&flow=xtls-rprx-vision#VLESS").unwrap();
+        let mut settings = AppSettings::new();
+        settings.enable_sniffing = true;
+
+        let config_json = build_singbox_config(&key, &settings);
+        let val: serde_json::Value = serde_json::from_str(&config_json).unwrap();
+
+        // Проверяем, что route.sniff объект отсутствует
+        assert!(val["route"].get("sniff").is_none());
+
+        // Проверяем, что в route.rules есть правило action: sniff
+        let rules = val["route"]["rules"].as_array().unwrap();
+        assert!(rules
             .iter()
-            .find(|i| i.get("type").and_then(|t| t.as_str()) == Some("tun"))
-            .expect("TUN inbound");
-        assert!(
-            tun.get("address").is_some(),
-            "Should use address array in 1.13+"
-        );
+            .any(|r| r.get("action").and_then(|a| a.as_str()) == Some("sniff")));
+    }
 
-        // Verify route rules hijack-dns in 1.13+
-        let rules = parsed
-            .get("route")
-            .and_then(|r| r.get("rules"))
-            .and_then(|r| r.as_array())
-            .expect("Route rules");
-        let hijack_rule = rules
-            .iter()
-            .find(|r| r.get("action").and_then(|a| a.as_str()) == Some("hijack-dns"));
-        assert!(
-            hijack_rule.is_some(),
-            "Should contain hijack-dns rule in 1.13+"
-        );
+    #[test]
+    fn test_build_config_quic_blocked() {
+        let key = parse_vpn_key("vless://my-uuid@1.1.1.1:443#TestQuic").expect("Валидный ключ");
+        let mut settings = AppSettings::new();
+        settings.block_quic = true;
 
-        // Verify DNS reject for IPv6 AAAA in 1.13+
-        let dns_rules = parsed
-            .get("dns")
-            .and_then(|d| d.get("rules"))
-            .and_then(|r| r.as_array())
-            .expect("DNS rules");
-        let reject_rule = dns_rules
-            .iter()
-            .find(|r| r.get("action").and_then(|a| a.as_str()) == Some("reject"));
+        let json_str = build_singbox_config(&key, &settings);
+        let val: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        let rules = val["route"]["rules"].as_array().unwrap();
+        let quic_rule = rules.iter().find(|r| {
+            r.get("network").and_then(|n| n.as_str()) == Some("udp")
+                && r.get("port")
+                    .and_then(|p| p.as_array())
+                    .map(|arr| arr.iter().any(|v| v.as_i64() == Some(443)))
+                    .unwrap_or(false)
+        });
         assert!(
-            reject_rule.is_some(),
-            "Should contain reject rule for AAAA in 1.13+"
+            quic_rule.is_some(),
+            "Правило блокировки QUIC должно присутствовать в route.rules"
         );
     }
 
     #[test]
-    fn test_singbox_version_1_8_adaptation() {
-        let key = parse_vpn_key("vless://my-uuid@1.1.1.1:443#TestOld").expect("Valid key");
-        let mut settings = AppSettings::default();
-        settings.tun_mode = true;
+    fn test_build_config_utls_fallback_chrome() {
+        // Ключ без Reality и без явного &fp=... должен получить fp="chrome" по умолчанию
+        let key = parse_vpn_key("trojan://mypassword@1.1.1.1:443?security=tls#TestTrojanTls")
+            .expect("Валидный ключ");
+        let settings = AppSettings::new();
 
-        let json_str = build_singbox_config_with_version(&key, &settings, (1, 8, 0));
-        let parsed: serde_json::Value = serde_json::from_str(&json_str).expect("Valid JSON");
+        let json_str = build_singbox_config(&key, &settings);
+        let val: serde_json::Value = serde_json::from_str(&json_str).unwrap();
 
-        // Verify TUN inet4_address / inet6_address in < 1.12
-        let inbounds = parsed
-            .get("inbounds")
-            .and_then(|i| i.as_array())
-            .expect("Inbounds array");
-        let tun = inbounds
+        let outbounds = val["outbounds"].as_array().unwrap();
+        let proxy_out = outbounds.iter().find(|o| o["tag"] == "proxy").unwrap();
+        assert_eq!(proxy_out["tls"]["utls"]["enabled"], true);
+        assert_eq!(proxy_out["tls"]["utls"]["fingerprint"], "chrome");
+
+        // Ключ с явным fp=firefox должен сохранить свой fingerprint
+        let key_ff =
+            parse_vpn_key("vless://my-uuid@1.1.1.1:443?security=tls&fp=firefox#TestFirefox")
+                .unwrap();
+        let json_str_ff = build_singbox_config(&key_ff, &settings);
+        let val_ff: serde_json::Value = serde_json::from_str(&json_str_ff).unwrap();
+        let out_ff = val_ff["outbounds"]
+            .as_array()
+            .unwrap()
             .iter()
-            .find(|i| i.get("type").and_then(|t| t.as_str()) == Some("tun"))
-            .expect("TUN inbound");
+            .find(|o| o["tag"] == "proxy")
+            .unwrap()
+            .clone();
+        assert_eq!(out_ff["tls"]["utls"]["fingerprint"], "firefox");
+    }
+
+    #[test]
+    fn test_build_config_google_priority_rules() {
+        let key = parse_vpn_key("vless://my-uuid@1.1.1.1:443#TestGoogle").expect("Валидный ключ");
+        let mut settings = AppSettings::new();
+        settings.enable_routing = true;
+        settings.route_ru = true;
+        settings.route_ru_ips = true;
+
+        let json_str = build_singbox_config(&key, &settings);
+        let val: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+
+        let rules = val["route"]["rules"].as_array().unwrap();
+        // Находим индекс правила google и индекс правила geoip-ru
+        let google_idx = rules
+            .iter()
+            .position(|r| {
+                r.get("rule_set")
+                    .and_then(|rs| rs.as_array())
+                    .map(|arr| arr.iter().any(|v| v == "geosite-google"))
+                    .unwrap_or(false)
+            })
+            .expect("Правило geosite-google должно быть");
+
+        let ru_idx = rules
+            .iter()
+            .position(|r| {
+                r.get("rule_set")
+                    .and_then(|rs| rs.as_array())
+                    .map(|arr| arr.iter().any(|v| v == "geoip-ru"))
+                    .unwrap_or(false)
+            })
+            .expect("Правило geoip-ru должно быть");
+
         assert!(
-            tun.get("inet4_address").is_some(),
-            "Should use inet4_address in < 1.12"
-        );
-        assert!(
-            tun.get("address").is_none(),
-            "Should not use address array in < 1.12"
+            google_idx < ru_idx,
+            "Правило Google должно быть СТРОГО ДО правила GeoIP RU"
         );
     }
 
     #[test]
-    fn test_all_protocols_config_generation() {
-        let settings = AppSettings::default();
+    fn test_build_probe_config() {
+        let key =
+            parse_vpn_key("trojan://pass@ams-447a0d.wb-cdn-global.com:443#TestTrojan").unwrap();
+        let probe_json = build_singbox_probe_config(&key, 12345);
+        let val: serde_json::Value = serde_json::from_str(&probe_json).unwrap();
 
+        assert_eq!(val["inbounds"][0]["listen_port"], 12345);
+        assert_eq!(val["inbounds"][0]["tag"], "socks-probe");
+        assert_eq!(val["route"]["default_domain_resolver"], "local-dns");
+        assert_eq!(val["dns"]["servers"][1]["tag"], "local-dns");
+        assert!(val["dns"]["servers"][1].get("detour").is_none());
+
+        // DNS правило для обхода домена
+        let rules = val["dns"]["rules"].as_array().unwrap();
+        assert!(rules
+            .iter()
+            .any(|r| r["domain"][0] == "ams-447a0d.wb-cdn-global.com"));
+    }
+
+    #[test]
+    fn test_build_singbox_config_all_protocols() {
         let protocols = vec![
-            "vless://uuid@1.1.1.1:443?security=reality&pbk=key&sid=id#VLESS",
-            "vmess://eyJ2IjoiMiIsInBzIjoiVk1lc3MiLCJhZGQiOiIxLjEuMS4xIiwicG9ydCI6NDQzLCJpZCI6InV1aWQiLCJuZXQiOiJ3cyJ9",
+            "vless://a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0@1.1.1.1:443?security=reality&pbk=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&sid=abcd&sni=google.com&flow=xtls-rprx-vision#VLESS",
+            "vmess://eyJ2IjoiMiIsInBzIjoiVk1lc3MiLCJhZGQiOiIxLjEuMS4xIiwicG9ydCI6NDQzLCJpZCI6ImEwYTBhMGEwLWEwYTAtYTBhMC1hMGEwLWEwYTBhMGEwYTBhMCIsIm5ldCI6IndzIn0=",
             "trojan://pass@1.1.1.1:443#Trojan",
             "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@1.1.1.1:8388#SS",
             "hy2://pass@1.1.1.1:8443?up=100&down=500&obfs=salamander&obfs-password=123#HY2",
-            "tuic://uuid:pass@1.1.1.1:8443?congestion_control=bbr#TUIC",
-            "wg://privkey@1.1.1.1:51820?public_key=pubkey#WG",
+            "tuic://a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0:pass@1.1.1.1:8443?congestion_control=bbr#TUIC",
+            "wg://AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=@1.1.1.1:51820?public_key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=&ip=10.0.0.2/32#WG",
         ];
 
-        for proto_url in protocols {
-            let key = parse_vpn_key(proto_url).expect("Key parse");
-            let json_1_13 = build_singbox_config_with_version(&key, &settings, (1, 13, 0));
-            let parsed_1_13: serde_json::Value =
-                serde_json::from_str(&json_1_13).expect("Valid 1.13 JSON");
-            assert!(
-                parsed_1_13.get("outbounds").is_some(),
-                "Protocol {} failed in 1.13",
-                key.protocol
-            );
+        let settings = AppSettings::new();
 
-            let json_1_8 = build_singbox_config_with_version(&key, &settings, (1, 8, 0));
-            let parsed_1_8: serde_json::Value =
-                serde_json::from_str(&json_1_8).expect("Valid 1.8 JSON");
-            assert!(
-                parsed_1_8.get("outbounds").is_some(),
-                "Protocol {} failed in 1.8",
-                key.protocol
-            );
+        for url in protocols {
+            let key = parse_vpn_key(url).expect("Парсинг должен быть успешным");
+            let config_json = build_singbox_config(&key, &settings);
+            let val: serde_json::Value =
+                serde_json::from_str(&config_json).expect("Конфигурация должна быть валидным JSON");
+
+            assert!(val.get("inbounds").is_some());
+            assert!(val.get("outbounds").is_some());
+            assert!(val.get("route").is_some());
+            assert!(val.get("dns").is_some());
+        }
+    }
+
+    #[test]
+    fn test_singbox_check_with_binary_if_present() {
+        if let Some(bin_path) = crate::daemon::updater::find_singbox_binary() {
+            let protocols = vec![
+                "trojan://password123@ams-447a0d.wb-cdn-global.com:443#TestTrojan",
+                "vless://a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0@1.1.1.1:443?security=reality&pbk=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&sid=abcd&sni=google.com&flow=xtls-rprx-vision#TestVLESS",
+                "vmess://eyJ2IjoiMiIsInBzIjoiVk1lc3MiLCJhZGQiOiIxLjEuMS4xIiwicG9ydCI6NDQzLCJpZCI6ImEwYTBhMGEwLWEwYTAtYTBhMC1hMGEwLWEwYTBhMGEwYTBhMCIsIm5ldCI6IndzIn0=",
+                "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@1.1.1.1:8388#SS",
+                "hy2://pass@1.1.1.1:8443?up=100&down=500&obfs=salamander&obfs-password=123#HY2",
+                "tuic://a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0:pass@1.1.1.1:8443?congestion_control=bbr#TUIC",
+                "wg://AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=@1.1.1.1:51820?public_key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=&ip=10.0.0.2/32#WG",
+            ];
+
+            let temp_dir = std::env::temp_dir();
+            let temp_file = temp_dir.join("test_vrxx_singbox_check.json");
+
+            for url in &protocols {
+                let key = parse_vpn_key(url).expect("Парсинг ключа");
+
+                // Проверка регулярного конфига
+                for tun_mode in [false, true] {
+                    for fake_dns in [false, true] {
+                        for sniffing in [false, true] {
+                            let mut settings = AppSettings::new();
+                            settings.tun_mode = tun_mode;
+                            settings.enable_fake_dns = fake_dns;
+                            settings.enable_sniffing = sniffing;
+                            settings.disable_ipv6 = true;
+
+                            let config_json = build_singbox_config(&key, &settings);
+                            std::fs::write(&temp_file, &config_json)
+                                .expect("Запись тестового конфига");
+
+                            let output = std::process::Command::new(&bin_path)
+                                .arg("check")
+                                .arg("-c")
+                                .arg(&temp_file)
+                                .output();
+
+                            if let Ok(res) = output {
+                                let stderr = String::from_utf8_lossy(&res.stderr);
+                                assert!(
+                                    res.status.success(),
+                                    "sing-box check завершился ошибкой для URL {} (tun={}, fake_dns={}, sniffing={}):\nSTDERR:\n{}\nКонфиг:\n{}",
+                                    url,
+                                    tun_mode,
+                                    fake_dns,
+                                    sniffing,
+                                    stderr,
+                                    config_json
+                                );
+                            }
+                        }
+                    }
+                }
+
+                // Проверка probe конфига
+                let probe_json = build_singbox_probe_config(&key, 19998);
+                std::fs::write(&temp_file, &probe_json).expect("Запись probe конфига");
+                let output = std::process::Command::new(&bin_path)
+                    .arg("check")
+                    .arg("-c")
+                    .arg(&temp_file)
+                    .output();
+                if let Ok(res) = output {
+                    let stderr = String::from_utf8_lossy(&res.stderr);
+                    assert!(
+                        res.status.success(),
+                        "sing-box check для PROBE завершился ошибкой для URL {}:\nSTDERR:\n{}\nКонфиг:\n{}",
+                        url,
+                        stderr,
+                        probe_json
+                    );
+                }
+            }
+
+            let _ = std::fs::remove_file(&temp_file);
         }
     }
 }

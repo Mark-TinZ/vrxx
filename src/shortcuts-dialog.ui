@@ -1,21 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- shortcuts-dialog.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
 <interface domain="vrxx">
+  <!--
+    ============================================================================
+    ДИАЛОГ ГОРЯЧИХ КЛАВИШ ПРИЛОЖЕНИЯ (AdwShortcutsDialog)
+    ============================================================================
+
+    СТРУКТУРА ДИАЛОГА:
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ AdwShortcutsDialog (shortcuts_dialog):                                   │
+    │ └─ AdwShortcutsSection ("Shortcuts" / "Сочетания клавиш"):               │
+    │    ├─ [Показать сочетания клавиш] -> app.shortcuts                       │
+    │    └─ [Завершить работу (Quit)]   -> app.quit                            │
+    └──────────────────────────────────────────────────────────────────────────┘
+  -->
+
   <object class="AdwShortcutsDialog" id="shortcuts_dialog">
     <child>
+      <!-- Секция основных горячих клавиш -->
       <object class="AdwShortcutsSection">
         <property name="title" translatable="yes">Shortcuts</property>
+
+        <!-- Показать диалог сочетаний клавиш (Ctrl+?) -->
         <child>
           <object class="AdwShortcutsItem">
             <property name="title" translatable="yes" context="shortcut window">Show Shortcuts</property>
             <property name="action-name">app.shortcuts</property>
           </object>
         </child>
+
+        <!-- Закрыть программу (Ctrl+Q) -->
         <child>
           <object class="AdwShortcutsItem">
             <property name="title" translatable="yes" context="shortcut window">Quit</property>
             <property name="action-name">app.quit</property>
           </object>
         </child>
+
       </object>
     </child>
   </object>

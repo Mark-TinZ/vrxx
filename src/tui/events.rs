@@ -1,9 +1,29 @@
+/* events.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+//! # Обработчик событий клавиатуры в TUI (TUI Event Handler)
+//!
+//! Модуль обеспечивает неблокирующую обработку ввода пользователя:
+//! - Навигация по списку профилей: `Up` / `k`, `Down` / `j`
+//! - Подключение / отключение: `Space` / `Enter`
+//! - Переключение режима: `Tab` (TUN / Proxy)
+//! - Просмотр логов: `L` / `Esc`
+//! - Выход из приложения: `Q`
+
 use super::app::{App, ViewMode};
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use std::time::Duration;
 
-/// Обработка пользовательского ввода с таймаутом (неблокирующая)
+/// Обработка пользовательского ввода с таймаутом (неблокирующая).
 pub async fn handle_events(app: &mut App) -> Result<()> {
     if event::poll(Duration::from_millis(100))? {
         if let Event::Key(key) = event::read()? {
@@ -21,12 +41,14 @@ pub async fn handle_events(app: &mut App) -> Result<()> {
                         }
                         KeyCode::Char(' ') | KeyCode::Enter => {
                             if let Err(e) = app.toggle_connect().await {
-                                app.push_log(format!("[ERROR] Toggle connect failed: {e}"));
+                                app.push_log(format!(
+                                    "[ERROR] Ошибка переключения подключения: {e}"
+                                ));
                             }
                         }
                         KeyCode::Tab => {
                             if let Err(e) = app.toggle_mode().await {
-                                app.push_log(format!("[ERROR] Toggle mode failed: {e}"));
+                                app.push_log(format!("[ERROR] Ошибка переключения режима: {e}"));
                             }
                         }
                         KeyCode::Char('l') | KeyCode::Char('L') => {

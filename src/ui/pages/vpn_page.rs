@@ -1,9 +1,29 @@
+/* vpn_page.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+//! # Главная страница управления VPN-ключами (VrxxVpnPage)
+//!
+//! Основной контроллер интерфейса, отвечающий за:
+//! - Отображение списка сохраненных профилей подключений (`VrxxVpnKeyRow`)
+//! - Управление подключением/отключением через REST API демона `DaemonClient`
+//! - Замер задержки (Ping) и E2E Warm-Up верификацию соединения после запуска
+//! - Сбор и обновление телеметрии трафика в реальном времени (входящий/исходящий)
+//! - Обработку сигналов питания через D-Bus (`PrepareForSleep`) для корректного засыпания
+//! - Диалоги создания, редактирования, удаления и детальной информации о профилях
+
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib, CompositeTemplate};
 
-use crate::backend::VpnCore;
 use crate::settings::{SettingsManager, VpnKeyData};
 use crate::ui::components::vpn_key_row::VrxxVpnKeyRow;
 use crate::ui::models::VpnKeyObject;
@@ -13,6 +33,7 @@ mod imp {
     use super::*;
     use std::cell::RefCell;
 
+    /// Структура CompositeTemplate для страницы VPN
     #[derive(Debug, Default, CompositeTemplate)]
     #[template(resource = "/ru/mark/vrxx/ui/pages/vpn_page.ui")]
     pub struct VrxxVpnPage {
@@ -29,9 +50,14 @@ mod imp {
         pub action_group: RefCell<Option<gio::SimpleActionGroup>>,
 
         pub start_time: RefCell<Option<std::time::Instant>>,
+        pub last_key_switch: RefCell<Option<std::time::Instant>>,
+        pub last_disconnect: RefCell<Option<std::time::Instant>>,
+        pub last_ping: RefCell<Option<std::time::Instant>>,
+        pub connecting_target_url: RefCell<Option<String>>,
         pub bytes_down: RefCell<u64>,
         pub bytes_up: RefCell<u64>,
         pub is_sleeping: RefCell<bool>,
+        pub is_connected: std::cell::Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -55,7 +81,7 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            // Инициализация бэкенда
+            // Инициализация бэкенда ядра
             self.backend.replace(crate::backend::CoreBackend::new());
 
             self.obj().setup_model();
@@ -74,6 +100,7 @@ mod imp {
 }
 
 glib::wrapper! {
+    /// Обертка GObject для страницы VPN
     pub struct VrxxVpnPage(ObjectSubclass<imp::VrxxVpnPage>)
         @extends gtk::Widget, adw::Bin,
         @implements gio::ActionGroup, gio::ActionMap,
@@ -87,11 +114,14 @@ impl Default for VrxxVpnPage {
 }
 
 impl VrxxVpnPage {
+    /// Создает новый экземпляр страницы VPN.
     pub fn new() -> Self {
         glib::Object::builder().build()
     }
 
-    // --- Раздел: Работа с данными (Model) ---
+    // =========================================================================
+    // 1. РАБОТА С ДАННЫМИ И МОДЕЛЬЮ СПИСКА (MODEL)
+    // =========================================================================
     fn setup_model(&self) {
         let model = gio::ListStore::new::<VpnKeyObject>();
 
@@ -102,8 +132,19 @@ impl VrxxVpnPage {
         let streamer_mode = loaded_settings.streamer_mode;
         let auto_connect = loaded_settings.connect_on_startup;
 
+        let mut active_found = false;
         for k in saved_keys {
-            let key_obj = VpnKeyObject::new(&k.name, &k.protocol, k.is_active, &k.url);
+            let is_key_active = if k.is_active && !active_found {
+                active_found = true;
+                true
+            } else {
+                false
+            };
+
+            let key_obj = VpnKeyObject::new(&k.name, &k.protocol, is_key_active, &k.url);
+            if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&k.url) {
+                key_obj.set_server_info(parsed.host);
+            }
             key_obj.set_traffic_down(k.traffic_down);
             key_obj.set_traffic_up(k.traffic_up);
             key_obj.set_time_connected(k.time_connected);
@@ -119,9 +160,9 @@ impl VrxxVpnPage {
 
                 self.connect_map(move |_| {
                     if let Some(page) = page_weak.upgrade() {
-                        // Run only once by checking if we are already connected
-                        if !page.imp().backend.borrow().is_running() {
-                            page.set_active_key(&key_clone);
+                        // Однократное подключение при отображении, если еще не подключены
+                        if !page.imp().is_connected.get() {
+                            page.set_active_key_internal(&key_clone, true);
                         }
                     }
                 });
@@ -146,15 +187,15 @@ impl VrxxVpnPage {
         // Привязываем модель к ListBox
         let page_weak = self.downgrade();
         self.imp().keys_list.bind_model(Some(&model), move |item| {
-            let key_obj = item
-                .downcast_ref::<VpnKeyObject>()
-                .expect("Item should be a VpnKeyObject");
+            let Some(key_obj) = item.downcast_ref::<VpnKeyObject>() else {
+                return gtk::ListBoxRow::new().upcast::<gtk::Widget>();
+            };
             let row = VrxxVpnKeyRow::new();
             row.bind(key_obj);
 
-            // Обработчики сигналов из строки ключа
+            // Обработчики сигналов из строки ключа:
 
-            // Изменить
+            // Действие: Редактировать
             let page_weak_edit = page_weak.clone();
             let key_obj_edit = key_obj.clone();
             row.connect_local("request-edit", false, move |_| {
@@ -164,7 +205,7 @@ impl VrxxVpnPage {
                 None
             });
 
-            // Информация
+            // Действие: Информация
             let page_weak_info = page_weak.clone();
             let key_obj_info = key_obj.clone();
             row.connect_local("request-info", false, move |_| {
@@ -174,7 +215,7 @@ impl VrxxVpnPage {
                 None
             });
 
-            // Скопировать ссылку
+            // Действие: Скопировать ссылку
             let page_weak_cl = page_weak.clone();
             let key_obj_cl = key_obj.clone();
             row.connect_local("request-copy-link", false, move |_| {
@@ -185,7 +226,7 @@ impl VrxxVpnPage {
                 None
             });
 
-            // Скопировать JSON
+            // Действие: Скопировать JSON
             let page_weak_cj = page_weak.clone();
             let key_obj_cj = key_obj.clone();
             row.connect_local("request-copy-json", false, move |_| {
@@ -201,7 +242,7 @@ impl VrxxVpnPage {
                 None
             });
 
-            // Delete
+            // Действие: Удалить
             let page_weak_del = page_weak.clone();
             let key_obj_del = key_obj.clone();
             row.connect_local("request-delete", false, move |_| {
@@ -211,7 +252,7 @@ impl VrxxVpnPage {
                 None
             });
 
-            // QR Код
+            // Действие: QR Код и Поделиться
             let page_weak_qr = page_weak.clone();
             let key_obj_qr = key_obj.clone();
             row.connect_local("request-qr-code", false, move |_| {
@@ -221,82 +262,37 @@ impl VrxxVpnPage {
                 None
             });
 
-            // Ручной пинг (ИСПРАВЛЕНО: Явное указание типов)
+            let page_weak_share = page_weak.clone();
+            let key_obj_share = key_obj.clone();
+            row.connect_local("request-share", false, move |_| {
+                if let Some(page) = page_weak_share.upgrade() {
+                    page.handle_qr_code_key(&key_obj_share);
+                }
+                None
+            });
+
+            // Действие: Ручной замер пинга
             let key_obj_ping = key_obj.clone();
+            let page_weak_ping = page_weak.clone();
             row.connect_local("request-ping", false, move |_| {
-                let item_clone = key_obj_ping.clone();
-                item_clone.set_ping(gettext("pinging..."));
-                item_clone.set_is_loading(true);
-
-                // XXX: Извлекаем хост и порт из ключа для прямого TCP-пинга
-                let raw_url = item_clone.url();
-                let parsed =
-                    crate::domain::key_parser::parse_vpn_key(&raw_url).unwrap_or_else(|_| {
-                        crate::domain::key_parser::ParsedKey {
-                            protocol: "".to_string(),
-                            name: "".to_string(),
-                            host: "127.0.0.1".to_string(),
-                            port: 0,
-                            uuid: "".to_string(),
-                            query_params: std::collections::HashMap::new(),
-                            raw_url: "".to_string(),
-                        }
-                    });
-                let target_host = parsed.host.clone();
-                let target_port = parsed.port;
-
-                // 1. Создаем канал с ЯВНЫМ указанием типов <(bool, u128)>
-                let (sender, receiver) = async_channel::unbounded::<(bool, u128)>();
-
-                // 2. Получатель работает в главном UI потоке
-                let item_clone_ui = item_clone.clone();
-                glib::spawn_future_local(async move {
-                    if let Ok((success, ms)) = receiver.recv().await {
-                        item_clone_ui.set_is_loading(false);
-                        if success {
-                            item_clone_ui.set_ping(format!("{ms} ms"));
-                        } else {
-                            item_clone_ui.set_ping(gettext("timeout"));
+                if key_obj_ping.is_loading() {
+                    return None;
+                }
+                if let Some(page) = page_weak_ping.upgrade() {
+                    if let Some(last) = *page.imp().last_ping.borrow() {
+                        if last.elapsed() < std::time::Duration::from_millis(1500) {
+                            page.show_toast(&gettext("Please wait before pinging again"));
+                            return None;
                         }
                     }
-                });
+                    page.imp()
+                        .last_ping
+                        .replace(Some(std::time::Instant::now()));
 
-                // 3. Отправитель работает в фоне (БЕЗ объектов UI)
-                let raw_url_bg = key_obj_ping.url();
-                std::thread::spawn(move || {
-                    let parsed =
-                        crate::domain::key_parser::parse_vpn_key(&raw_url_bg).unwrap_or_default();
-                    let target = crate::services::ping::PingTarget {
-                        id: parsed.name,
-                        host: target_host,
-                        port: target_port,
-                        raw_url: raw_url_bg,
-                    };
-
-                    let settings = crate::settings::SettingsManager::new().load();
-                    let options = crate::services::ping::PingOptions {
-                        algorithm: crate::services::ping::PingAlgorithm::parse(
-                            &settings.ping_algorithm,
-                        ),
-                        target_url: settings.ping_target_url,
-                        timeout: std::time::Duration::from_secs(3),
-                        proxy_url: None,
-                        concurrency_limit: 1,
-                    };
-
-                    let ping_res = if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
-                        .enable_all()
-                        .build()
-                    {
-                        rt.block_on(crate::services::ping::ping_target(&target, &options))
-                    } else {
-                        crate::services::ping::PingResult::Timeout
-                    };
-
-                    let success = ping_res.is_success();
-                    let ms = ping_res.latency_ms().unwrap_or(0);
-                    let _ = sender.send_blocking((success, ms));
-                });
+                    key_obj_ping.set_ping(gettext("pinging..."));
+                    key_obj_ping.set_is_loading(true);
+                    page.trigger_ping_key(&key_obj_ping);
+                }
                 None
             });
 
@@ -304,32 +300,31 @@ impl VrxxVpnPage {
         });
     }
 
-    // ================================
-
-    // --- Раздел: Сигналы и Колбэки ---
+    // =========================================================================
+    // 2. СИГНАЛЫ И КОЛБЭКИ (CALLBACKS & EVENTS)
+    // =========================================================================
     fn setup_callbacks(&self) {
-        let imp = self.imp();
         let page_weak = self.downgrade();
-
-        imp.keys_list.connect_row_activated(move |_, row| {
+        self.imp().keys_list.connect_row_activated(move |_, row| {
             let page = match page_weak.upgrade() {
                 Some(p) => p,
                 None => return,
             };
-            if let Ok(key_row) = row.clone().downcast::<VrxxVpnKeyRow>() {
+
+            // Выбор строки и переключение активного профиля
+            if let Some(key_row) = row.downcast_ref::<VrxxVpnKeyRow>() {
                 if let Some(selected_item) = key_row.item() {
                     page.set_active_key(&selected_item);
                 }
             }
         });
 
-        // Listen for core restart requests
+        // Отслеживание запросов на перезапуск ядра из настроек
         let page_weak_restart = self.downgrade();
         glib::spawn_future_local(async move {
             let (_, receiver) = crate::settings::core_restart_channel();
             while receiver.recv().await.is_ok() {
                 if let Some(page) = page_weak_restart.upgrade() {
-                    // Find active key and reconnect
                     if let Some(model) = page.imp().model.borrow().as_ref() {
                         for i in 0..model.n_items() {
                             if let Some(item) = model
@@ -337,17 +332,21 @@ impl VrxxVpnPage {
                                 .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
                             {
                                 if item.is_active() {
-                                    page.set_active_key(&item);
+                                    page.set_active_key_internal(&item, true);
                                     break;
                                 }
                             }
                         }
                     }
+                } else {
+                    tracing::debug!("Страница VPN уничтожена, завершение слушателя перезапуска");
+                    break;
                 }
             }
         });
     }
 
+    /// Настройка D-Bus слушателя системных событий перехода в ждущий/спящий режим (systemd-logind).
     fn setup_dbus_listener(&self) {
         let page_weak = self.downgrade();
         if let Ok(connection) = gio::bus_get_sync(gio::BusType::System, gio::Cancellable::NONE) {
@@ -364,9 +363,9 @@ impl VrxxVpnPage {
                     if let Some(page) = page_weak.upgrade() {
                         *page.imp().is_sleeping.borrow_mut() = is_sleeping;
                         if is_sleeping {
-                            tracing::info!("System is going to sleep! Suspending VPN monitoring.");
+                            tracing::info!("System is suspending. Pausing VPN monitoring.");
                         } else {
-                            tracing::info!("System woke up! Resuming VPN monitoring.");
+                            tracing::info!("System resumed. Resuming VPN monitoring.");
                         }
                     }
                 },
@@ -374,9 +373,7 @@ impl VrxxVpnPage {
         }
     }
 
-    // ================================
-
-    // --- Раздел: Мониторинг демона и метрики ---
+    /// Подписка на события смены статуса от фонового демона.
     fn setup_daemon_listener(&self) {
         let page_weak = self.downgrade();
         glib::spawn_future_local(async move {
@@ -392,22 +389,33 @@ impl VrxxVpnPage {
                 if let crate::daemon::DaemonEvent::StatusChanged(status) = event {
                     if let Some(page) = page_weak.upgrade() {
                         page.handle_daemon_status_change(&status);
+                    } else {
+                        tracing::debug!(
+                            "Страница VPN уничтожена, завершение слушателя событий демона"
+                        );
+                        break;
                     }
                 }
             }
         });
     }
 
-    // ================================
-
-    // --- Раздел: Управление состоянием соединения ---
+    // =========================================================================
+    // 3. УПРАВЛЕНИЕ СОСТОЯНИЕМ СОЕДИНЕНИЯ (STATE MANAGEMENT)
+    // =========================================================================
     fn handle_daemon_status_change(&self, status: &str) {
         let imp = self.imp();
+        let is_conn = status == "Connected";
+        imp.is_connected.set(is_conn);
 
         match status {
             "Connected" => {
-                imp.window_title.set_subtitle(&gettext("Connected"));
-                // Find and update the active item's time metrics
+                // Если идет процедура E2E-верификации для конкретного ключа,
+                // не вмешиваемся в состояние ключей до завершения проверки
+                if imp.connecting_target_url.borrow().is_some() {
+                    return;
+                }
+                let mut active_name = String::new();
                 if let Some(model) = imp.model.borrow().as_ref() {
                     for i in 0..model.n_items() {
                         if let Some(item) = model
@@ -415,41 +423,148 @@ impl VrxxVpnPage {
                             .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
                         {
                             if item.is_active() {
+                                active_name = item.name();
                                 item.set_is_loading(false);
                                 item.set_is_error(false);
-                                break;
+                            }
+                        }
+                    }
+                    if active_name.is_empty() {
+                        let saved = crate::settings::SettingsManager::new().load();
+                        if let Some(saved_active) = saved.keys.iter().find(|k| k.is_active) {
+                            for i in 0..model.n_items() {
+                                if let Some(item) = model
+                                    .item(i)
+                                    .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                                {
+                                    if item.url() == saved_active.url {
+                                        item.set_is_active(true);
+                                        item.set_is_loading(false);
+                                        item.set_is_error(false);
+                                        active_name = item.name();
+                                    } else {
+                                        item.set_is_active(false);
+                                        item.set_is_loading(false);
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                imp.start_time.replace(Some(std::time::Instant::now()));
+                // Восстанавливаем время старта подключения
+                if imp.start_time.borrow().is_none() {
+                    imp.start_time.replace(Some(std::time::Instant::now()));
+                }
+                self.save_current_keys();
+                self.update_disconnect_action_state();
+                let subtitle = if active_name.is_empty() {
+                    gettext("Connected")
+                } else {
+                    format!("{active_name} {}", gettext("Connected"))
+                };
+                imp.window_title.set_subtitle(&subtitle);
+                if let Some(w) = self.root().and_downcast::<crate::window::VrxxWindow>() {
+                    w.update_status_state("Connected", Some(&active_name));
+                }
             }
             "Disconnected" => {
-                imp.window_title.set_subtitle(&gettext("Disconnected"));
-                imp.start_time.replace(None);
+                // Проверяем, находимся ли мы в процессе подключения или переключения профиля
+                let is_connecting_target = imp.connecting_target_url.borrow().is_some();
+                let is_switching_loading = imp.model.borrow().as_ref().is_some_and(|model| {
+                    (0..model.n_items()).any(|i| {
+                        model
+                            .item(i)
+                            .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                            .map(|item| item.is_loading())
+                            .unwrap_or(false)
+                    })
+                });
 
-                // Reset all items
+                if is_connecting_target || is_switching_loading {
+                    // При переключении: демон остановил старый прокси, новый запускается
+                    tracing::debug!(
+                        "Игнорируем событие Disconnected в процессе активной смены ключа"
+                    );
+                } else {
+                    // Истинное отключение: сбрасываем визуальный статус и таймеры
+                    imp.connecting_target_url.replace(None);
+                    imp.window_title.set_subtitle(&gettext("Disconnected"));
+                    imp.start_time.replace(None);
+
+                    if let Some(model) = imp.model.borrow().as_ref() {
+                        for i in 0..model.n_items() {
+                            if let Some(item) = model
+                                .item(i)
+                                .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                            {
+                                item.set_is_active(false);
+                                item.set_is_loading(false);
+                                item.set_is_error(false);
+                            }
+                        }
+                    }
+                    self.save_current_keys();
+                    self.update_disconnect_action_state();
+                    if let Some(w) = self.root().and_downcast::<crate::window::VrxxWindow>() {
+                        w.update_status_state("Disconnected", None);
+                    }
+                    crate::backend::CoreBackend::update_system_proxy(false);
+                }
+            }
+            "Connecting" => {
+                imp.window_title.set_subtitle(&gettext("Connecting..."));
+                if let Some(w) = self.root().and_downcast::<crate::window::VrxxWindow>() {
+                    w.update_status_state("Connecting", None);
+                }
+            }
+            "Disconnecting" => {
+                imp.window_title.set_subtitle(&gettext("Disconnecting..."));
+            }
+            "Error" => {
+                imp.connecting_target_url.replace(None);
+                imp.window_title.set_subtitle(&gettext("Connection error"));
+                if let Some(w) = self.root().and_downcast::<crate::window::VrxxWindow>() {
+                    w.update_status_state("Error", None);
+                }
+                crate::backend::CoreBackend::update_system_proxy(false);
                 if let Some(model) = imp.model.borrow().as_ref() {
                     for i in 0..model.n_items() {
                         if let Some(item) = model
                             .item(i)
                             .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
                         {
-                            item.set_is_active(false);
-                            item.set_is_loading(false);
+                            if item.is_active() || item.is_loading() {
+                                item.set_is_loading(false);
+                                item.set_is_error(true);
+                                item.set_is_active(false);
+                            }
                         }
                     }
                 }
-            }
-            "Connecting" => {
-                imp.window_title.set_subtitle(&gettext("Connecting..."));
-            }
-            "Disconnecting" => {
-                imp.window_title.set_subtitle(&gettext("Disconnecting..."));
-            }
-            "Error" => {
-                imp.window_title.set_subtitle(&gettext("Connection error"));
-                // Handle error notification or dialog
+                let mut error_details = gettext("Unknown error. Please check System logs.");
+                let log_dir = dirs::config_dir()
+                    .unwrap_or_else(|| std::path::PathBuf::from("."))
+                    .join("vrxx")
+                    .join("logs");
+                let log_path = log_dir.join("core.log");
+                if let Ok(content) = std::fs::read_to_string(&log_path) {
+                    let lines: Vec<&str> = content.lines().rev().take(5).collect();
+                    if !lines.is_empty() {
+                        error_details = lines.into_iter().rev().collect::<Vec<&str>>().join("\n");
+                    }
+                }
+
+                let dialog = adw::AlertDialog::builder()
+                    .heading(gettext("Connection failure"))
+                    .body(format!(
+                        "{}:\n\n{error_details}",
+                        gettext("Core process unexpectedly terminated. Log details")
+                    ))
+                    .build();
+                dialog.add_response("ok", &gettext("OK"));
+                if let Some(root) = self.root().and_downcast::<gtk::Window>() {
+                    dialog.present(Some(&root));
+                }
             }
             _ => {}
         }
@@ -457,6 +572,16 @@ impl VrxxVpnPage {
         self.update_disconnect_action_state();
     }
 
+    /// Отображает всплывающее уведомление `AdwToast`.
+    fn show_toast(&self, message: &str) {
+        if let Some(window) = self.root().and_downcast::<crate::window::VrxxWindow>() {
+            let toast = adw::Toast::new(message);
+            toast.set_timeout(2);
+            window.add_toast(toast);
+        }
+    }
+
+    /// Запускает ежесекундный таймер обновления метрик активности и объема переданного трафика.
     fn start_metrics_timer(&self) {
         let page_weak = self.downgrade();
         glib::timeout_add_seconds_local(1, move || {
@@ -470,7 +595,6 @@ impl VrxxVpnPage {
                 let start_time = *imp.start_time.borrow();
 
                 if let Some(start) = start_time {
-                    // Обновляем активный элемент
                     if let Some(model) = imp.model.borrow().as_ref() {
                         for i in 0..model.n_items() {
                             if let Some(item) = model
@@ -478,54 +602,6 @@ impl VrxxVpnPage {
                                 .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
                             {
                                 if item.is_active() {
-                                    // Проверка здоровья: если активно, но процесс мертв - это ошибка
-                                    if !imp.backend.borrow().is_running() && !item.is_loading() {
-                                        tracing::error!(
-                                            "Core process crash detected! Disconnecting..."
-                                        );
-                                        item.set_is_active(false);
-                                        item.set_is_error(true);
-                                        imp.start_time.replace(None);
-                                        page.update_disconnect_action_state();
-                                        page.imp()
-                                            .window_title
-                                            .set_subtitle(&gettext("Connection error"));
-
-                                        // Читаем последние строки лога для отображения пользователю
-                                        let mut error_details =
-                                            gettext("Unknown error. Please check System logs.");
-                                        let log_dir = dirs::config_dir()
-                                            .unwrap_or_else(|| std::path::PathBuf::from("."))
-                                            .join("vrxx")
-                                            .join("logs");
-                                        let log_path = log_dir.join("core.log");
-                                        if let Ok(content) = std::fs::read_to_string(&log_path) {
-                                            let lines: Vec<&str> =
-                                                content.lines().rev().take(5).collect();
-                                            if !lines.is_empty() {
-                                                error_details = lines
-                                                    .into_iter()
-                                                    .rev()
-                                                    .collect::<Vec<&str>>()
-                                                    .join("\n");
-                                            }
-                                        }
-
-                                        let dialog = adw::AlertDialog::builder()
-                                            .heading(gettext("Connection failure"))
-                                            .body(format!("{}:\n\n{error_details}", gettext("Core process unexpectedly terminated. Log details")))
-                                            .build();
-                                        dialog.add_response("ok", &gettext("OK"));
-                                        if let Some(root) = page
-                                            .root()
-                                            .and_then(|r| r.downcast::<gtk::Window>().ok())
-                                        {
-                                            dialog.present(Some(&root));
-                                        }
-
-                                        break;
-                                    }
-
                                     let elapsed = start.elapsed().as_secs();
                                     let hours = elapsed / 3600;
                                     let mins = (elapsed % 3600) / 60;
@@ -534,312 +610,93 @@ impl VrxxVpnPage {
                                         "{hours:02}:{mins:02}:{secs:02}"
                                     ));
 
-                                    // Получение статистики трафика из Xray API (каждые 3 секунды)
-                                    let item_clone_stats = item.clone();
-                                    let core_bin =
-                                        crate::settings::SettingsManager::new().load().core;
-                                    let bin_name = if core_bin == "sing-box" {
-                                        "sing-box"
-                                    } else {
-                                        "xray"
-                                    };
-
-                                    let should_stats = elapsed % 3 == 0;
-                                    let page_clone = page.clone();
-
-                                    if should_stats && imp.backend.borrow().is_running() {
-                                        glib::spawn_future_local(async move {
-                                            let mut args: Vec<&std::ffi::OsStr> = Vec::new();
-                                            if bin_name == "xray" {
-                                                args.push(std::ffi::OsStr::new("xray"));
-                                                args.push(std::ffi::OsStr::new("api"));
-                                                args.push(std::ffi::OsStr::new("statsquery"));
-                                                args.push(std::ffi::OsStr::new(
-                                                    "-server=127.0.0.1:10085",
-                                                ));
-                                            } else {
-                                                args.push(std::ffi::OsStr::new("curl"));
-                                                args.push(std::ffi::OsStr::new("-s"));
-                                                args.push(std::ffi::OsStr::new(
-                                                    "http://127.0.0.1:9090/connections",
-                                                ));
-                                            }
-
-                                            if let Ok(subprocess) = gio::Subprocess::newv(
-                                                &args,
-                                                gio::SubprocessFlags::STDOUT_PIPE
-                                                    | gio::SubprocessFlags::STDERR_SILENCE,
-                                            ) {
-                                                if let Ok((Some(stdout_bytes), _)) =
-                                                    subprocess.communicate_future(None).await
-                                                {
-                                                    let stdout_str =
-                                                        String::from_utf8_lossy(&stdout_bytes);
-                                                    if let Ok(json) =
-                                                        serde_json::from_str::<serde_json::Value>(
-                                                            &stdout_str,
-                                                        )
-                                                    {
-                                                        let mut total_down: u64 = 0;
-                                                        let mut total_up: u64 = 0;
-
-                                                        if bin_name == "xray" {
-                                                            if let Some(stats) = json
-                                                                .get("stat")
-                                                                .and_then(|s| s.as_array())
-                                                            {
-                                                                for stat in stats {
-                                                                    if let (Some(name), Some(value)) = (stat.get("name").and_then(|n| n.as_str()), stat.get("value").and_then(|v| {
-                                                                        if v.is_string() { Some(v.as_str().unwrap_or("0").to_string()) }
-                                                                        else if v.is_number() { Some(v.to_string()) }
-                                                                        else { None }
-                                                                    })) {
-                                                                        if let Ok(val) = value.parse::<u64>() {
-                                                                            if name.ends_with("downlink") {
-                                                                                total_down += val;
-                                                                            } else if name.ends_with("uplink") {
-                                                                                total_up += val;
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        } else {
-                                                            total_down = json
-                                                                .get("downloadTotal")
-                                                                .and_then(|v| v.as_u64())
-                                                                .unwrap_or(0);
-                                                            total_up = json
-                                                                .get("uploadTotal")
-                                                                .and_then(|v| v.as_u64())
-                                                                .unwrap_or(0);
-                                                        }
-
-                                                        if total_down > 0 || total_up > 0 {
-                                                            let format_bytes = |b: u64| -> String {
-                                                                let tb = 1_099_511_627_776_f64;
-                                                                let gb = 1_073_741_824_f64;
-                                                                let mb = 1_048_576_f64;
-                                                                let kb = 1_024_f64;
-                                                                let bf = b as f64;
-
-                                                                if bf >= tb {
-                                                                    format!("{:.2} TB", bf / tb)
-                                                                } else if bf >= gb {
-                                                                    format!("{:.2} GB", bf / gb)
-                                                                } else if bf >= mb {
-                                                                    format!("{:.1} MB", bf / mb)
-                                                                } else if bf >= kb {
-                                                                    format!("{:.0} KB", bf / kb)
-                                                                } else {
-                                                                    format!("{b} B")
-                                                                }
-                                                            };
-                                                            let down_str = format_bytes(total_down);
-                                                            let up_str = format_bytes(total_up);
-                                                            item_clone_stats
-                                                                .set_traffic_down(down_str.clone());
-                                                            item_clone_stats
-                                                                .set_traffic_up(up_str.clone());
-
-                                                            if let Some(w) = page_clone.root().and_downcast::<crate::window::VrxxWindow>() {
-                                                                w.update_stats(
-                                                                    &item_clone_stats.time_connected(),
-                                                                    &down_str,
-                                                                    &up_str
-                                                                );
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        });
-                                    }
-
-                                    // Пинг и проверка соединения асинхронно
-                                    let is_loading = item.is_loading();
-
-                                    // Улучшенная логика пинга: частые проверки при загрузке, редкие при работе
-                                    let should_ping = if is_loading {
-                                        // Пингуем на 2, 4, 6, 8, 10 секунде
-                                        elapsed > 0 && elapsed <= 10 && elapsed % 2 == 0
-                                    } else {
-                                        elapsed > 0 && elapsed % 60 == 0 // Пингуем раз в минуту в фоне
-                                    };
-
-                                    // Если загрузка идет больше 12 секунд и нет успеха - прерываем соединение
-                                    if is_loading && elapsed > 12 {
-                                        tracing::warn!("Connection timeout (over 12 sec).");
-                                        item.set_is_active(false);
-                                        item.set_is_loading(false);
-                                        item.set_is_error(true);
-
-                                        imp.start_time.replace(None);
-                                        page.update_disconnect_action_state();
-                                        page.imp()
-                                            .window_title
-                                            .set_subtitle(&gettext("Connection failure"));
-
-                                        if let Some(app) = gio::Application::default()
-                                            .and_downcast::<gtk::Application>()
+                                    if imp.is_connected.get() {
+                                        if let Some(w) =
+                                            page.root().and_downcast::<crate::window::VrxxWindow>()
                                         {
-                                            if let Some(window) = app.active_window() {
-                                                if !window.is_active() {
-                                                    let notification = gio::Notification::new(
-                                                        &gettext("Connection failure"),
-                                                    );
-                                                    notification.set_body(Some(&gettext("Failed to connect to the selected VPN key.")));
-                                                    app.send_notification(
-                                                        Some("vpn_fail"),
-                                                        &notification,
-                                                    );
-                                                }
-                                            }
+                                            w.update_stats(
+                                                &item.time_connected(),
+                                                &item.traffic_down(),
+                                                &item.traffic_up(),
+                                                &item.ping(),
+                                            );
                                         }
-                                        break;
-                                    }
 
-                                    if should_ping {
-                                        let item_clone = item.clone();
-                                        let page_weak_ping = page_weak.clone();
-                                        let is_currently_loading = item_clone.is_loading();
-                                        let socks_port = crate::settings::SettingsManager::new()
-                                            .load()
-                                            .socks_port;
+                                        let item_clone_stats = item.clone();
+                                        let page_weak_stats = page.downgrade();
 
-                                        // 1. Создаем канал (ИСПРАВЛЕНО: Явное указание типов)
-                                        let (sender, receiver) = async_channel::unbounded::<(
-                                            bool,
-                                            u128,
-                                            String,
-                                            String,
-                                            String,
-                                        )>(
-                                        );
-
-                                        // 2. UI Поток ловит результаты и обновляет интерфейс
-                                        let item_clone_ui = item_clone.clone();
-                                        let page_weak_ui = page_weak_ping.clone();
                                         glib::spawn_future_local(async move {
-                                            if let Ok((success, ms, ip, country, tz)) =
-                                                receiver.recv().await
+                                            let client = match reqwest::Client::builder()
+                                                .timeout(std::time::Duration::from_secs(2))
+                                                .build()
                                             {
-                                                if success {
-                                                    item_clone_ui.set_ping(format!("{ms} ms"));
-                                                    if !ip.is_empty() {
-                                                        item_clone_ui.set_server_info(ip);
-                                                    }
-                                                    if !country.is_empty() {
-                                                        item_clone_ui.set_location(country);
-                                                    }
-                                                    if !tz.is_empty() {
-                                                        item_clone_ui.set_timezone(tz);
-                                                    }
+                                                Ok(c) => c,
+                                                Err(_) => return,
+                                            };
 
-                                                    item_clone_ui.set_is_loading(false);
-                                                    item_clone_ui.set_is_error(false);
-                                                    if let Some(page) = page_weak_ui.upgrade() {
-                                                        let new_subtitle = format!(
-                                                            "{} {}",
-                                                            item_clone_ui.name(),
-                                                            gettext("Connected")
-                                                        );
-                                                        page.imp()
-                                                            .window_title
-                                                            .set_subtitle(&new_subtitle);
-                                                    }
-                                                } else {
-                                                    item_clone_ui.set_ping(gettext("timeout"));
-                                                    item_clone_ui.set_is_loading(false);
-                                                    item_clone_ui.set_is_error(true);
-                                                    if is_currently_loading {
-                                                        if let Some(page) = page_weak_ui.upgrade() {
-                                                            page.imp().window_title.set_subtitle(
-                                                                &gettext("Connection timeout"),
+                                            let res = client
+                                                .get("http://127.0.0.1:9090/connections")
+                                                .send()
+                                                .await;
+                                            if let Ok(resp) = res {
+                                                if let Ok(json) =
+                                                    resp.json::<serde_json::Value>().await
+                                                {
+                                                    let total_down = json
+                                                        .get("downloadTotal")
+                                                        .or_else(|| json.get("download_total"))
+                                                        .and_then(|v| v.as_u64())
+                                                        .unwrap_or(0);
+                                                    let total_up = json
+                                                        .get("uploadTotal")
+                                                        .or_else(|| json.get("upload_total"))
+                                                        .and_then(|v| v.as_u64())
+                                                        .unwrap_or(0);
+
+                                                    let format_bytes = |b: u64| -> String {
+                                                        let tb = 1_099_511_627_776_f64;
+                                                        let gb = 1_073_741_824_f64;
+                                                        let mb = 1_048_576_f64;
+                                                        let kb = 1_024_f64;
+                                                        let bf = b as f64;
+
+                                                        if bf >= tb {
+                                                            format!("{:.2} TB", bf / tb)
+                                                        } else if bf >= gb {
+                                                            format!("{:.2} GB", bf / gb)
+                                                        } else if bf >= mb {
+                                                            format!("{:.1} MB", bf / mb)
+                                                        } else if bf >= kb {
+                                                            format!("{:.0} KB", bf / kb)
+                                                        } else {
+                                                            format!("{b} B")
+                                                        }
+                                                    };
+                                                    let down_str = format_bytes(total_down);
+                                                    let up_str = format_bytes(total_up);
+                                                    item_clone_stats
+                                                        .set_traffic_down(down_str.clone());
+                                                    item_clone_stats.set_traffic_up(up_str.clone());
+
+                                                    if let Some(p) = page_weak_stats.upgrade() {
+                                                        *p.imp().bytes_down.borrow_mut() =
+                                                            total_down;
+                                                        *p.imp().bytes_up.borrow_mut() = total_up;
+
+                                                        if let Some(w) = p
+                                                            .root()
+                                                            .and_downcast::<crate::window::VrxxWindow>(
+                                                        ) {
+                                                            w.update_stats(
+                                                                &item_clone_stats.time_connected(),
+                                                                &down_str,
+                                                                &up_str,
+                                                                &item_clone_stats.ping(),
                                                             );
                                                         }
                                                     }
                                                 }
                                             }
-                                        });
-
-                                        // 3. Фоновый поток (только сетевые запросы)
-                                        let raw_url_bg = item.url();
-                                        std::thread::spawn(move || {
-                                            let start_ping = std::time::Instant::now();
-                                            let mut success = false;
-                                            let mut ms = 0;
-                                            let mut ip = String::new();
-                                            let mut country = String::new();
-                                            let mut tz = String::new();
-
-                                            if is_currently_loading {
-                                                let proxy_url =
-                                                    format!("socks5://127.0.0.1:{socks_port}");
-                                                let agent = match ureq::Proxy::new(&proxy_url) {
-                                                    Ok(proxy) => ureq::builder()
-                                                        .proxy(proxy)
-                                                        .timeout(std::time::Duration::from_secs(4))
-                                                        .build(),
-                                                    Err(_) => return,
-                                                };
-                                                if let Ok(resp) = agent.get("http://ip-api.com/json/?fields=status,country,timezone,query").call() {
-                                                    if let Ok(json) = resp.into_json::<serde_json::Value>() {
-                                                        if json.get("status").and_then(|s| s.as_str()) == Some("success") {
-                                                            success = true;
-                                                            ms = start_ping.elapsed().as_millis();
-                                                            ip = json.get("query").and_then(|s| s.as_str()).unwrap_or("").to_string();
-                                                            country = json.get("country").and_then(|s| s.as_str()).unwrap_or("").to_string();
-                                                            tz = json.get("timezone").and_then(|s| s.as_str()).unwrap_or("").to_string();
-                                                        }
-                                                    }
-                                                }
-                                            } else {
-                                                let parsed =
-                                                    crate::domain::key_parser::parse_vpn_key(
-                                                        &raw_url_bg,
-                                                    )
-                                                    .unwrap_or_default();
-                                                let target = crate::services::ping::PingTarget {
-                                                    id: parsed.name,
-                                                    host: parsed.host,
-                                                    port: parsed.port,
-                                                    raw_url: raw_url_bg,
-                                                };
-
-                                                let settings =
-                                                    crate::settings::SettingsManager::new().load();
-                                                let options = crate::services::ping::PingOptions {
-                                                    algorithm:
-                                                        crate::services::ping::PingAlgorithm::parse(
-                                                            &settings.ping_algorithm,
-                                                        ),
-                                                    target_url: settings.ping_target_url,
-                                                    timeout: std::time::Duration::from_secs(3),
-                                                    proxy_url: None,
-                                                    concurrency_limit: 1,
-                                                };
-
-                                                if let Ok(rt) =
-                                                    tokio::runtime::Builder::new_current_thread()
-                                                        .enable_all()
-                                                        .build()
-                                                {
-                                                    let ping_res = rt.block_on(
-                                                        crate::services::ping::ping_target(
-                                                            &target, &options,
-                                                        ),
-                                                    );
-                                                    if let Some(l) = ping_res.latency_ms() {
-                                                        success = true;
-                                                        ms = l;
-                                                    }
-                                                }
-                                            }
-
-                                            // Безопасно отправляем простые типы данных
-                                            let _ = sender
-                                                .send_blocking((success, ms, ip, country, tz));
                                         });
                                     }
                                     break;
@@ -853,22 +710,52 @@ impl VrxxVpnPage {
         });
     }
 
-    // ================================
-
-    // --- Раздел: Управление ключами и конфигурацией ---
+    // =========================================================================
+    // 4. УПРАВЛЕНИЕ КЛЮЧАМИ И КОНФИГУРАЦИЕЙ (KEY OPERATIONS)
+    // =========================================================================
     fn set_active_key(&self, active_item: &VpnKeyObject) {
+        self.set_active_key_internal(active_item, false);
+    }
+
+    fn set_active_key_internal(&self, active_item: &VpnKeyObject, force: bool) {
+        if !force {
+            if let Some(last_time) = *self.imp().last_key_switch.borrow() {
+                let elapsed = last_time.elapsed();
+                // Защита от дребезга при сверхбыстрых кликах (< 400мс)
+                if elapsed < std::time::Duration::from_millis(400) {
+                    return;
+                }
+                // Кулдаун 3.5 сек для завершения цикла переподключения
+                let cooldown = std::time::Duration::from_millis(3500);
+                if elapsed < cooldown {
+                    self.show_toast(&gettext("Please wait before switching keys"));
+                    tracing::info!("Key switch throttled by cooldown timeout");
+                    return;
+                }
+            }
+        }
+
+        self.imp()
+            .last_key_switch
+            .replace(Some(std::time::Instant::now()));
+
+        self.imp()
+            .connecting_target_url
+            .replace(Some(active_item.url()));
+
         if let Some(model) = self.imp().model.borrow().as_ref() {
             for i in 0..model.n_items() {
                 if let Some(item) = model
                     .item(i)
                     .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
                 {
-                    if item.is_active() && item.name() != active_item.name() {
+                    if item.url() != active_item.url() {
                         item.set_is_active(false);
+                        item.set_is_loading(false);
                     }
                 }
             }
-            active_item.set_is_active(true);
+            active_item.set_is_active(false);
             active_item.set_is_loading(true);
             active_item.set_is_error(false);
 
@@ -892,30 +779,77 @@ impl VrxxVpnPage {
 
             let app_settings = current_settings;
 
-            let config_json =
-                if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&active_item.url()) {
-                    crate::domain::singbox_config::build_singbox_config(&parsed, &app_settings)
-                } else {
-                    tracing::error!("Failed to parse key for configuration generation");
+            let parsed = match crate::domain::key_parser::parse_vpn_key(&active_item.url()) {
+                Ok(p) => p,
+                Err(e) => {
+                    tracing::error!("Failed to parse key for config generation: {}", e);
+                    self.imp().connecting_target_url.replace(None);
                     active_item.set_is_loading(false);
                     active_item.set_is_error(true);
                     self.imp()
                         .window_title
                         .set_subtitle(&gettext("Configuration error"));
+                    let root_widget = self.root();
+                    crate::ui::error_dialog::show_error_dialog(
+                        root_widget.as_ref(),
+                        Some(&gettext("Invalid Key Format")),
+                        &format!("{}: {}", gettext("Failed to parse VPN key URL"), e),
+                        &e,
+                    );
                     return;
-                };
+                }
+            };
+
+            // Статическая валидация параметров ключа
+            if let Err(val_err) = parsed.validate() {
+                tracing::error!("Key validation error: {}", val_err);
+                self.imp().connecting_target_url.replace(None);
+                active_item.set_is_loading(false);
+                active_item.set_is_error(true);
+                self.imp()
+                    .window_title
+                    .set_subtitle(&gettext("Invalid Key"));
+                let err_msg = val_err.to_string();
+                let root_widget = self.root();
+                crate::ui::error_dialog::show_error_dialog(
+                    root_widget.as_ref(),
+                    Some(&gettext("Key Validation Error")),
+                    &gettext("The VPN key parameters are invalid or corrupted (e.g. invalid UUID, missing Reality public key or SNI)."),
+                    &err_msg,
+                );
+                return;
+            }
+
+            let config_json =
+                crate::domain::singbox_config::build_singbox_config(&parsed, &app_settings);
 
             let core_type = "sing-box".to_string();
             let tun_mode = app_settings.tun_mode;
             let page_weak = self.downgrade();
             let item_clone = active_item.clone();
+            let socks_port = app_settings.socks_port;
+            let ping_target_url = if app_settings.ping_target_url.is_empty() {
+                "https://www.gstatic.com/generate_204".to_string()
+            } else {
+                app_settings.ping_target_url.clone()
+            };
 
             glib::spawn_future_local(async move {
                 let proxy = crate::ipc::DaemonClient::new();
                 tracing::info!("Connecting to VPN key via REST API: {}", item_clone.name());
                 if let Err(e) = proxy.start_proxy(core_type, config_json, tun_mode).await {
-                    tracing::error!("Failed to start backend via REST API: {}", e);
+                    tracing::error!("Failed to start core via REST API: {}", e);
                     if let Some(page) = page_weak.upgrade() {
+                        if page.imp().connecting_target_url.borrow().as_deref()
+                            != Some(&item_clone.url())
+                        {
+                            tracing::debug!(
+                                "Ignoring launch error for stale connection: {}",
+                                item_clone.url()
+                            );
+                            return;
+                        }
+                        page.imp().connecting_target_url.replace(None);
                         item_clone.set_is_active(false);
                         item_clone.set_is_loading(false);
                         item_clone.set_is_error(true);
@@ -944,12 +878,212 @@ impl VrxxVpnPage {
                         );
                     }
                 } else {
-                    tracing::info!("Backend successfully started via REST API");
+                    tracing::info!("Core started. Running E2E Warm-Up connectivity check...");
+
+                    // Сквозная проверка доступности сети через прокси (до 8 секунд)
+                    let probe_res = crate::services::ping::verify_proxy_connectivity(
+                        socks_port,
+                        &ping_target_url,
+                        std::time::Duration::from_secs(8),
+                    )
+                    .await;
+
+                    match probe_res {
+                        Ok(latency_ms) => {
+                            tracing::info!(
+                                "E2E Warm-Up check succeeded! Latency: {} ms",
+                                latency_ms
+                            );
+
+                            // Автоматически включаем системный прокси GNOME, если не используется TUN
+                            if !tun_mode {
+                                let current_settings =
+                                    crate::settings::SettingsManager::new().load();
+                                if current_settings.set_system_proxy {
+                                    tracing::info!("Auto-activating GNOME system proxy...");
+                                    crate::backend::CoreBackend::update_system_proxy(true);
+                                }
+                            }
+
+                            if let Some(page) = page_weak.upgrade() {
+                                if page.imp().connecting_target_url.borrow().as_deref()
+                                    != Some(&item_clone.url())
+                                {
+                                    tracing::debug!(
+                                        "Ignoring success result for stale connection: {}",
+                                        item_clone.url()
+                                    );
+                                    return;
+                                }
+                                page.imp().connecting_target_url.replace(None);
+                                item_clone.set_is_loading(false);
+                                item_clone.set_is_active(true);
+                                item_clone.set_is_error(false);
+                                item_clone.set_ping(format!("{latency_ms} ms"));
+                                page.save_current_keys();
+                                page.update_disconnect_action_state();
+                                let subtitle =
+                                    format!("{} {}", item_clone.name(), gettext("Connected"));
+                                page.imp().window_title.set_subtitle(&subtitle);
+                                if let Some(w) =
+                                    page.root().and_downcast::<crate::window::VrxxWindow>()
+                                {
+                                    w.update_status_state("Connected", Some(&item_clone.name()));
+                                    w.update_active_connection_widget();
+                                }
+                            }
+                        }
+                        Err(probe_err) => {
+                            tracing::warn!(
+                                "E2E Warm-Up check failed: {}. Stopping core...",
+                                probe_err
+                            );
+                            crate::backend::CoreBackend::update_system_proxy(false);
+                            if let Some(page) = page_weak.upgrade() {
+                                if page.imp().connecting_target_url.borrow().as_deref()
+                                    != Some(&item_clone.url())
+                                {
+                                    tracing::debug!(
+                                        "Ignoring check error for stale connection: {}",
+                                        item_clone.url()
+                                    );
+                                    return;
+                                }
+                                let _ = proxy.stop_proxy().await;
+                                page.imp().connecting_target_url.replace(None);
+                                item_clone.set_is_active(false);
+                                item_clone.set_is_loading(false);
+                                item_clone.set_is_error(true);
+                                item_clone.set_ping(gettext("error"));
+                                page.imp().start_time.replace(None);
+                                page.imp()
+                                    .window_title
+                                    .set_subtitle(&gettext("Connection failed"));
+                                page.save_current_keys();
+                                page.update_disconnect_action_state();
+
+                                let human_msg = match &probe_err {
+                                    crate::services::ping::ConnectivityError::HandshakeFailed(msg) => {
+                                        format!("{}: {}", gettext("Server rejected authentication or handshake failed (invalid UUID or wrong password)"), msg)
+                                    }
+                                    crate::services::ping::ConnectivityError::Timeout(_) => {
+                                        gettext("Server connection timed out. The remote server is unreachable, dead or blocked.")
+                                    }
+                                    crate::services::ping::ConnectivityError::ProxyError(msg) => {
+                                        format!("{}: {}", gettext("Local proxy error"), msg)
+                                    }
+                                    crate::services::ping::ConnectivityError::RequestFailed(msg) => {
+                                        format!("{}: {}", gettext("Test request through proxy failed"), msg)
+                                    }
+                                };
+
+                                let tech_log = format!(
+                                    "--- Technical Log & Connectivity Stack ---\nTimestamp: {}\nError: {}\nProbe Error: {:?}",
+                                    chrono::Local::now().to_rfc3339(),
+                                    human_msg,
+                                    probe_err
+                                );
+
+                                let root_widget = page.root();
+                                crate::ui::error_dialog::show_error_dialog(
+                                    root_widget.as_ref(),
+                                    Some(&gettext("Failed to connect to VPN")),
+                                    &human_msg,
+                                    &tech_log,
+                                );
+                            }
+                        }
+                    }
                 }
             });
         }
     }
 
+    /// Инициирует асинхронный замер задержки (ping) для указанного ключа.
+    pub fn trigger_ping_key(&self, item_clone: &VpnKeyObject) {
+        let raw_url = item_clone.url();
+        let (sender, receiver) = async_channel::unbounded::<crate::services::ping::PingResult>();
+        let item_ui = item_clone.clone();
+
+        let page_weak_ping = self.downgrade();
+        glib::spawn_future_local(async move {
+            if let Ok(res) = receiver.recv().await {
+                item_ui.set_is_loading(false);
+                let ping_val = match res {
+                    crate::services::ping::PingResult::Success(ms) => format!("{ms} ms"),
+                    crate::services::ping::PingResult::Timeout => gettext("timeout"),
+                    crate::services::ping::PingResult::Error(e) => {
+                        let e_lower = e.to_lowercase();
+                        if e_lower.contains("handshake") || e_lower.contains("auth") {
+                            gettext("auth error")
+                        } else {
+                            gettext("error")
+                        }
+                    }
+                };
+                item_ui.set_ping(ping_val);
+
+                if let Some(page) = page_weak_ping.upgrade() {
+                    page.save_current_keys();
+                    if let Some(w) = page.root().and_downcast::<crate::window::VrxxWindow>() {
+                        w.update_active_connection_widget();
+                    }
+                }
+            }
+        });
+
+        let raw_url_bg = raw_url;
+        let is_connected = self.imp().is_connected.get();
+        let is_key_active = item_clone.is_active();
+
+        std::thread::spawn(move || {
+            let parsed = crate::domain::key_parser::parse_vpn_key(&raw_url_bg).unwrap_or_default();
+            if parsed.validate().is_err() {
+                let _ = sender.send_blocking(crate::services::ping::PingResult::Error(
+                    "Невалидный ключ".to_string(),
+                ));
+                return;
+            }
+
+            let target = crate::services::ping::PingTarget {
+                id: parsed.name.clone(),
+                host: parsed.host.clone(),
+                port: if parsed.port == 0 { 443 } else { parsed.port },
+                raw_url: raw_url_bg,
+            };
+
+            let settings = crate::settings::SettingsManager::new().load();
+            let algorithm = crate::services::ping::PingAlgorithm::parse(&settings.ping_algorithm);
+
+            // Прокси передается ТОЛЬКО если данный конкретный ключ активен И демон подключен
+            let proxy_url = if is_connected && is_key_active {
+                Some(format!("socks5://127.0.0.1:{}", settings.socks_port))
+            } else {
+                None
+            };
+
+            let options = crate::services::ping::PingOptions {
+                algorithm,
+                target_url: settings.ping_target_url,
+                timeout: std::time::Duration::from_secs(4),
+                proxy_url,
+                concurrency_limit: 1,
+            };
+
+            let ping_res = if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                rt.block_on(crate::services::ping::ping_target(&target, &options))
+            } else {
+                crate::services::ping::PingResult::Timeout
+            };
+
+            let _ = sender.send_blocking(ping_res);
+        });
+    }
+
+    /// Сохраняет текущее состояние списка ключей в персистентное хранилище `SettingsManager`.
     fn save_current_keys(&self) {
         if let Some(model) = self.imp().model.borrow().as_ref() {
             let mut data = Vec::new();
@@ -976,6 +1110,7 @@ impl VrxxVpnPage {
         }
     }
 
+    /// Добавляет распарсенный ключ в модель и при необходимости инициирует подключение.
     pub fn import_key(&self, parsed: crate::domain::key_parser::ParsedKey, connect: bool) {
         if let Some(model) = self.imp().model.borrow().as_ref() {
             let new_url = crate::domain::key_parser::build_vpn_key(&parsed);
@@ -989,24 +1124,35 @@ impl VrxxVpnPage {
             self.save_current_keys();
 
             if connect {
-                self.set_active_key(&new_key);
+                self.set_active_key_internal(&new_key, true);
             }
         }
     }
 
-    // Логика отображения информации о ключе
-    // ================================
+    // =========================================================================
+    // 5. МОДАЛЬНЫЕ ДИАЛОГИ (UI DIALOGS)
+    // =========================================================================
 
-    // --- Раздел: UI Диалоги ---
+    /// Диалог отображения сведений о профиле (IP, Порт, Протокол, SNI, Публичный ключ)
     fn handle_info_key(&self, key: &VpnKeyObject) {
         let current_settings = SettingsManager::new().load();
         key.set_hide_ip(current_settings.streamer_mode);
+
+        let parsed_opt = crate::domain::key_parser::parse_vpn_key(&key.url()).ok();
+        let s_info = key.server_info();
+        let raw_host = if !s_info.is_empty() && s_info != "0.0.0.0" {
+            s_info
+        } else if let Some(ref p) = parsed_opt {
+            p.host.clone()
+        } else {
+            "0.0.0.0".to_string()
+        };
 
         let hide = key.hide_ip();
         let display_ip = if hide {
             "***.***.***.***".to_string()
         } else {
-            key.server_info()
+            raw_host
         };
         let display_loc = if hide {
             "***".to_string()
@@ -1076,7 +1222,7 @@ impl VrxxVpnPage {
             .build();
 
         let clamp = adw::Clamp::builder()
-            .maximum_size(400)
+            .maximum_size(580)
             .child(&label)
             .build();
 
@@ -1093,14 +1239,14 @@ impl VrxxVpnPage {
         }
     }
 
-    // Логика отображения QR-кода профиля
+    /// Отображение диалога QR-кода профиля
     fn handle_qr_code_key(&self, key: &VpnKeyObject) {
         if let Some(root) = self.root().and_downcast::<gtk::Window>() {
             crate::ui::qr_dialog::show_qr_dialog(&root, &key.name(), &key.url());
         }
     }
 
-    // Логика редактирования ключа
+    /// Диалог редактирования параметров ключа (название, хост, порт, пароль/UUID)
     fn handle_edit_key(&self, key: &VpnKeyObject) {
         let page_weak = self.downgrade();
         let key_obj_clone = key.clone();
@@ -1157,8 +1303,8 @@ impl VrxxVpnPage {
         pref_page.append(&group_connection);
 
         let clamp = adw::Clamp::builder()
-            .maximum_size(450)
-            .tightening_threshold(300)
+            .maximum_size(580)
+            .tightening_threshold(460)
             .child(&pref_page)
             .build();
 
@@ -1206,7 +1352,7 @@ impl VrxxVpnPage {
         }
     }
 
-    // Логика удаления ключа
+    /// Диалог подтверждения удаления VPN-ключа
     fn handle_delete_key(&self, key: &VpnKeyObject) {
         let page_weak = self.downgrade();
         let key_name = key.name();
@@ -1262,6 +1408,7 @@ impl VrxxVpnPage {
         }
     }
 
+    /// Обновляет доступность действия Disconnect в зависимости от наличия активного ключа.
     fn update_disconnect_action_state(&self) {
         use gio::prelude::ActionMapExt;
 
@@ -1289,94 +1436,365 @@ impl VrxxVpnPage {
         }
     }
 
-    // ================================
-
-    // --- Раздел: GActions ---
+    // =========================================================================
+    // 6. РЕГИСТРАЦИЯ ДЕЙСТВИЙ (GACTIONS)
+    // =========================================================================
     fn setup_actions(&self) {
         let action_group = gio::SimpleActionGroup::new();
         self.imp().action_group.replace(Some(action_group.clone()));
 
-        // Действие: Add ключ
-        let add_action = gio::SimpleAction::new("add_key", Some(glib::VariantTy::STRING));
+        // Действие: Добавить профиль VPN (расширенный диалог ручной настройки и быстрого импорта)
+        let add_action = gio::SimpleAction::new("add_key", None);
         let page_weak = self.downgrade();
-        add_action.connect_activate(move |_, parameter| {
+        add_action.connect_activate(move |_, _| {
             let page = match page_weak.upgrade() {
                 Some(p) => p,
                 None => return,
             };
 
-            let _input = parameter
-                .and_then(|v| v.get::<String>())
-                .unwrap_or_else(|| "Key".to_string());
-
             let dialog = adw::AlertDialog::builder()
-                .heading(gettext("Add VPN key"))
+                .heading(gettext("Add VPN Profile"))
                 .build();
 
-            let entry = gtk::Entry::builder()
-                .placeholder_text(gettext("VPN Link"))
-                .activates_default(true)
+            // Группа: Быстрый импорт по ссылке
+            let group_quick = adw::PreferencesGroup::builder()
+                .title(gettext("Quick Import from Link"))
                 .build();
 
-            let list_box = gtk::ListBox::builder()
-                .selection_mode(gtk::SelectionMode::None)
-                .css_classes(["boxed-list"])
+            let link_entry = adw::EntryRow::builder()
+                .title(gettext("VPN Link (vless://, vmess://, etc.)"))
+                .build();
+            group_quick.add(&link_entry);
+
+            // Группа: Основные параметры
+            let group_general = adw::PreferencesGroup::builder()
+                .title(gettext("General"))
                 .build();
 
-            let row = gtk::ListBoxRow::builder()
-                .child(&entry)
-                .activatable(false)
+            let name_row = adw::EntryRow::builder()
+                .title(gettext("Profile Name"))
+                .text("New VPN Profile")
                 .build();
-            list_box.append(&row);
+            group_general.add(&name_row);
+
+            let proto_dropdown = gtk::DropDown::from_strings(&[
+                "VLESS",
+                "VMess",
+                "Trojan",
+                "Shadowsocks",
+                "Hysteria2",
+                "TUIC",
+                "WireGuard",
+            ]);
+            proto_dropdown.set_valign(gtk::Align::Center);
+
+            let proto_row = adw::ActionRow::builder().title(gettext("Protocol")).build();
+            proto_row.add_suffix(&proto_dropdown);
+            group_general.add(&proto_row);
+
+            // Группа: Параметры сервера
+            let group_conn = adw::PreferencesGroup::builder()
+                .title(gettext("Server Connection"))
+                .build();
+
+            let host_row = adw::EntryRow::builder()
+                .title(gettext("Server address / Host"))
+                .build();
+            let port_row = adw::EntryRow::builder()
+                .title(gettext("Port"))
+                .text("443")
+                .build();
+            let uuid_row = adw::EntryRow::builder()
+                .title(gettext("UUID / Password / Key"))
+                .build();
+
+            group_conn.add(&host_row);
+            group_conn.add(&port_row);
+            group_conn.add(&uuid_row);
+
+            // Строка предварительного замера задержки (TCP ping)
+            let latency_spinner = gtk::Spinner::builder()
+                .spinning(false)
+                .visible(false)
+                .valign(gtk::Align::Center)
+                .build();
+
+            let btn_ping = gtk::Button::builder()
+                .icon_name("network-transmit-receive-symbolic")
+                .valign(gtk::Align::Center)
+                .tooltip_text(gettext("Test Connection"))
+                .build();
+
+            let latency_row = adw::ActionRow::builder()
+                .title(gettext("Latency Check"))
+                .subtitle(gettext("Ready"))
+                .build();
+            latency_row.add_suffix(&latency_spinner);
+            latency_row.add_suffix(&btn_ping);
+            group_conn.add(&latency_row);
+
+            // Группа: Параметры безопасности и TLS
+            let group_sec = adw::PreferencesGroup::builder()
+                .title(gettext("Security & Parameters"))
+                .build();
+
+            let sec_row = adw::EntryRow::builder()
+                .title(gettext("Security Mode (reality/tls/none)"))
+                .build();
+            let sni_row = adw::EntryRow::builder()
+                .title(gettext("SNI / Server Name"))
+                .build();
+            let pbk_row = adw::EntryRow::builder()
+                .title(gettext("Reality Public Key (pbk)"))
+                .build();
+            let fp_row = adw::EntryRow::builder()
+                .title(gettext("Fingerprint (uTLS)"))
+                .build();
+            let flow_row = adw::EntryRow::builder()
+                .title(gettext("Flow (e.g. xtls-rprx-vision)"))
+                .build();
+
+            group_sec.add(&sec_row);
+            group_sec.add(&sni_row);
+            group_sec.add(&pbk_row);
+            group_sec.add(&fp_row);
+            group_sec.add(&flow_row);
+
+            // Сборка контейнера
+            let content_box = gtk::Box::builder()
+                .orientation(gtk::Orientation::Vertical)
+                .spacing(12)
+                .build();
+            content_box.append(&group_quick);
+            content_box.append(&group_general);
+            content_box.append(&group_conn);
+            content_box.append(&group_sec);
 
             let clamp = adw::Clamp::builder()
-                .maximum_size(450)
-                .tightening_threshold(300)
-                .child(&list_box)
+                .maximum_size(580)
+                .tightening_threshold(460)
+                .child(&content_box)
                 .build();
-
             clamp.set_margin_top(12);
             clamp.set_margin_bottom(12);
             clamp.set_margin_start(12);
             clamp.set_margin_end(12);
 
             dialog.set_extra_child(Some(&clamp));
+
+            // Автозаполнение формы при вставке ссылки
+            let name_r = name_row.clone();
+            let proto_d = proto_dropdown.clone();
+            let host_r = host_row.clone();
+            let port_r = port_row.clone();
+            let uuid_r = uuid_row.clone();
+            let sec_r = sec_row.clone();
+            let sni_r = sni_row.clone();
+            let pbk_r = pbk_row.clone();
+            let fp_r = fp_row.clone();
+            let flow_r = flow_row.clone();
+
+            link_entry.connect_changed(move |entry| {
+                let text = entry.text();
+                if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&text) {
+                    name_r.set_text(&parsed.name);
+                    let proto_idx = match parsed.protocol.to_uppercase().as_str() {
+                        "VLESS" => 0,
+                        "VMESS" => 1,
+                        "TROJAN" => 2,
+                        "SHADOWSOCKS" | "SS" => 3,
+                        "HYSTERIA2" | "HY2" => 4,
+                        "TUIC" => 5,
+                        "WIREGUARD" | "WG" => 6,
+                        _ => 0,
+                    };
+                    proto_d.set_selected(proto_idx);
+                    host_r.set_text(&parsed.host);
+                    port_r.set_text(&parsed.port.to_string());
+                    uuid_r.set_text(&parsed.uuid);
+                    sec_r.set_text(
+                        parsed
+                            .query_params
+                            .get("security")
+                            .map(|s| s.as_str())
+                            .unwrap_or(""),
+                    );
+                    sni_r.set_text(
+                        parsed
+                            .query_params
+                            .get("sni")
+                            .map(|s| s.as_str())
+                            .unwrap_or(""),
+                    );
+                    pbk_r.set_text(
+                        parsed
+                            .query_params
+                            .get("pbk")
+                            .map(|s| s.as_str())
+                            .unwrap_or(""),
+                    );
+                    fp_r.set_text(
+                        parsed
+                            .query_params
+                            .get("fp")
+                            .map(|s| s.as_str())
+                            .unwrap_or(""),
+                    );
+                    flow_r.set_text(
+                        parsed
+                            .query_params
+                            .get("flow")
+                            .map(|s| s.as_str())
+                            .unwrap_or(""),
+                    );
+                }
+            });
+
+            // Обработчик кнопки пинга
+            let host_r_p = host_row.clone();
+            let port_r_p = port_row.clone();
+            let latency_r_p = latency_row.clone();
+            let latency_sp_p = latency_spinner.clone();
+
+            btn_ping.connect_clicked(move |_| {
+                let host = host_r_p.text().to_string();
+                let port = port_r_p.text().parse::<u16>().unwrap_or(443);
+                if host.trim().is_empty() {
+                    latency_r_p.set_subtitle(&gettext("Enter host address first"));
+                    return;
+                }
+                latency_sp_p.set_visible(true);
+                latency_sp_p.set_spinning(true);
+                latency_r_p.set_subtitle(&gettext("Measuring ping..."));
+
+                let (tx, rx) = async_channel::unbounded::<(bool, u128)>();
+                let lat_r = latency_r_p.clone();
+                let lat_sp = latency_sp_p.clone();
+
+                glib::spawn_future_local(async move {
+                    if let Ok((success, ms)) = rx.recv().await {
+                        lat_sp.set_spinning(false);
+                        lat_sp.set_visible(false);
+                        if success {
+                            lat_r.set_subtitle(&format!("{ms} ms"));
+                        } else {
+                            lat_r.set_subtitle(&gettext("Connection timeout"));
+                        }
+                    }
+                });
+
+                std::thread::spawn(move || {
+                    use std::net::{TcpStream, ToSocketAddrs};
+                    use std::time::{Duration, Instant};
+                    let start = Instant::now();
+                    let mut ok = false;
+                    let addr = format!("{host}:{port}");
+                    if let Ok(mut addrs) = addr.to_socket_addrs() {
+                        if let Some(sock) = addrs.next() {
+                            if let Ok(stream) =
+                                TcpStream::connect_timeout(&sock, Duration::from_secs(3))
+                            {
+                                ok = true;
+                                let _ = stream.shutdown(std::net::Shutdown::Both);
+                            }
+                        }
+                    }
+                    let elapsed = start.elapsed().as_millis();
+                    let _ = tx.send_blocking((ok, elapsed));
+                });
+            });
+
+            // Кнопки действий
             dialog.add_response("cancel", &gettext("Cancel"));
-            dialog.add_response("add", &gettext("Add"));
-            dialog.set_response_appearance("add", adw::ResponseAppearance::Suggested);
-            dialog.set_default_response(Some("add"));
+            dialog.add_response("add", &gettext("Add Profile"));
+            dialog.add_response("connect", &gettext("Add and Connect"));
+            dialog.set_response_appearance("connect", adw::ResponseAppearance::Suggested);
+            dialog.set_default_response(Some("connect"));
             dialog.set_close_response("cancel");
 
             let page_weak_dialog = page_weak.clone();
-            let entry_clone = entry.clone();
+            let name_r_save = name_row.clone();
+            let proto_d_save = proto_dropdown.clone();
+            let host_r_save = host_row.clone();
+            let port_r_save = port_row.clone();
+            let uuid_r_save = uuid_row.clone();
+            let sec_r_save = sec_row.clone();
+            let sni_r_save = sni_row.clone();
+            let pbk_r_save = pbk_row.clone();
+            let fp_r_save = fp_row.clone();
+            let flow_r_save = flow_row.clone();
+            let link_e_save = link_entry.clone();
+
             dialog.connect_response(None, move |_, response| {
-                if response == "add" {
+                if response == "add" || response == "connect" {
                     if let Some(page) = page_weak_dialog.upgrade() {
-                        let url_str = entry_clone.text();
-                        match crate::domain::key_parser::parse_vpn_key(&url_str) {
-                            Ok(parsed) => {
-                                if let Some(model) = page.imp().model.borrow().as_ref() {
-                                    let new_key = VpnKeyObject::new(
-                                        &parsed.name,
-                                        &parsed.protocol,
-                                        false,
-                                        &parsed.raw_url,
-                                    );
-                                    model.append(&new_key);
-                                    page.save_current_keys();
-                                }
-                            }
-                            Err(e) => {
-                                tracing::error!("{}", &format!("Key parsing error: {e}"));
-                            }
+                        let proto_str = match proto_d_save.selected() {
+                            0 => "VLESS",
+                            1 => "VMess",
+                            2 => "Trojan",
+                            3 => "Shadowsocks",
+                            4 => "Hysteria2",
+                            5 => "TUIC",
+                            6 => "WireGuard",
+                            _ => "VLESS",
+                        };
+
+                        let mut query_params = std::collections::HashMap::new();
+                        let sec = sec_r_save.text().trim().to_string();
+                        if !sec.is_empty() {
+                            query_params.insert("security".to_string(), sec);
                         }
+                        let sni = sni_r_save.text().trim().to_string();
+                        if !sni.is_empty() {
+                            query_params.insert("sni".to_string(), sni);
+                        }
+                        let pbk = pbk_r_save.text().trim().to_string();
+                        if !pbk.is_empty() {
+                            query_params.insert("pbk".to_string(), pbk);
+                        }
+                        let fp = fp_r_save.text().trim().to_string();
+                        if !fp.is_empty() {
+                            query_params.insert("fp".to_string(), fp);
+                        }
+                        let flow = flow_r_save.text().trim().to_string();
+                        if !flow.is_empty() {
+                            query_params.insert("flow".to_string(), flow);
+                        }
+
+                        let host = host_r_save.text().trim().to_string();
+                        let port = port_r_save.text().trim().parse::<u16>().unwrap_or(443);
+                        let uuid = uuid_r_save.text().trim().to_string();
+                        let name = {
+                            let t = name_r_save.text().trim().to_string();
+                            if t.is_empty() {
+                                format!("{host}:{port}")
+                            } else {
+                                t
+                            }
+                        };
+
+                        let mut parsed = crate::domain::key_parser::ParsedKey {
+                            protocol: proto_str.to_string(),
+                            name,
+                            host,
+                            port,
+                            uuid,
+                            query_params,
+                            raw_url: String::new(),
+                        };
+                        let built = crate::domain::key_parser::build_vpn_key(&parsed);
+                        let raw = link_e_save.text().trim().to_string();
+                        parsed.raw_url = if !raw.is_empty() { raw } else { built };
+
+                        let connect_now = response == "connect";
+                        page.import_key(parsed, connect_now);
                     }
                 }
             });
 
             if let Some(root) = page.root() {
                 dialog.present(Some(&root));
-                entry.grab_focus();
+                link_entry.grab_focus();
             }
         });
         action_group.add_action(&add_action);
@@ -1386,7 +1804,10 @@ impl VrxxVpnPage {
         let page_weak_clip = self.downgrade();
         import_clip_action.connect_activate(move |_, _| {
             if let Some(page) = page_weak_clip.upgrade() {
-                let display = gdk::Display::default().expect("No display");
+                let Some(display) = gdk::Display::default() else {
+                    tracing::warn!("Графический дисплей GDK недоступен для чтения буфера обмена");
+                    return;
+                };
                 let clipboard = display.clipboard();
 
                 let p_weak = page.downgrade();
@@ -1409,7 +1830,7 @@ impl VrxxVpnPage {
                                 Err(e) => {
                                     tracing::error!(
                                         "{}",
-                                        &format!("Key parsing error from buffer: {e}")
+                                        &format!("Ошибка парсинга ключа из буфера: {e}")
                                     );
                                 }
                             }
@@ -1420,21 +1841,47 @@ impl VrxxVpnPage {
         });
         action_group.add_action(&import_clip_action);
 
-        // Действие: Disconnect
+        // Действие: Отключение
         let disconnect_action = gio::SimpleAction::new("disconnect", None);
+        let page_weak_disconnect = self.downgrade();
         disconnect_action.connect_activate(move |_, _| {
-            tracing::info!("Disconnecting VPN via REST API");
-            glib::spawn_future_local(async move {
-                let proxy = crate::ipc::DaemonClient::new();
-                if let Err(e) = proxy.stop_proxy().await {
-                    tracing::error!("Failed to stop backend via REST API: {}", e);
-                }
-            });
+            if let Some(page) = page_weak_disconnect.upgrade() {
+                page.disconnect();
+            }
         });
         action_group.add_action(&disconnect_action);
 
         self.insert_action_group("vpn", Some(&action_group));
 
         self.update_disconnect_action_state();
+    }
+
+    /// Выполняет отключение активного VPN соединения.
+    pub fn disconnect(&self) {
+        if let Some(last) = *self.imp().last_disconnect.borrow() {
+            if last.elapsed() < std::time::Duration::from_millis(2500) {
+                self.show_toast(&gettext("Please wait before disconnecting again"));
+                return;
+            }
+        }
+        self.imp()
+            .last_disconnect
+            .replace(Some(std::time::Instant::now()));
+
+        tracing::info!("Disconnecting VPN via REST API");
+        let page_weak = self.downgrade();
+        glib::spawn_future_local(async move {
+            if let Some(page) = page_weak.upgrade() {
+                page.imp().connecting_target_url.replace(None);
+            }
+            let proxy = crate::ipc::DaemonClient::new();
+            if let Err(e) = proxy.stop_proxy().await {
+                tracing::error!("Failed to stop backend via REST API: {}", e);
+            }
+            if let Some(page) = page_weak.upgrade() {
+                page.handle_daemon_status_change("Disconnected");
+                crate::backend::CoreBackend::update_system_proxy(false);
+            }
+        });
     }
 }

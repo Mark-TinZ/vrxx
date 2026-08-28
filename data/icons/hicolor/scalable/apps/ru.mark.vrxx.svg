@@ -1,84 +1,35 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   viewBox="0 0 512 512"
-   width="100%"
-   height="100%"
-   version="1.1"
-   id="svg4"
-   sodipodi:docname="icon.svg"
-   inkscape:version="1.4.3 (0d15f75042, 2025-12-25)"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg">
-  <defs
-     id="defs4" />
-  <sodipodi:namedview
-     id="namedview4"
-     pagecolor="#ffffff"
-     bordercolor="#000000"
-     borderopacity="0.25"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1"
-     inkscape:zoom="1.2967564"
-     inkscape:cx="261.80708"
-     inkscape:cy="232.88877"
-     inkscape:window-width="1920"
-     inkscape:window-height="1011"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
-     inkscape:window-maximized="1"
-     inkscape:current-layer="svg4"
-     showguides="true"
-     showgrid="false">
-    <sodipodi:guide
-       position="256,453.65504"
-       orientation="1,0"
-       id="guide1"
-       inkscape:locked="false" />
-    <inkscape:grid
-       id="grid1"
-       units="px"
-       originx="0"
-       originy="0"
-       spacingx="1"
-       spacingy="1"
-       empcolor="#0099e5"
-       empopacity="0.30196078"
-       color="#0099e5"
-       opacity="0.14901961"
-       empspacing="5"
-       enabled="true"
-       visible="false" />
-  </sodipodi:namedview>
-  <path
-     d="M 256 60 C 340 85 410 95 410 95 C 410 240 390 370 256 450 C 122 370 102 240 102 95 C 102 95 172 85 256 60 Z"
-     fill="black"
-     opacity="0.1"
-     transform="translate(5, 5)"
-     id="path1" />
-  <path
-     d="M 256 60 C 340 85 410 95 410 95 C 410 240 390 370 256 450 C 122 370 102 240 102 95 C 102 95 172 85 256 60 Z"
-     fill="#3584e4"
-     id="path2"
-     style="fill:#3584e4;fill-opacity:1" />
-  <path
-     d="m 107,221 h 80 L 257,351 432,91"
-     fill="none"
-     stroke="#ffffff"
-     stroke-width="64"
-     stroke-linecap="round"
-     stroke-linejoin="round"
-     id="path3"
-     style="display:inline" />
-  <path
-     d="m 107,221 h 80 L 257,351 432,91"
-     fill="none"
-     stroke="#33d17a"
-     stroke-width="40"
-     stroke-linecap="round"
-     stroke-linejoin="round"
-     id="path4" />
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <!-- Top Surface Gradient (Adwaita Blue 1 -> Blue 3) -->
+    <linearGradient id="shieldGrad" x1="64" y1="14" x2="64" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#62a0ea"/>
+      <stop offset="100%" stop-color="#3584e4"/>
+    </linearGradient>
+    <!-- HIG Front Profile Dark Gradient (Adwaita Blue 4 -> Blue 5) -->
+    <linearGradient id="frontGrad" x1="64" y1="112" x2="64" y2="116" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1c71d8"/>
+      <stop offset="100%" stop-color="#1a5fb4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- HIG Front Profile (3D 4px Depth Lip at bottom baseline y=116) -->
+  <path d="M 20 32 C 20 24 64 16 64 16 C 64 16 108 24 108 32 C 108 72 100 102 64 116 C 28 102 20 72 20 32 Z"
+        fill="url(#frontGrad)"/>
+
+  <!-- HIG Top Surface (Main Shield) -->
+  <path d="M 20 30 C 20 22 64 14 64 14 C 64 14 108 22 108 30 C 108 68 100 98 64 112 C 28 98 20 68 20 30 Z"
+        fill="url(#shieldGrad)"/>
+
+  <!-- Inner Highlight Rim -->
+  <path d="M 22 31 C 22 24 64 16 64 16 C 64 16 106 24 106 31 C 106 67 98 96 64 110 C 30 96 22 67 22 31 Z"
+        fill="none" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.25"/>
+
+  <!-- Checkmark Badge Base (White Outline for contrast) -->
+  <path d="M 38 60 L 56 78 L 90 42"
+        fill="none" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Checkmark Badge Top (Adwaita Green 33d17a) -->
+  <path d="M 38 60 L 56 78 L 90 42"
+        fill="none" stroke="#33d17a" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

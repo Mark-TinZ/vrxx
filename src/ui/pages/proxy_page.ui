@@ -1,19 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<interface>
+<!-- proxy_page.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
+<interface domain="vrxx">
+  <!--
+    ============================================================================
+    СТРАНИЦА НАСТРОЕК СИСТЕМНОГО ПРОКСИ (VrxxProxyPage)
+    ============================================================================
+
+    СТРУКТУРА МАКЕТА:
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ AdwHeaderBar (Шапка):                                                    │
+    │ ├─ [Кнопка Сохранить: btn_apply] (Применить и перезапустить ядро)        │
+    │ ├─ AdwWindowTitle: "Proxy" / "Прокси"                                    │
+    │ └─ [Кнопка Меню: primary_menu_btn]                                       │
+    ├──────────────────────────────────────────────────────────────────────────┤
+    │ AdwPreferencesPage (Секции параметров):                                  │
+    │ ├─ 1. System proxy (Системный прокси): Авто-настройка GNOME GSettings    │
+    │ └─ 2. Inbound connections (Входящие порты ядра sing-box):                │
+    │       ├─ SOCKS5 Port (socks_port_row, по умолчанию 10808)                │
+    │       ├─ HTTP Port   (http_port_row, по умолчанию 10809)                 │
+    │       └─ Allow LAN   (allow_lan_switch: доступ из локальной сети)        │
+    └──────────────────────────────────────────────────────────────────────────┘
+  -->
+
   <template class="VrxxProxyPage" parent="AdwBin">
     <property name="child">
       <object class="AdwToolbarView">
 
-        <!-- TITLE BAR -->
+        <!-- ================================================================= -->
+        <!-- 1. ВЕРХНЯЯ ПАНЕЛЬ ИНСТРУМЕНТОВ (HEADERBAR & ACTIONS)              -->
+        <!-- ================================================================= -->
         <child type="top">
           <object class="AdwHeaderBar">
             <property name="title-widget">
-                <object class="AdwWindowTitle">
-                    <property name="title" translatable="yes">Proxy</property>
-                </object>
+              <object class="AdwWindowTitle">
+                <property name="title" translatable="yes">Proxy</property>
+              </object>
             </property>
+
+            <!-- Кнопка применения настроек прокси -->
             <child type="start">
               <object class="GtkButton" id="btn_apply">
+                <property name="visible">False</property>
                 <property name="icon-name">document-save-symbolic</property>
                 <property name="tooltip-text" translatable="yes">Apply and Restart Core</property>
                 <style>
@@ -21,7 +57,9 @@
                 </style>
               </object>
             </child>
-             <child type="end">
+
+            <!-- Главное контекстное меню -->
+            <child type="end">
               <object class="GtkMenuButton" id="primary_menu_btn">
                 <property name="icon-name">open-menu-symbolic</property>
                 <property name="primary">True</property>
@@ -30,15 +68,21 @@
           </object>
         </child>
 
-        <!-- CONTENT -->
+        <!-- ================================================================= -->
+        <!-- 2. СЕКЦИИ ПАРАМЕТРОВ ПРОКСИ (PREFERENCES PAGE)                    -->
+        <!-- ================================================================= -->
         <property name="content">
           <object class="AdwPreferencesPage">
 
-            <!-- Группа: System proxy -->
+            <!-- ============================================================= -->
+            <!-- СЕКЦИЯ 1: СИСТЕМНЫЙ ПРОКСИ GNOME                              -->
+            <!-- ============================================================= -->
             <child>
               <object class="AdwPreferencesGroup">
                 <property name="title" translatable="yes">System proxy</property>
                 <property name="description" translatable="yes">Automatic proxy configuration for the whole system (GNOME)</property>
+
+                <!-- Автоматическая установка системного прокси GNOME при подключении -->
                 <child>
                   <object class="AdwSwitchRow" id="system_proxy_switch">
                     <property name="title" translatable="yes">Set system proxy</property>
@@ -48,12 +92,15 @@
               </object>
             </child>
 
-            <!-- Группа: Входящие порты -->
+            <!-- ============================================================= -->
+            <!-- СЕКЦИЯ 2: ВХОДЯЩИЕ ЛОКАЛЬНЫЕ ПОРТЫ (INBOUNDS)                 -->
+            <!-- ============================================================= -->
             <child>
               <object class="AdwPreferencesGroup">
                 <property name="title" translatable="yes">Inbound connections (Inbounds)</property>
                 <property name="description" translatable="yes">Local ports where the core proxy servers run</property>
 
+                <!-- Локальный порт для SOCKS5 прокси -->
                 <child>
                   <object class="AdwSpinRow" id="socks_port_row">
                     <property name="title" translatable="yes">SOCKS5 Port</property>
@@ -68,6 +115,7 @@
                   </object>
                 </child>
 
+                <!-- Локальный порт для HTTP прокси -->
                 <child>
                   <object class="AdwSpinRow" id="http_port_row">
                     <property name="title" translatable="yes">HTTP Port</property>
@@ -82,6 +130,7 @@
                   </object>
                 </child>
 
+                <!-- Разрешить подключения к локальному прокси из локальной сети (LAN) -->
                 <child>
                   <object class="AdwSwitchRow" id="allow_lan_switch">
                     <property name="title" translatable="yes">Allow connections from LAN</property>

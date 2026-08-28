@@ -1,6 +1,6 @@
 /* qr_dialog.rs
  *
- * Copyright 2026 VRXX Authors
+ * Copyright 2026 Mark
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,154 +9,257 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
+//! # Диалог экспорта и отображения QR-кода профиля (VrxxQrDialog)
+//!
+//! Отвечает за:
+//! - Генерацию векторного и растрового QR-кода в оперативной памяти без записи временных файлов
+//! - Защиту приватности: размытие (blur) QR-кода с возможностью снятия по клику или при наведении
+//! - Копирование ссылки подключения и структурированного JSON профиля в буфер обмена
+//! - Экспорт QR-кода в форматы PNG и SVG через нативный диалог сохранения `gtk::FileDialog`
+
 use adw::prelude::*;
+use adw::subclass::prelude::*;
 use gettextrs::gettext;
-use gtk::gio;
+use gtk::{gio, glib, CompositeTemplate};
+use std::cell::RefCell;
 
 use crate::domain::exporter;
 
-/// Displays an interactive `AdwDialog` presenting a QR code and sharing options for a VPN profile.
-///
-/// Features:
-/// - Renders QR code in memory as `gdk::Texture` without temporary disk files.
-/// - White-card framed display ensuring scanning reliability across light/dark desktop themes.
-/// - "Copy Link" button to copy profile URI to system clipboard with an `AdwToast` feedback.
-/// - "Save QR Code as..." button (`gtk::FileDialog`) exporting to `.png` or `.svg`.
-pub fn show_qr_dialog(parent: &gtk::Window, profile_name: &str, uri: &str) {
-    let dialog = adw::AlertDialog::builder()
-        .heading(gettext("Profile QR Code"))
-        .body(profile_name)
-        .build();
+mod imp {
+    use super::*;
 
-    let toast_overlay = adw::ToastOverlay::new();
+    /// Структура CompositeTemplate для виджета содержимого диалога QR-кода
+    #[derive(Debug, CompositeTemplate)]
+    #[template(resource = "/ru/mark/vrxx/ui/qr_dialog.ui")]
+    pub struct VrxxQrDialog {
+        #[template_child]
+        pub qr_card: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub qr_picture: TemplateChild<gtk::Picture>,
+        #[template_child]
+        pub btn_toggle_blur: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub img_blur_icon: TemplateChild<gtk::Image>,
+        #[template_child]
+        pub lbl_blur_status: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub lbl_error: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub lbl_uri: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub btn_copy_link: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub btn_copy_json: TemplateChild<gtk::Button>,
+        #[template_child]
+        pub btn_save_qr: TemplateChild<gtk::Button>,
 
-    let content_box = gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
-        .spacing(16)
-        .halign(gtk::Align::Center)
-        .margin_top(12)
-        .margin_bottom(12)
-        .margin_start(16)
-        .margin_end(16)
-        .build();
+        pub is_blurred: RefCell<bool>,
+        pub is_hovered: RefCell<bool>,
+    }
 
-    // Render QR Code Texture in memory
-    match exporter::generate_qr_texture(uri, 300) {
-        Ok(texture) => {
-            let picture = gtk::Picture::builder()
-                .paintable(&texture)
-                .can_shrink(true)
-                .content_fit(gtk::ContentFit::Contain)
-                .width_request(260)
-                .height_request(260)
-                .halign(gtk::Align::Center)
-                .valign(gtk::Align::Center)
-                .build();
-
-            // Framed white card for contrast scanability in dark mode
-            let qr_card = gtk::Box::builder()
-                .margin_top(8)
-                .margin_bottom(8)
-                .margin_start(8)
-                .margin_end(8)
-                .halign(gtk::Align::Center)
-                .valign(gtk::Align::Center)
-                .build();
-            qr_card.add_css_class("card");
-            qr_card.set_margin_top(6);
-            qr_card.set_margin_bottom(6);
-            qr_card.set_margin_start(6);
-            qr_card.set_margin_end(6);
-
-            let inner_padding = gtk::Box::builder()
-                .margin_top(12)
-                .margin_bottom(12)
-                .margin_start(12)
-                .margin_end(12)
-                .build();
-            inner_padding.append(&picture);
-            qr_card.append(&inner_padding);
-
-            content_box.append(&qr_card);
-        }
-        Err(e) => {
-            tracing::error!("Failed to generate QR texture: {e}");
-            let error_label = gtk::Label::builder()
-                .label(format!("{}: {e}", gettext("Failed to generate QR code")))
-                .wrap(true)
-                .build();
-
-            error_label.add_css_class("error");
-            content_box.append(&error_label);
-
-            let toast = adw::Toast::new(&format!("{}: {e}", gettext("Failed to generate QR code")));
-            toast_overlay.add_toast(toast);
+    impl Default for VrxxQrDialog {
+        fn default() -> Self {
+            Self {
+                qr_card: TemplateChild::default(),
+                qr_picture: TemplateChild::default(),
+                btn_toggle_blur: TemplateChild::default(),
+                img_blur_icon: TemplateChild::default(),
+                lbl_blur_status: TemplateChild::default(),
+                lbl_error: TemplateChild::default(),
+                lbl_uri: TemplateChild::default(),
+                btn_copy_link: TemplateChild::default(),
+                btn_copy_json: TemplateChild::default(),
+                btn_save_qr: TemplateChild::default(),
+                is_blurred: RefCell::new(true),
+                is_hovered: RefCell::new(false),
+            }
         }
     }
 
-    // URI preview subtitle / label
-    let uri_label = gtk::Label::builder()
-        .label(uri)
-        .selectable(true)
-        .ellipsize(gtk::pango::EllipsizeMode::End)
-        .max_width_chars(36)
-        .halign(gtk::Align::Center)
-        .build();
-    uri_label.add_css_class("dim-label");
-    uri_label.add_css_class("caption");
-    content_box.append(&uri_label);
+    #[glib::object_subclass]
+    impl ObjectSubclass for VrxxQrDialog {
+        const NAME: &'static str = "VrxxQrDialog";
+        type Type = super::VrxxQrDialog;
+        type ParentType = adw::Bin;
 
-    // Action buttons box
-    let actions_box = gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
-        .spacing(12)
-        .halign(gtk::Align::Center)
-        .margin_top(8)
-        .build();
+        fn class_init(klass: &mut Self::Class) {
+            adw::Clamp::static_type();
+            gtk::Box::static_type();
+            gtk::Picture::static_type();
+            gtk::Overlay::static_type();
+            gtk::Button::static_type();
+            gtk::Image::static_type();
+            gtk::Label::static_type();
 
-    let btn_copy = gtk::Button::builder()
-        .label(gettext("Copy Link"))
-        .icon_name("edit-copy-symbolic")
-        .build();
+            klass.bind_template();
+        }
 
-    let btn_save = gtk::Button::builder()
-        .label(gettext("Save QR Code as..."))
-        .icon_name("document-save-as-symbolic")
-        .build();
+        fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
+            obj.init_template();
+        }
+    }
 
-    actions_box.append(&btn_copy);
-    actions_box.append(&btn_save);
-    content_box.append(&actions_box);
+    impl ObjectImpl for VrxxQrDialog {}
+    impl WidgetImpl for VrxxQrDialog {}
+    impl BinImpl for VrxxQrDialog {}
+}
 
-    toast_overlay.set_child(Some(&content_box));
+glib::wrapper! {
+    /// Обертка GObject для виджета содержимого диалога QR-кода
+    pub struct VrxxQrDialog(ObjectSubclass<imp::VrxxQrDialog>)
+        @extends gtk::Widget, adw::Bin,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
+}
 
-    let clamp = adw::Clamp::builder()
-        .maximum_size(420)
-        .tightening_threshold(320)
-        .child(&toast_overlay)
-        .build();
+impl Default for VrxxQrDialog {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-    dialog.set_extra_child(Some(&clamp));
-    dialog.add_response("close", &gettext("Close"));
-    dialog.set_close_response("close");
+impl VrxxQrDialog {
+    /// Создает экземпляр виджета QR-диалога с начальным состоянием защиты приватности (размытие включено).
+    pub fn new() -> Self {
+        let content: Self = glib::Object::builder().build();
+        content.setup_blur_events();
+        content.update_blur_ui();
+        content
+    }
 
-    // Button: Copy Link
+    /// Настраивает контроллеры клика и наведения мыши для снятия/возврата размытия.
+    fn setup_blur_events(&self) {
+        let imp = self.imp();
+
+        // 1. Клик в любой точке карточки QR-кода переключает состояние размытия
+        let gesture_click = gtk::GestureClick::new();
+        let content_weak_click = self.downgrade();
+        gesture_click.connect_pressed(move |_, _, _, _| {
+            if let Some(content) = content_weak_click.upgrade() {
+                let mut blurred = content.imp().is_blurred.borrow_mut();
+                *blurred = !*blurred;
+                drop(blurred);
+                content.update_blur_ui();
+            }
+        });
+        imp.qr_card.add_controller(gesture_click);
+
+        // 2. Отслеживание наведения курсора мыши (ховер)
+        let motion_controller = gtk::EventControllerMotion::new();
+        let content_weak_enter = self.downgrade();
+        motion_controller.connect_enter(move |_, _, _| {
+            if let Some(content) = content_weak_enter.upgrade() {
+                *content.imp().is_hovered.borrow_mut() = true;
+                content.update_blur_ui();
+            }
+        });
+
+        // 3. Отслеживание ухода курсора мыши
+        let content_weak_leave = self.downgrade();
+        motion_controller.connect_leave(move |_| {
+            if let Some(content) = content_weak_leave.upgrade() {
+                *content.imp().is_hovered.borrow_mut() = false;
+                content.update_blur_ui();
+            }
+        });
+        imp.qr_card.add_controller(motion_controller);
+    }
+
+    /// Обновляет визуальные стили размытия и видимость плавающей кнопки-глазика.
+    fn update_blur_ui(&self) {
+        let imp = self.imp();
+        let is_blurred = *imp.is_blurred.borrow();
+        let is_hovered = *imp.is_hovered.borrow();
+
+        if is_blurred {
+            imp.qr_picture.add_css_class("blurred-qr");
+            imp.img_blur_icon
+                .set_icon_name(Some("view-reveal-symbolic"));
+            imp.lbl_blur_status.set_label(&gettext("Show QR Code"));
+            // Когда изображение размыто — кнопка видна всегда
+            imp.btn_toggle_blur.set_visible(true);
+        } else {
+            imp.qr_picture.remove_css_class("blurred-qr");
+            imp.img_blur_icon
+                .set_icon_name(Some("view-conceal-symbolic"));
+            imp.lbl_blur_status.set_label(&gettext("Hide QR Code"));
+            // Когда изображение открыто — кнопка видна только при наведении мыши
+            imp.btn_toggle_blur.set_visible(is_hovered);
+        }
+    }
+}
+
+/// Отправляет всплывающее уведомление `AdwToast` в родительское главное окно.
+fn add_parent_toast(parent: &gtk::Window, message: &str) {
+    if let Some(win) = parent.downcast_ref::<crate::window::VrxxWindow>() {
+        win.add_toast(adw::Toast::new(message));
+    }
+}
+
+/// Отображает интерактивный модальный диалог `AdwAlertDialog` с QR-кодом и опциями шеринга.
+///
+/// Возможности:
+/// - Декларативная разметка в `src/ui/qr_dialog.ui`
+/// - Защита приватности с эффектом размытия (Privacy Blur)
+/// - Кнопка «Ссылка»: копирование URI в буфер обмена
+/// - Кнопка «JSON»: парсинг и копирование JSON-конфигурации
+/// - Кнопка «Сохранить QR»: экспорт в файлы PNG или SVG через `gtk::FileDialog`
+pub fn show_qr_dialog(parent: &gtk::Window, profile_name: &str, uri: &str) {
+    let alert_dialog = adw::AlertDialog::new(Some(&gettext("Share Profile")), Some(profile_name));
+    alert_dialog.add_response("close", &gettext("Close"));
+    alert_dialog.set_close_response("close");
+
+    let content = VrxxQrDialog::new();
+    let imp = content.imp();
+    imp.lbl_uri.set_text(uri);
+
+    // Рендеринг текстуры QR-кода в оперативной памяти (300x300 px)
+    match exporter::generate_qr_texture(uri, 300) {
+        Ok(texture) => {
+            imp.qr_picture.set_paintable(Some(&texture));
+            imp.lbl_error.set_visible(false);
+        }
+        Err(e) => {
+            tracing::error!("Ошибка генерации текстуры QR-кода: {e}");
+            imp.lbl_error
+                .set_text(&format!("{}: {e}", gettext("Failed to generate QR code")));
+            imp.lbl_error.set_visible(true);
+            add_parent_toast(
+                parent,
+                &format!("{}: {e}", gettext("Failed to generate QR code")),
+            );
+        }
+    }
+
+    // Кнопка: Копировать ссылку
     let uri_copy = uri.to_string();
-    let toast_overlay_copy = toast_overlay.clone();
+    let parent_copy = parent.clone();
     let display_clipboard = parent.clipboard();
-    btn_copy.connect_clicked(move |_| {
+    imp.btn_copy_link.connect_clicked(move |_| {
         display_clipboard.set_text(&uri_copy);
-        let toast = adw::Toast::new(&gettext("Link copied to clipboard"));
-        toast_overlay_copy.add_toast(toast);
+        add_parent_toast(&parent_copy, &gettext("Link copied to clipboard"));
     });
 
-    // Button: Save QR Code as...
+    // Кнопка: Копировать структурированный JSON
+    let uri_json = uri.to_string();
+    let parent_json = parent.clone();
+    let display_clipboard_json = parent.clipboard();
+    imp.btn_copy_json.connect_clicked(move |_| {
+        if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&uri_json) {
+            if let Ok(json_str) = serde_json::to_string_pretty(&parsed) {
+                display_clipboard_json.set_text(&json_str);
+                add_parent_toast(&parent_json, &gettext("JSON copied to clipboard"));
+                return;
+            }
+        }
+        add_parent_toast(&parent_json, &gettext("Failed to generate JSON for key"));
+    });
+
+    // Кнопка: Сохранить QR-код в файл (PNG или SVG)
     let uri_save = uri.to_string();
     let profile_name_save = profile_name.to_string();
     let parent_weak = parent.downgrade();
-    let toast_overlay_save = toast_overlay.clone();
 
-    btn_save.connect_clicked(move |_| {
+    imp.btn_save_qr.connect_clicked(move |_| {
         let parent_win = match parent_weak.upgrade() {
             Some(w) => w,
             None => return,
@@ -196,12 +299,12 @@ pub fn show_qr_dialog(parent: &gtk::Window, profile_name: &str, uri: &str) {
         file_dialog.set_initial_name(Some(&format!("{sanitized_name}_qr.png")));
 
         let uri_export = uri_save.clone();
-        let toast_overlay_export = toast_overlay_save.clone();
+        let parent_export = parent_win.clone();
 
         file_dialog.save(Some(&parent_win), gio::Cancellable::NONE, move |result| {
             let file = match result {
                 Ok(f) => f,
-                Err(_) => return, // User cancelled
+                Err(_) => return, // Пользователь отменил диалог
             };
 
             let path = match file.path() {
@@ -225,18 +328,19 @@ pub fn show_qr_dialog(parent: &gtk::Window, profile_name: &str, uri: &str) {
 
             match export_res {
                 Ok(_) => {
-                    let toast = adw::Toast::new(&gettext("QR code saved successfully"));
-                    toast_overlay_export.add_toast(toast);
+                    add_parent_toast(&parent_export, &gettext("QR code saved successfully"));
                 }
                 Err(e) => {
-                    tracing::error!("Failed to save QR code to file: {e}");
-                    let toast =
-                        adw::Toast::new(&format!("{}: {e}", gettext("Failed to save QR code")));
-                    toast_overlay_export.add_toast(toast);
+                    tracing::error!("Ошибка сохранения QR-кода в файл: {e}");
+                    add_parent_toast(
+                        &parent_export,
+                        &format!("{}: {e}", gettext("Failed to save QR code")),
+                    );
                 }
             }
         });
     });
 
-    dialog.present(Some(parent));
+    alert_dialog.set_extra_child(Some(&content));
+    alert_dialog.present(Some(parent));
 }

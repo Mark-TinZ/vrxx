@@ -1,13 +1,59 @@
+/* log_window.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+//! # Окно просмотра системных и сетевых логов (VrxxLogWindow)
+//!
+//! Отвечает за:
+//! - Отображение потока логов в реальном времени из системного демона через SSE
+//! - Быструю фильтрацию по источникам (Все, Ядро sing-box, Приложение, Трафик/Access)
+//! - Поиск и подсветку по ключевым словам (Ctrl+F)
+//! - Регулировку масштаба шрифта (Ctrl++, Ctrl+-, Ctrl+0, Ctrl+Колесо мыши)
+//! - Экспорт логов в текстовый файл и копирование в буфер обмена
+
+use crate::daemon::events::LogSource;
 use adw::prelude::*;
 use adw::subclass::prelude::*;
 use gtk::{gio, glib};
+use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::path::PathBuf;
+
+/// Максимальное количество записей в кольцевом буфере окна логов (минимизация потребления RAM).
+const MAX_LOG_ENTRIES: usize = 1000;
+
+/// Внутренний элемент лога для сверхбыстрой фильтрации и поиска в памяти.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LogEntryItem {
+    pub source: LogSource,
+    pub level: String,
+    pub message: String,
+}
+
+/// Возвращает канонический путь к каталогу логов приложения (`~/.local/share/vrxx/logs`).
+pub fn get_log_dir() -> PathBuf {
+    dirs::data_local_dir()
+        .unwrap_or_else(|| {
+            dirs::home_dir()
+                .map(|h| h.join(".local/share"))
+                .unwrap_or_else(|| PathBuf::from("."))
+        })
+        .join("vrxx")
+        .join("logs")
+}
 
 mod imp {
     use super::*;
-    use std::cell::RefCell;
 
-    #[derive(Debug, Default, gtk::CompositeTemplate)]
+    /// Структура CompositeTemplate для окна логов VrxxLogWindow
+    #[derive(Debug, gtk::CompositeTemplate)]
     #[template(resource = "/ru/mark/vrxx/ui/components/log_window.ui")]
     pub struct VrxxLogWindow {
         #[template_child]
@@ -24,9 +70,28 @@ mod imp {
         pub search_bar: TemplateChild<gtk::SearchBar>,
         #[template_child]
         pub search_entry: TemplateChild<gtk::SearchEntry>,
-        pub last_pos: RefCell<u64>,
         pub font_size: RefCell<i32>,
         pub scroll_accum: RefCell<f64>,
+        pub logs: RefCell<VecDeque<LogEntryItem>>,
+        pub css_provider: gtk::CssProvider,
+    }
+
+    impl Default for VrxxLogWindow {
+        fn default() -> Self {
+            Self {
+                text_view: TemplateChild::default(),
+                scrolled_window: TemplateChild::default(),
+                btn_autoscroll: TemplateChild::default(),
+                dropdown_filter: TemplateChild::default(),
+                zoom_label: TemplateChild::default(),
+                search_bar: TemplateChild::default(),
+                search_entry: TemplateChild::default(),
+                font_size: RefCell::new(10),
+                scroll_accum: RefCell::new(0.0),
+                logs: RefCell::new(VecDeque::with_capacity(MAX_LOG_ENTRIES)),
+                css_provider: gtk::CssProvider::new(),
+            }
+        }
     }
 
     #[glib::object_subclass]
@@ -61,21 +126,30 @@ mod imp {
             ]);
             self.dropdown_filter.set_model(Some(&strings));
 
+            // Регистрируем переиспользуемый CSS-провайдер один раз
+            gtk::style_context_add_provider_for_display(
+                &WidgetExt::display(&*obj),
+                &self.css_provider,
+                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
+
+            // Настройка тегов цветовой подсветки уровней логирования
             let buffer = self.text_view.buffer();
-            buffer.create_tag(Some("error"), &[("foreground", &"red"), ("weight", &700)]);
-            buffer.create_tag(Some("warning"), &[("foreground", &"orange")]);
-            buffer.create_tag(Some("debug"), &[("foreground", &"gray")]);
-            buffer.create_tag(Some("info"), &[("foreground", &"green")]);
-            buffer.create_tag(Some("app"), &[("foreground", &"#3584e4"), ("weight", &700)]); // GNOME blue
-            buffer.create_tag(Some("hidden"), &[("invisible", &true)]);
+            buffer.create_tag(
+                Some("error"),
+                &[("foreground", &"#E01B24"), ("weight", &700)],
+            );
+            buffer.create_tag(Some("warning"), &[("foreground", &"#E5A50A")]);
+            buffer.create_tag(Some("debug"), &[("foreground", &"#9A9996")]);
+            buffer.create_tag(Some("info"), &[("foreground", &"#3584E4")]);
+            buffer.create_tag(Some("app"), &[("foreground", &"#2EC27E"), ("weight", &700)]);
 
             obj.setup_actions();
             obj.setup_callbacks();
             obj.setup_event_controllers();
             obj.setup_shortcuts();
-            obj.update_font_size(); // Применяем начальные CSS-стили (monospace, padding)
+            obj.update_font_size();
             obj.load_history();
-            obj.load_logs_from_file();
             obj.setup_daemon_logs();
         }
     }
@@ -85,6 +159,7 @@ mod imp {
 }
 
 glib::wrapper! {
+    /// Обертка GObject для окна системных логов
     pub struct VrxxLogWindow(ObjectSubclass<imp::VrxxLogWindow>)
         @extends gtk::Widget, gtk::Window, adw::Window,
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget,
@@ -98,15 +173,83 @@ impl Default for VrxxLogWindow {
 }
 
 impl VrxxLogWindow {
+    /// Создает новый экземпляр окна логов.
     pub fn new() -> Self {
         glib::Object::builder().build()
     }
 
+    /// Проверяет, подходит ли запись лога под выбранную категорию и поисковый фильтр.
+    pub fn entry_matches(entry: &LogEntryItem, filter_idx: u32, query_lower: &str) -> bool {
+        let source_match = match filter_idx {
+            1 => entry.source == LogSource::Core,
+            2 => entry.source == LogSource::App,
+            3 => entry.source == LogSource::Access,
+            _ => true,
+        };
+
+        if !source_match {
+            return false;
+        }
+
+        if query_lower.is_empty() {
+            return true;
+        }
+
+        entry.message.to_lowercase().contains(query_lower)
+    }
+
+    /// Вставляет форматированную строку в буфер TextView с соответствующим стилем цвета.
+    fn insert_entry_to_buffer(
+        buffer: &gtk::TextBuffer,
+        iter: &mut gtk::TextIter,
+        entry: &LogEntryItem,
+    ) {
+        let tag_name = match entry.source {
+            LogSource::App => "app",
+            _ => match entry.level.as_str() {
+                "error" | "fatal" | "panic" => "error",
+                "warning" | "warn" => "warning",
+                "debug" | "trace" => "debug",
+                _ => "info",
+            },
+        };
+
+        let mut line = entry.message.clone();
+        if !line.ends_with('\n') {
+            line.push('\n');
+        }
+
+        buffer.insert_with_tags_by_name(iter, &line, &[tag_name]);
+    }
+
+    /// Мгновенная перерисовка буфера из оперативной памяти при смене фильтра или поискового запроса.
+    pub fn rebuild_buffer(&self) {
+        let imp = self.imp();
+        let buffer = imp.text_view.buffer();
+        buffer.set_text("");
+
+        let filter_idx = imp.dropdown_filter.selected();
+        let query = imp.search_entry.text().to_lowercase();
+        let logs = imp.logs.borrow();
+
+        let mut iter = buffer.end_iter();
+        for entry in logs.iter() {
+            if Self::entry_matches(entry, filter_idx, &query) {
+                Self::insert_entry_to_buffer(&buffer, &mut iter, entry);
+            }
+        }
+
+        if imp.btn_autoscroll.is_active() {
+            self.scroll_to_bottom();
+        }
+    }
+
+    /// Регистрация локальных GActions для окна логов.
     fn setup_actions(&self) {
         let action_group = gio::SimpleActionGroup::new();
         self.insert_action_group("win", Some(&action_group));
 
-        // Action: Copy Logs
+        // Действие: Скопировать логи в буфер обмена
         let copy_action = gio::SimpleAction::new("copy_logs", None);
         let window_weak = self.downgrade();
         copy_action.connect_activate(move |_, _| {
@@ -119,45 +262,27 @@ impl VrxxLogWindow {
         });
         action_group.add_action(&copy_action);
 
-        // Action: Clear Logs
+        // Действие: Очистить буфер и файлы логов
         let clear_action = gio::SimpleAction::new("clear_logs", None);
         let window_weak = self.downgrade();
         clear_action.connect_activate(move |_, _| {
             if let Some(window) = window_weak.upgrade() {
-                let log_dir = dirs::config_dir()
-                    .unwrap_or_else(|| PathBuf::from("."))
-                    .join("vrxx")
-                    .join("logs");
-                let filter_index = window.imp().dropdown_filter.selected();
-                let file_name = match filter_index {
-                    1 => "core.log",
-                    2 => "app.log",
-                    3 => "access.log",
-                    _ => "all.log",
-                };
-                let log_path = log_dir.join(file_name);
-
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-                    let mut opts = std::fs::OpenOptions::new();
-                    opts.create(true).write(true).truncate(true).mode(0o600);
-                    if let Ok(file) = opts.open(&log_path) {
-                        let _ = file.set_permissions(std::fs::Permissions::from_mode(0o600));
+                let log_dir = get_log_dir();
+                if let Ok(entries) = std::fs::read_dir(&log_dir) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.is_file() {
+                            let _ = std::fs::write(&path, "");
+                        }
                     }
                 }
-                #[cfg(not(unix))]
-                {
-                    let _ = std::fs::write(log_path, "");
-                }
-
+                window.imp().logs.borrow_mut().clear();
                 window.imp().text_view.buffer().set_text("");
-                *window.imp().last_pos.borrow_mut() = 0;
             }
         });
         action_group.add_action(&clear_action);
 
-        // Action: Zoom In
+        // Действие: Увеличить масштаб шрифта
         let zoom_in_action = gio::SimpleAction::new("zoom_in", None);
         let window_weak = self.downgrade();
         zoom_in_action.connect_activate(move |_, _| {
@@ -173,7 +298,7 @@ impl VrxxLogWindow {
         });
         action_group.add_action(&zoom_in_action);
 
-        // Action: Zoom Out
+        // Действие: Уменьшить масштаб шрифта
         let zoom_out_action = gio::SimpleAction::new("zoom_out", None);
         let window_weak = self.downgrade();
         zoom_out_action.connect_activate(move |_, _| {
@@ -189,7 +314,7 @@ impl VrxxLogWindow {
         });
         action_group.add_action(&zoom_out_action);
 
-        // Action: Zoom Normal (Reset)
+        // Действие: Сбросить масштаб шрифта к 100%
         let zoom_normal_action = gio::SimpleAction::new("zoom_normal", None);
         let window_weak = self.downgrade();
         zoom_normal_action.connect_activate(move |_, _| {
@@ -201,7 +326,7 @@ impl VrxxLogWindow {
         });
         action_group.add_action(&zoom_normal_action);
 
-        // Action: Export Logs (Save As)
+        // Действие: Экспорт логов в файл
         let export_action = gio::SimpleAction::new("export_logs", None);
         let window_weak = self.downgrade();
         export_action.connect_activate(move |_, _| {
@@ -212,11 +337,12 @@ impl VrxxLogWindow {
         action_group.add_action(&export_action);
     }
 
+    /// Настройка сочетаний горячих клавиш окна логов.
     fn setup_shortcuts(&self) {
         let controller = gtk::ShortcutController::new();
         controller.set_scope(gtk::ShortcutScope::Managed);
 
-        // Ctrl+F: Toggle Search
+        // Ctrl+F: Открыть/закрыть панель поиска
         let trigger = gtk::ShortcutTrigger::parse_string("<Control>f");
         let action = gtk::CallbackAction::new(|widget, _| {
             if let Some(window) = widget.downcast_ref::<Self>() {
@@ -230,12 +356,12 @@ impl VrxxLogWindow {
         });
         controller.add_shortcut(gtk::Shortcut::new(trigger, Some(action)));
 
-        // Ctrl+S: Export
+        // Ctrl+S: Сохранить логи в файл
         let trigger = gtk::ShortcutTrigger::parse_string("<Control>s");
         let action = gtk::NamedAction::new("win.export_logs");
         controller.add_shortcut(gtk::Shortcut::new(trigger, Some(action)));
 
-        // Ctrl+Plus: Zoom In
+        // Ctrl+Plus / Ctrl+=: Увеличение шрифта
         let trigger = gtk::ShortcutTrigger::parse_string("<Control>equal");
         let action = gtk::NamedAction::new("win.zoom_in");
         controller.add_shortcut(gtk::Shortcut::new(trigger, Some(action)));
@@ -244,12 +370,12 @@ impl VrxxLogWindow {
         let action = gtk::NamedAction::new("win.zoom_in");
         controller.add_shortcut(gtk::Shortcut::new(trigger, Some(action)));
 
-        // Ctrl+Minus: Zoom Out
+        // Ctrl+-: Уменьшение шрифта
         let trigger = gtk::ShortcutTrigger::parse_string("<Control>minus");
         let action = gtk::NamedAction::new("win.zoom_out");
         controller.add_shortcut(gtk::Shortcut::new(trigger, Some(action)));
 
-        // Ctrl+0: Zoom Normal
+        // Ctrl+0: Сброс масштаба к 100%
         let trigger = gtk::ShortcutTrigger::parse_string("<Control>0");
         let action = gtk::NamedAction::new("win.zoom_normal");
         controller.add_shortcut(gtk::Shortcut::new(trigger, Some(action)));
@@ -257,7 +383,7 @@ impl VrxxLogWindow {
         self.add_controller(controller);
     }
 
-    // Внутри impl VrxxLogWindow
+    /// Подключение контроллера масштабирования колесиком мыши с зажатым Ctrl.
     fn setup_event_controllers(&self) {
         let scroll_controller =
             gtk::EventControllerScroll::new(gtk::EventControllerScrollFlags::VERTICAL);
@@ -270,7 +396,6 @@ impl VrxxLogWindow {
                     let mut accum = window.imp().scroll_accum.borrow_mut();
                     *accum += dy;
 
-                    // Порог 0.8 для плавности на тачпадах
                     if *accum > 0.8 {
                         let _ = WidgetExt::activate_action(&window, "win.zoom_out", None);
                         *accum = 0.0;
@@ -287,53 +412,48 @@ impl VrxxLogWindow {
         self.imp().text_view.add_controller(scroll_controller);
     }
 
+    /// Обновляет размер шрифта в окне логов через инъекцию CSS.
     fn update_font_size(&self) {
         let size = *self.imp().font_size.borrow();
         let css = format!(
             ".log-view {{ font-family: monospace; padding: 12px; font-size: {}pt; }}",
             size
         );
-        let provider = gtk::CssProvider::new();
-        provider.load_from_string(&css);
-        gtk::style_context_add_provider_for_display(
-            &WidgetExt::display(self),
-            &provider,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-        );
+        self.imp().css_provider.load_from_string(&css);
     }
 
+    /// Настройка сигналов интерфейса (поиск, фильтр категорий, автоскролл).
     fn setup_callbacks(&self) {
-        // --- Раздел: Смена фильтра ---
         let window_weak_filter = self.downgrade();
         self.imp()
             .dropdown_filter
             .connect_selected_notify(move |_| {
                 if let Some(window) = window_weak_filter.upgrade() {
-                    window.imp().text_view.buffer().set_text("");
-                    *window.imp().last_pos.borrow_mut() = 0;
-                    window.load_logs_from_file();
+                    window.rebuild_buffer();
                 }
             });
 
-        // --- Раздел: Поиск ---
         let window_weak_search = self.downgrade();
         self.imp().search_entry.connect_search_changed(move |_| {
             if let Some(window) = window_weak_search.upgrade() {
-                window.apply_search_filter();
+                window.rebuild_buffer();
             }
         });
 
-        // Авто-прокрутка при изменении состояния
         let window_weak_scroll = self.downgrade();
         self.imp().btn_autoscroll.connect_toggled(move |btn| {
             if btn.is_active() {
+                btn.add_css_class("suggested-action");
                 if let Some(window) = window_weak_scroll.upgrade() {
                     window.scroll_to_bottom();
                 }
+            } else {
+                btn.remove_css_class("suggested-action");
             }
         });
     }
 
+    /// Прокручивает текстовый буфер вниз к последней строке.
     fn scroll_to_bottom(&self) {
         let imp = self.imp();
         let buffer = imp.text_view.buffer();
@@ -342,6 +462,7 @@ impl VrxxLogWindow {
         buffer.delete_mark(&mark);
     }
 
+    /// Подписывается на трансляцию логов системного демона через SSE поток.
     fn setup_daemon_logs(&self) {
         let window_weak = self.downgrade();
         glib::spawn_future_local(async move {
@@ -351,25 +472,35 @@ impl VrxxLogWindow {
             loop {
                 match logs.recv().await {
                     Ok(event) => {
-                        if let crate::daemon::DaemonEvent::Log { level, message } = event {
-                            if let Some(window) = window_weak.upgrade() {
-                                window.append_log(&level, &message);
+                        let mut batch = vec![event];
+                        while let Ok(next) = logs.try_recv() {
+                            batch.push(next);
+                            if batch.len() >= 100 {
+                                break;
                             }
                         }
+                        if let Some(window) = window_weak.upgrade() {
+                            window.append_log_batch(&batch);
+                        } else {
+                            tracing::debug!("Окно логов закрыто, завершение фоновой подписки SSE");
+                            break;
+                        }
+                        glib::timeout_future(std::time::Duration::from_millis(50)).await;
                     }
                     Err(e) => {
-                        tracing::error!("Log stream error: {}. Attempting to reconnect...", e);
-                        // The subscribe_events itself has a loop and reconnection logic for SSE,
-                        // but if the channel closes, we might need to re-subscribe.
-                        // However, DaemonClient::subscribe_events returns a receiver that it keeps
-                        // sending to in its own internal loop. If recv() fails, the sender was dropped.
-                        break;
+                        if window_weak.upgrade().is_none() {
+                            tracing::debug!("Окно логов закрыто, завершение фоновой подписки SSE");
+                            break;
+                        }
+                        tracing::warn!("Поток логов отключен: {}. Повторное подключение...", e);
+                        glib::timeout_future(std::time::Duration::from_millis(1000)).await;
                     }
                 }
             }
         });
     }
 
+    /// Загружает историю последних логов при открытии окна.
     fn load_history(&self) {
         let client = crate::ipc::DaemonClient::new();
         let window_weak = self.downgrade();
@@ -377,160 +508,74 @@ impl VrxxLogWindow {
         glib::spawn_future_local(async move {
             if let Ok(history) = client.get_history().await {
                 if let Some(window) = window_weak.upgrade() {
-                    for event in history {
-                        if let crate::daemon::events::DaemonEvent::Log { level, message } = event {
-                            window.append_log(&level, &message);
-                        }
-                    }
+                    let events: Vec<crate::daemon::DaemonEvent> = history.into_iter().collect();
+                    window.append_log_batch(&events);
                 }
             }
         });
     }
 
-    fn load_logs_from_file(&self) {
-        let log_dir = dirs::config_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("vrxx")
-            .join("logs");
-        let filter_index = self.imp().dropdown_filter.selected();
-        let file_name = match filter_index {
-            1 => "core.log",
-            2 => "app.log",
-            3 => "access.log",
-            _ => "all.log",
-        };
-        let log_path = log_dir.join(file_name);
+    /// Добавляет пачку событий логов в кольцевой буфер и отображает в TextView.
+    pub fn append_log_batch(&self, events: &[crate::daemon::DaemonEvent]) {
+        let imp = self.imp();
+        let buffer = imp.text_view.buffer();
+        let filter_idx = imp.dropdown_filter.selected();
+        let query = imp.search_entry.text().to_lowercase();
 
-        if let Ok(mut file) = std::fs::File::open(log_path) {
-            let metadata = file.metadata().unwrap();
-            let file_size = metadata.len();
-            let read_size = 128 * 1024; // Читаем последние 128 КБ
+        let mut logs = imp.logs.borrow_mut();
+        let mut iter = buffer.end_iter();
+        let mut any_inserted = false;
 
-            let start_pos = file_size.saturating_sub(read_size);
-            let mut buffer = Vec::new();
+        for event in events {
+            if let crate::daemon::DaemonEvent::Log {
+                source,
+                level,
+                message,
+            } = event
+            {
+                let entry = LogEntryItem {
+                    source: *source,
+                    level: level.clone(),
+                    message: message.clone(),
+                };
 
-            use std::io::{Read, Seek, SeekFrom};
-            if file.seek(SeekFrom::Start(start_pos)).is_ok() {
-                let _ = file.read_to_end(&mut buffer);
-                let content = String::from_utf8_lossy(&buffer);
+                if logs.len() >= MAX_LOG_ENTRIES {
+                    logs.pop_front();
+                }
+                logs.push_back(entry.clone());
 
-                let lines: Vec<&str> = content.lines().collect();
-                let start_idx = if start_pos > 0 { 1 } else { 0 };
-
-                for line in &lines[start_idx..] {
-                    let level = if line.contains("ERROR") || line.contains("error") {
-                        "error"
-                    } else if line.contains("WARN") || line.contains("warning") {
-                        "warning"
-                    } else if line.contains("DEBUG") || line.contains("debug") {
-                        "debug"
-                    } else if line.contains("INFO") || line.contains("info") {
-                        "info"
-                    } else if line.contains("[Vrxx]") {
-                        "app"
-                    } else {
-                        "info"
-                    };
-
-                    self.append_log(level, line);
+                if Self::entry_matches(&entry, filter_idx, &query) {
+                    Self::insert_entry_to_buffer(&buffer, &mut iter, &entry);
+                    any_inserted = true;
                 }
             }
         }
-    }
 
-    pub fn append_log(&self, level: &str, message: &str) {
-        let imp = self.imp();
-        let buffer = imp.text_view.buffer();
-
-        // Ограничиваем количество строк в буфере (макс. 5000) для экономии памяти
+        // Ограничитель количества строк в UI буфере для максимальной отзывчивости интерфейса
         let line_count = buffer.line_count();
-        if line_count > 5000 {
+        if line_count > (MAX_LOG_ENTRIES as i32) {
             let mut start = buffer.start_iter();
             let mut end = buffer.start_iter();
-            end.forward_lines(line_count - 5000);
+            end.forward_lines(line_count - (MAX_LOG_ENTRIES as i32));
             buffer.delete(&mut start, &mut end);
         }
 
-        // --- Раздел: Фильтрация логов ---
-        let filter_index = imp.dropdown_filter.selected();
-        let is_app_log = level == "app" || message.contains("[Vrxx]") || message.contains("vrxx::");
-        let is_access_log =
-            message.contains("accepted") || message.contains("proxying") || message.contains("->");
-        let is_core_log = !is_app_log && !is_access_log;
-
-        match filter_index {
-            1 if !is_core_log => return,
-            2 if !is_app_log => return,
-            3 if !is_access_log => return,
-            _ => {}
+        if any_inserted && imp.btn_autoscroll.is_active() {
+            self.scroll_to_bottom();
         }
+    }
 
-        let mut iter = buffer.end_iter();
-
-        let tag_name = match level {
-            "error" => Some("error"),
-            "warning" => Some("warning"),
-            "debug" => Some("debug"),
-            "info" => Some("info"),
-            "app" => Some("app"),
-            _ => None,
+    /// Добавляет одиночную запись лога в окно.
+    pub fn append_log(&self, level: &str, message: &str) {
+        let event = crate::daemon::DaemonEvent::Log {
+            source: LogSource::App,
+            level: level.to_string(),
+            message: message.to_string(),
         };
-
-        let mut line = message.to_string();
-        line.push('\n');
-
-        let start_offset = buffer.end_iter().offset();
-        if let Some(tag) = tag_name {
-            buffer.insert_with_tags_by_name(&mut iter, &line, &[tag]);
-        } else {
-            buffer.insert(&mut iter, &line);
-        }
-        let end_iter = buffer.end_iter();
-
-        // Применяем текущий поиск к новой строке
-        let query = imp.search_entry.text().to_lowercase();
-        if !query.is_empty() && !line.to_lowercase().contains(&query) {
-            let start_iter = buffer.iter_at_offset(start_offset);
-            buffer.apply_tag_by_name("hidden", &start_iter, &end_iter);
-        }
-
-        if imp.btn_autoscroll.is_active() {
-            let window_weak = self.downgrade();
-            glib::idle_add_local_once(move || {
-                if let Some(window) = window_weak.upgrade() {
-                    window.scroll_to_bottom();
-                }
-            });
-        }
+        self.append_log_batch(&[event]);
     }
 
-    fn apply_search_filter(&self) {
-        let imp = self.imp();
-        let buffer = imp.text_view.buffer();
-        let query = imp.search_entry.text().to_lowercase();
-
-        let (start, end) = buffer.bounds();
-        buffer.remove_tag_by_name("hidden", &start, &end);
-
-        if query.is_empty() {
-            return;
-        }
-
-        let mut iter = buffer.start_iter();
-        while !iter.is_end() {
-            let mut line_end = iter;
-            if !line_end.forward_line() {
-                line_end = buffer.end_iter();
-            }
-
-            let line_text = buffer.text(&iter, &line_end, true).to_lowercase();
-            if !line_text.contains(&query) {
-                buffer.apply_tag_by_name("hidden", &iter, &line_end);
-            }
-            iter = line_end;
-        }
-    }
-
+    /// Открывает системный диалог для экспорта содержимого логов в текстовый файл.
     fn export_logs(&self) {
         let dialog = gtk::FileDialog::new();
         dialog.set_title(&gettextrs::gettext("Save Logs"));
@@ -555,8 +600,8 @@ impl VrxxLogWindow {
                             )
                             .await
                         {
-                            Ok(_) => tracing::info!("Logs exported to {}", file.uri()),
-                            Err(e) => tracing::error!("Failed to export logs: {}", e.1),
+                            Ok(_) => tracing::info!("Логи успешно экспортированы в {}", file.uri()),
+                            Err(e) => tracing::error!("Не удалось экспортировать логи: {}", e.1),
                         }
                     });
                 }
@@ -570,11 +615,55 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore = "Requires main thread for GTK initialization"]
+    fn test_entry_matches_logic() {
+        let app_entry = LogEntryItem {
+            source: LogSource::App,
+            level: "info".to_string(),
+            message: "Connected to VPN".to_string(),
+        };
+        let core_entry = LogEntryItem {
+            source: LogSource::Core,
+            level: "warning".to_string(),
+            message: "DNS exchange timeout".to_string(),
+        };
+        let access_entry = LogEntryItem {
+            source: LogSource::Access,
+            level: "info".to_string(),
+            message: "router: match -> direct".to_string(),
+        };
+
+        // 0: Все логи
+        assert!(VrxxLogWindow::entry_matches(&app_entry, 0, ""));
+        assert!(VrxxLogWindow::entry_matches(&core_entry, 0, ""));
+        assert!(VrxxLogWindow::entry_matches(&access_entry, 0, ""));
+
+        // 1: Логи ядра sing-box
+        assert!(!VrxxLogWindow::entry_matches(&app_entry, 1, ""));
+        assert!(VrxxLogWindow::entry_matches(&core_entry, 1, ""));
+        assert!(!VrxxLogWindow::entry_matches(&access_entry, 1, ""));
+
+        // 2: Логи приложения GUI
+        assert!(VrxxLogWindow::entry_matches(&app_entry, 2, ""));
+        assert!(!VrxxLogWindow::entry_matches(&core_entry, 2, ""));
+        assert!(!VrxxLogWindow::entry_matches(&access_entry, 2, ""));
+
+        // 3: Логи трафика / Access
+        assert!(!VrxxLogWindow::entry_matches(&app_entry, 3, ""));
+        assert!(!VrxxLogWindow::entry_matches(&core_entry, 3, ""));
+        assert!(VrxxLogWindow::entry_matches(&access_entry, 3, ""));
+
+        // Поисковый запрос
+        assert!(VrxxLogWindow::entry_matches(&app_entry, 0, "vpn"));
+        assert!(!VrxxLogWindow::entry_matches(&app_entry, 0, "timeout"));
+        assert!(VrxxLogWindow::entry_matches(&core_entry, 1, "dns"));
+        assert!(!VrxxLogWindow::entry_matches(&core_entry, 1, "vpn"));
+    }
+
+    #[test]
+    #[ignore = "Требует главного потока GTK для инициализации"]
     fn test_log_window_append() {
         let _ = gtk::init();
 
-        // Load resources for templates
         let res_data = include_bytes!(concat!(env!("OUT_DIR"), "/vrxx.gresource"));
         if let Ok(res) = gtk::gio::Resource::from_data(&glib::Bytes::from(res_data)) {
             gtk::gio::resources_register(&res);
@@ -591,60 +680,5 @@ mod tests {
 
         assert!(text.contains("Test error message"));
         assert!(text.contains("Test app message"));
-    }
-
-    #[test]
-    #[ignore = "Requires main thread for GTK initialization"]
-    fn test_log_window_search_filter() {
-        let _ = gtk::init();
-
-        // Load resources for templates
-        let res_data = include_bytes!(concat!(env!("OUT_DIR"), "/vrxx.gresource"));
-        if let Ok(res) = gtk::gio::Resource::from_data(&glib::Bytes::from(res_data)) {
-            gtk::gio::resources_register(&res);
-        }
-
-        let log_window = VrxxLogWindow::new();
-        let buffer = log_window.imp().text_view.buffer();
-        buffer.set_text(""); // Clear any automatic logs (e.g. SSE errors)
-        let hidden_tag = buffer.tag_table().lookup("hidden").unwrap();
-
-        log_window.append_log("info", "Visible message");
-        log_window.append_log("info", "Hidden message");
-
-        // 1. Initial state (nothing hidden)
-        let mut iter = buffer.start_iter();
-        assert!(!iter.has_tag(&hidden_tag));
-        iter.forward_line();
-        assert!(!iter.has_tag(&hidden_tag));
-
-        // 2. Search for "visible"
-        log_window.imp().search_entry.set_text("visible");
-        log_window.apply_search_filter();
-
-        let mut iter = buffer.start_iter();
-        assert!(!iter.has_tag(&hidden_tag)); // "Visible message" contains "visible"
-        iter.forward_line();
-        assert!(iter.has_tag(&hidden_tag)); // "Hidden message" doesn't
-
-        // 3. Clear search
-        log_window.imp().search_entry.set_text("");
-        log_window.apply_search_filter();
-
-        let mut iter = buffer.start_iter();
-        assert!(!iter.has_tag(&hidden_tag));
-        iter.forward_line();
-        assert!(!iter.has_tag(&hidden_tag));
-
-        // 4. Test filtering on append
-        log_window.imp().search_entry.set_text("new");
-        log_window.append_log("info", "old message");
-        log_window.append_log("info", "new message");
-
-        let mut iter = buffer.end_iter();
-        iter.backward_line();
-        assert!(!iter.has_tag(&hidden_tag)); // "new message" matches
-        iter.backward_line();
-        assert!(iter.has_tag(&hidden_tag)); // "old message" doesn't
     }
 }

@@ -1,6 +1,6 @@
 /* import_dialog.rs
  *
- * Copyright 2026 Unknown
+ * Copyright 2026 Mark
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,6 +8,14 @@
  *
  * SPDX-License-Identifier: MPL-2.0
  */
+
+//! # Интерактивный диалог импорта VPN-профилей (Import Dialog)
+//!
+//! Отвечает за:
+//! - Отображение параметров импортируемого профиля (протокол, хост, порт, SNI, Fingerprint, Flow)
+//! - Асинхронный фоновый TCP-замер задержки (ping) до целевого сервера в момент показа диалога
+//! - Возможность редактирования названия профиля перед сохранением
+//! - Варианты действия: «Импортировать» или «Импортировать и подключиться»
 
 use adw::prelude::*;
 use gettextrs::gettext;
@@ -17,13 +25,13 @@ use std::time::{Duration, Instant};
 
 use crate::domain::key_parser::ParsedKey;
 
-/// Displays an interactive AdwDialog for importing a VPN profile from a URL scheme.
+/// Отображает модальный диалог `AdwAlertDialog` для импорта VPN-профиля из URL-схемы.
 ///
-/// Features:
-/// - Displays parsed key details (Protocol, Host, Port, Name, Security parameters)
-/// - Performs an asynchronous, non-blocking TCP latency check before importing
-/// - Allows editing the profile configuration name
-/// - Offers "Import Profile", "Import and Connect", and "Cancel" buttons
+/// Возможности:
+/// - Детальный разбор параметров (Host, Port, SNI, Fingerprint, Flow, Public Key)
+/// - Автоматический асинхронный замер доступности узла перед импортом
+/// - Редактируемое поле имени конфигурации
+/// - Варианты «Импортировать», «Импортировать и подключиться», «Отмена»
 pub fn show_import_dialog<F1, F2>(
     parent: &gtk::Window,
     parsed: ParsedKey,
@@ -40,7 +48,7 @@ pub fn show_import_dialog<F1, F2>(
         ))
         .build();
 
-    // General Group
+    // Секция: Основная информация
     let group_general = adw::PreferencesGroup::builder()
         .title(gettext("General"))
         .build();
@@ -57,7 +65,7 @@ pub fn show_import_dialog<F1, F2>(
         .build();
     group_general.add(&protocol_row);
 
-    // Connection Details Group
+    // Секция: Параметры сервера
     let group_connection = adw::PreferencesGroup::builder()
         .title(gettext("Server Connection"))
         .build();
@@ -74,7 +82,7 @@ pub fn show_import_dialog<F1, F2>(
         .build();
     group_connection.add(&port_row);
 
-    // Security & Parameters Group
+    // Секция: Безопасность и маскировка TLS
     let group_security = adw::PreferencesGroup::builder()
         .title(gettext("Security & Parameters"))
         .build();
@@ -132,7 +140,7 @@ pub fn show_import_dialog<F1, F2>(
         has_security_params = true;
     }
 
-    // Latency pre-check Row
+    // Строка предварительного замера задержки (TCP ping)
     let latency_spinner = gtk::Spinner::builder()
         .spinning(true)
         .halign(gtk::Align::End)
@@ -146,7 +154,7 @@ pub fn show_import_dialog<F1, F2>(
     latency_row.add_suffix(&latency_spinner);
     group_connection.add(&latency_row);
 
-    // Build overall dialog box layout
+    // Сборка макета диалога
     let pref_page = gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .spacing(12)
@@ -158,8 +166,8 @@ pub fn show_import_dialog<F1, F2>(
     }
 
     let clamp = adw::Clamp::builder()
-        .maximum_size(460)
-        .tightening_threshold(300)
+        .maximum_size(580)
+        .tightening_threshold(460)
         .child(&pref_page)
         .build();
     clamp.set_margin_top(12);
@@ -169,7 +177,7 @@ pub fn show_import_dialog<F1, F2>(
 
     dialog.set_extra_child(Some(&clamp));
 
-    // Response actions
+    // Кнопки действий
     dialog.add_response("cancel", &gettext("Cancel"));
     dialog.add_response("import", &gettext("Import Profile"));
     dialog.add_response("connect", &gettext("Import and Connect"));
@@ -178,7 +186,7 @@ pub fn show_import_dialog<F1, F2>(
     dialog.set_default_response(Some("connect"));
     dialog.set_close_response("cancel");
 
-    // Asynchronous Non-blocking Ping Pre-check
+    // Асинхронный неблокирующий TCP пинг сервера
     let target_host = parsed.host.clone();
     let target_port = parsed.port;
 
@@ -218,7 +226,7 @@ pub fn show_import_dialog<F1, F2>(
         let _ = sender.send_blocking((success, elapsed));
     });
 
-    // Response Signal Handler
+    // Обработчик выбора пользователя
     let parsed_clone = parsed.clone();
     let name_row_clone = name_row.clone();
 

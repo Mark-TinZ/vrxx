@@ -1,3 +1,23 @@
+/* proxy_page.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+//! # Страница конфигурации прокси-серверов (VrxxProxyPage)
+//!
+//! Отвечает за:
+//! - Управление системным прокси окружения GNOME/FreeDesktop (`gsettings`)
+//! - Настройку локальных портов входящих соединений SOCKS5 и HTTP
+//! - Переключатель общего доступа из локальной сети (Allow LAN)
+//! - Кнопку немедленного перезапуска ядра для применения изменений конфигурации
+//! - Отслеживание диффа изменений состояния и поддержку навигационного стража
+
 use crate::settings::SettingsManager;
 use crate::ui::setup_primary_menu;
 use adw::prelude::*;
@@ -6,9 +26,18 @@ use gettextrs::gettext;
 use gtk::{glib, CompositeTemplate};
 use std::cell::RefCell;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProxySnapshot {
+    set_system_proxy: bool,
+    socks_port: u16,
+    http_port: u16,
+    allow_lan: bool,
+}
+
 mod imp {
     use super::*;
 
+    /// Структура CompositeTemplate для страницы прокси VrxxProxyPage
     #[derive(Debug, Default, CompositeTemplate)]
     #[template(resource = "/ru/mark/vrxx/ui/pages/proxy_page.ui")]
     pub struct VrxxProxyPage {
@@ -26,7 +55,9 @@ mod imp {
         #[template_child]
         pub allow_lan_switch: TemplateChild<adw::SwitchRow>,
 
+        pub snapshot: RefCell<Option<ProxySnapshot>>,
         pub has_changes: RefCell<bool>,
+        pub is_initializing: RefCell<bool>,
     }
 
     #[glib::object_subclass]
@@ -58,6 +89,7 @@ mod imp {
 }
 
 glib::wrapper! {
+    /// Обертка GObject для страницы управления прокси
     pub struct VrxxProxyPage(ObjectSubclass<imp::VrxxProxyPage>)
         @extends gtk::Widget, adw::Bin,
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
@@ -70,20 +102,129 @@ impl Default for VrxxProxyPage {
 }
 
 impl VrxxProxyPage {
+    /// Создает новый экземпляр страницы настроек прокси.
     pub fn new() -> Self {
         glib::Object::builder().build()
     }
 
-    // --- Раздел: Состояние ---
-    fn mark_changed(&self) {
-        let imp = self.imp();
-        *imp.has_changes.borrow_mut() = true;
-        imp.btn_apply.set_visible(true);
+    /// Возвращает флаг наличия несохраненных изменений.
+    pub fn has_changes(&self) -> bool {
+        *self.imp().has_changes.borrow()
     }
-    // ================================
 
+    /// Считывает текущее состояние элементов интерфейса страницы прокси.
+    fn get_current_ui_state(&self) -> ProxySnapshot {
+        let imp = self.imp();
+        ProxySnapshot {
+            set_system_proxy: imp.system_proxy_switch.is_active(),
+            socks_port: imp.socks_port_row.value() as u16,
+            http_port: imp.http_port_row.value() as u16,
+            allow_lan: imp.allow_lan_switch.is_active(),
+        }
+    }
+
+    /// Проверяет дифф между текущим состоянием и сохраненным снимком.
+    pub fn check_changes(&self) {
+        if *self.imp().is_initializing.borrow() {
+            return;
+        }
+
+        let imp = self.imp();
+        let current = self.get_current_ui_state();
+        let saved = imp.snapshot.borrow().clone();
+
+        let changed = match saved {
+            Some(ref s) => s != &current,
+            None => false,
+        };
+
+        *imp.has_changes.borrow_mut() = changed;
+        imp.btn_apply.set_visible(changed);
+    }
+
+    /// Применяет и сохраняет настройки прокси, перезапускает ядро и обновляет системный прокси.
+    pub fn apply_changes(&self) {
+        let imp = self.imp();
+        let current = self.get_current_ui_state();
+
+        let manager = SettingsManager::new();
+        let mut s = manager.load();
+        s.set_system_proxy = current.set_system_proxy;
+        s.socks_port = current.socks_port;
+        s.http_port = current.http_port;
+        s.allow_lan = current.allow_lan;
+        manager.save(&s);
+
+        // Обновляем переменные окружения процесса и системный прокси
+        crate::backend::set_process_proxy_env(s.http_port, s.set_system_proxy);
+        let result = crate::backend::CoreBackend::update_system_proxy(s.set_system_proxy);
+
+        // Если GSettings недоступен на данном DE
+        if s.set_system_proxy {
+            if let crate::backend::SystemProxyResult::SchemaUnavailable { desktop } = result {
+                if let Some(window) = self.root().and_downcast::<crate::window::VrxxWindow>() {
+                    let msg = gettext(format!(
+                        "GNOME proxy GSettings scheme is unavailable on {}. Use TUN mode for system-wide routing.",
+                        desktop
+                    ));
+                    let toast = adw::Toast::new(&msg);
+                    toast.set_button_label(Some(&gettext("Switch to TUN")));
+
+                    let win_weak = window.downgrade();
+                    toast.connect_button_clicked(move |_| {
+                        let settings_mgr = SettingsManager::new();
+                        let mut app_settings = settings_mgr.load();
+                        app_settings.tun_mode = true;
+                        settings_mgr.save(&app_settings);
+
+                        let _ = crate::settings::core_restart_channel().0.send_blocking(());
+
+                        if let Some(w) = win_weak.upgrade() {
+                            w.add_toast(adw::Toast::new(&gettext(
+                                "TUN mode enabled and core restarted.",
+                            )));
+                        }
+                    });
+
+                    window.add_toast(toast);
+                }
+            }
+        }
+
+        *imp.snapshot.borrow_mut() = Some(current);
+        *imp.has_changes.borrow_mut() = false;
+        imp.btn_apply.set_visible(false);
+
+        let toast_text = gettext("Proxy settings applied and core restarted.");
+        crate::ui::change_tracker::apply_and_restart_core(
+            &toast_text,
+            self.root().and_downcast_ref::<gtk::Window>(),
+        );
+    }
+
+    /// Откатывает виджеты страницы к сохраненному состоянию.
+    pub fn discard_changes(&self) {
+        let imp = self.imp();
+        if let Some(snapshot) = imp.snapshot.borrow().clone() {
+            *imp.is_initializing.borrow_mut() = true;
+
+            imp.system_proxy_switch
+                .set_active(snapshot.set_system_proxy);
+            imp.socks_port_row.set_value(snapshot.socks_port as f64);
+            imp.http_port_row.set_value(snapshot.http_port as f64);
+            imp.allow_lan_switch.set_active(snapshot.allow_lan);
+
+            *imp.is_initializing.borrow_mut() = false;
+            *imp.has_changes.borrow_mut() = false;
+            imp.btn_apply.set_visible(false);
+        }
+    }
+
+    /// Инициализирует значения элементов управления и привязывает обработчики событий.
     fn setup_settings(&self) {
         let imp = self.imp();
+        *imp.is_initializing.borrow_mut() = true;
+
         let manager = SettingsManager::new();
         let settings = manager.load();
 
@@ -93,117 +234,52 @@ impl VrxxProxyPage {
             "Proxy will be available for other devices in your local network",
         ));
 
-        imp.btn_apply.set_visible(false); // Всегда показываем для возможности ручного перезапуска core
-
-        imp.btn_apply.connect_clicked(glib::clone!(
-            #[weak(rename_to = page)]
-            self,
-            move |btn| {
-                let _ = crate::settings::core_restart_channel().0.send_blocking(());
-                if let Some(app) =
-                    gtk::gio::Application::default().and_downcast::<gtk::Application>()
-                {
-                    let notification = gtk::gio::Notification::new(&gettext("Settings applied"));
-                    notification
-                        .set_body(Some(&gettext("Core was restarted to apply new settings.")));
-                    app.send_notification(Some("settings_applied"), &notification);
-                }
-                *page.imp().has_changes.borrow_mut() = false;
-                btn.set_visible(false);
-            }
-        ));
-
-        // Load values
         imp.system_proxy_switch
             .set_active(settings.set_system_proxy);
         imp.socks_port_row.set_value(settings.socks_port as f64);
         imp.http_port_row.set_value(settings.http_port as f64);
         imp.allow_lan_switch.set_active(settings.allow_lan);
 
-        // --- Раздел: Привязка настроек ---
-        // REVIEW: Возможно стоит объединить сохранение всех полей в один метод.
-        imp.system_proxy_switch.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)]
-            self,
-            move |row| {
-                let is_active = row.is_active();
-                let manager = SettingsManager::new();
-                let mut s = manager.load();
-                s.set_system_proxy = is_active;
-                manager.save(&s);
+        let initial_snapshot = self.get_current_ui_state();
+        *imp.snapshot.borrow_mut() = Some(initial_snapshot);
+        *imp.has_changes.borrow_mut() = false;
+        imp.btn_apply.set_visible(false);
 
-                // Обновляем локальные переменные процесса
-                crate::backend::set_process_proxy_env(s.http_port, is_active);
-
-                let result = crate::backend::CoreBackend::new().update_system_proxy(is_active);
-
-                if is_active {
-                    if let crate::backend::SystemProxyResult::SchemaUnavailable { desktop } = result {
-                        if let Some(window) = page.root().and_downcast::<crate::window::VrxxWindow>() {
-                            let msg = gettext(format!(
-                                "GNOME proxy GSettings scheme is unavailable on {}. Use TUN mode for system-wide routing.",
-                                desktop
-                            ));
-                            let toast = adw::Toast::new(&msg);
-                            toast.set_button_label(Some(&gettext("Switch to TUN")));
-
-                            let win_weak = window.downgrade();
-                            toast.connect_button_clicked(move |_| {
-                                let settings_mgr = SettingsManager::new();
-                                let mut app_settings = settings_mgr.load();
-                                app_settings.tun_mode = true;
-                                settings_mgr.save(&app_settings);
-
-                                let _ = crate::settings::core_restart_channel().0.send_blocking(());
-
-                                if let Some(w) = win_weak.upgrade() {
-                                    w.add_toast(adw::Toast::new(&gettext("TUN mode enabled and core restarted.")));
-                                }
-                            });
-
-                            window.add_toast(toast);
-                        }
-                    }
-                }
-
-                page.mark_changed();
+        let page_weak_apply = self.downgrade();
+        imp.btn_apply.connect_clicked(move |_| {
+            if let Some(page) = page_weak_apply.upgrade() {
+                page.apply_changes();
             }
-        ));
+        });
 
-        imp.socks_port_row.connect_value_notify(glib::clone!(
-            #[weak(rename_to = page)]
-            self,
-            move |row| {
-                let manager = SettingsManager::new();
-                let mut s = manager.load();
-                s.socks_port = row.value() as u16;
-                manager.save(&s);
-                page.mark_changed();
+        let p_weak1 = self.downgrade();
+        imp.system_proxy_switch.connect_active_notify(move |_| {
+            if let Some(p) = p_weak1.upgrade() {
+                p.check_changes();
             }
-        ));
+        });
 
-        imp.http_port_row.connect_value_notify(glib::clone!(
-            #[weak(rename_to = page)]
-            self,
-            move |row| {
-                let manager = SettingsManager::new();
-                let mut s = manager.load();
-                s.http_port = row.value() as u16;
-                manager.save(&s);
-                page.mark_changed();
+        let p_weak2 = self.downgrade();
+        imp.socks_port_row.connect_value_notify(move |_| {
+            if let Some(p) = p_weak2.upgrade() {
+                p.check_changes();
             }
-        ));
+        });
 
-        imp.allow_lan_switch.connect_active_notify(glib::clone!(
-            #[weak(rename_to = page)]
-            self,
-            move |row| {
-                let manager = SettingsManager::new();
-                let mut s = manager.load();
-                s.allow_lan = row.is_active();
-                manager.save(&s);
-                page.mark_changed();
+        let p_weak3 = self.downgrade();
+        imp.http_port_row.connect_value_notify(move |_| {
+            if let Some(p) = p_weak3.upgrade() {
+                p.check_changes();
             }
-        ));
+        });
+
+        let p_weak4 = self.downgrade();
+        imp.allow_lan_switch.connect_active_notify(move |_| {
+            if let Some(p) = p_weak4.upgrade() {
+                p.check_changes();
+            }
+        });
+
+        *imp.is_initializing.borrow_mut() = false;
     }
 }

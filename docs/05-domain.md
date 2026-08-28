@@ -58,11 +58,11 @@ VRXX динамически генерирует полную JSON-конфиг�
 
 Функция `get_singbox_version()` определяет версию ядра (`sing-box version`). Код генератора адаптирует структуры JSON под особенности каждой версии:
 
-| Версия ядра | Inbounds TUN | WireGuard | DNS rules (IPv6) | Route rules |
+| Версия ядра | Inbounds TUN | WireGuard | DNS servers & rules | Route rules |
 | --- | --- | --- | --- | --- |
-| **sing-box >= 1.13** | `address: ["172.19.0.1/30", "fdfe:dcba:9876::1/126"]` | Верхнеуровневый массив `"endpoints"` | `{"query_type": ["AAAA"], "action": "reject"}` | `{"protocol": "dns", "action": "hijack-dns"}` |
-| **sing-box == 1.12** | `address: [...]` | Классический outbound | `{"query_type": ["AAAA"], "action": "reject"}` | `domain_resolver: "remote-dns"` |
-| **sing-box < 1.12** | `inet4_address`, `inet6_address` | Классический outbound | `domain_strategy: "ipv4_only"` | `sniff` в inbounds |
+| **sing-box >= 1.13** | `address: ["172.19.0.1/30", "fdfe:dcba:9876::1/126"]` | Верхнеуровневый массив `"endpoints"` | `type: "https"` / `type: "local"`, IPv6 `action: "reject"` | `default_domain_resolver`, `{"action": "hijack-dns"}` |
+| **sing-box == 1.12** | `address: [...]` | Классический outbound | `type: "https"` / `type: "local"`, `action: "reject"` | `default_domain_resolver: "local-dns"` |
+| **sing-box < 1.12** | `inet4_address`, `inet6_address` | Классический outbound | `address: "https://..."` / `address: "local"` | `sniff` в inbounds, `outbound: "dns-out"` |
 
 ### 2. Входящие соединения (Inbounds)
 - **SOCKS in**: порт из настроек (по умолчанию `10808`).

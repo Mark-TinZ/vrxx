@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- routing_page.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
+<interface domain="vrxx">
+  <!--
+    ============================================================================
+    СТРАНИЦА НАСТРОЙКИ МАРШРУТИЗАЦИИ ТРАФИКА (VrxxRoutingPage)
+    ============================================================================
+
+    СТРУКТУРА МАКЕТА (GNOME HIG):
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ AdwHeaderBar (Шапка):                                                    │
+    │ ├─ [Кнопка Сохранить: btn_apply] (Скрыта по умолчанию)                   │
+    │ ├─ AdwWindowTitle: "Routing" / "Маршрутизация"                           │
+    │ └─ [Кнопка Меню: primary_menu_btn]                                       │
+    ├──────────────────────────────────────────────────────────────────────────┤
+    │ AdwPreferencesPage (Параметры и правила маршрутизации):                 │
+    │ ├─ 1. Главный переключатель (enable_routing_row: Включить маршрутизацию) │
+    │ ├─ 2. Режимы (Режим обхода/проксирования, стратегия разрешения доменов)  │
+    │ ├─ 3. Пользовательские правила (add_rule_row, rules_list)                │
+    │ ├─ 4. Сеть: Отключение IPv6 (только IPv4)                                │
+    │ └─ 5. Предустановленные региональные правила:                            │
+    │       ├─ Expander: Россия (Сайты RU + IP RU)                             │
+    │       ├─ Expander: Китай (Сайты CN + IP CN)                              │
+    │       ├─ Expander: Иран (Сайты IR + IP IR)                               │
+    │       └─ Expander: Антизапрет (Заблокированные домены)                   │
+    └──────────────────────────────────────────────────────────────────────────┘
+  -->
+
+  <template class="VrxxRoutingPage" parent="AdwBin">
+    <property name="child">
+      <object class="AdwToolbarView">
+
+        <!-- ================================================================= -->
+        <!-- 1. ВЕРХНЯЯ ПАНЕЛЬ ИНСТРУМЕНТОВ (HEADERBAR & ACTIONS)              -->
+        <!-- ================================================================= -->
+        <child type="top">
+          <object class="AdwHeaderBar">
+            <!-- Заголовок страницы -->
+            <property name="title-widget">
+              <object class="AdwWindowTitle">
+                <property name="title" translatable="yes">Routing</property>
+              </object>
+            </property>
+
+            <!-- Кнопка применения настроек маршрутизации (Скрыта до появления диффа) -->
+            <child type="start">
+              <object class="GtkButton" id="btn_apply">
+                <property name="visible">False</property>
+                <property name="icon-name">document-save-symbolic</property>
+                <property name="tooltip-text" translatable="yes">Apply and Restart Core</property>
+                <style>
+                  <class name="suggested-action"/>
+                </style>
+              </object>
+            </child>
+
+            <!-- Главное контекстное меню с переключателем темы -->
+            <child type="end">
+              <object class="GtkMenuButton" id="primary_menu_btn">
+                <property name="icon-name">open-menu-symbolic</property>
+                <property name="primary">True</property>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <!-- ================================================================= -->
+        <!-- 2. СЕКЦИИ ПАРАМЕТРОВ МАРШРУТИЗАЦИИ (PREFERENCES PAGE)             -->
+        <!-- ================================================================= -->
+        <property name="content">
+          <object class="AdwPreferencesPage">
+
+            <!-- ============================================================= -->
+            <!-- СЕКЦИЯ 1: МАСТЕР-ПЕРЕКЛЮЧАТЕЛЬ МАРШРУТИЗАЦИИ                  -->
+            <!-- ============================================================= -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <child>
+                  <object class="AdwSwitchRow" id="enable_routing_row">
+                    <property name="title" translatable="yes">Enable custom routing</property>
+                    <property name="subtitle" translatable="yes">Use rules below to route network traffic</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- ============================================================= -->
+            <!-- СЕКЦИЯ 2: ГЛОБАЛЬНЫЙ РЕЖИМ И СТРАТЕГИЯ ДОМЕНОВ                -->
+            <!-- ============================================================= -->
+            <child>
+              <object class="AdwPreferencesGroup" id="routing_settings_group">
+                <property name="sensitive" bind-source="enable_routing_row" bind-property="active" bind-flags="sync-create"/>
+
+                <!-- Глобальный режим: Обход (Bypass/Direct) или Прокси (Proxy/VPN) -->
+                <child>
+                  <object class="AdwComboRow" id="mode_row">
+                    <property name="title" translatable="yes">Global Routing Mode</property>
+                    <property name="subtitle" translatable="yes">Default action for unlisted traffic</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">Bypass (direct)</item>
+                          <item translatable="yes">Proxy (VPN)</item>
+                        </items>
+                      </object>
+                    </property>
+                    <property name="selected">0</property>
+                  </object>
+                </child>
+
+                <!-- Стратегия разрешения доменных имен (Domain Strategy) -->
+                <child>
+                  <object class="AdwComboRow" id="domain_strategy_row">
+                    <property name="title" translatable="yes">Domain Strategy</property>
+                    <property name="subtitle" translatable="yes">Resolution strategy for domain matching and DNS queries</property>
+                    <property name="tooltip-text" translatable="yes">Controls how domain names are resolved during rule matching. AsIs resolves domains as-is, Prefer IPv4 resolves IPv4 first, Prefer IPv6 resolves IPv6 first.</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">AsIs (Default)</item>
+                          <item translatable="yes">Prefer IPv4 (IPIfNonMatch)</item>
+                          <item translatable="yes">Prefer IPv6 (IPOnDemand)</item>
+                        </items>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- ============================================================= -->
+            <!-- СЕКЦИЯ 3: ПОЛЬЗОВАТЕЛЬСКИЕ ПРАВИЛА (CUSTOM RULES)             -->
+            <!-- ============================================================= -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Custom Rules</property>
+                <property name="description" translatable="yes">Define custom routing rules for specific domains, IP addresses, or rule-sets</property>
+                <property name="sensitive" bind-source="enable_routing_row" bind-property="active" bind-flags="sync-create"/>
+
+                <!-- Строка быстрого добавления правила -->
+                <child>
+                  <object class="AdwActionRow" id="add_rule_row">
+                    <property name="title" translatable="yes">Add Rule</property>
+                    <property name="subtitle" translatable="yes">Create a custom detour rule for domain, IP subnet, or rule-set</property>
+                    <property name="activatable">True</property>
+                    <child type="prefix">
+                      <object class="GtkImage">
+                        <property name="icon-name">list-add-symbolic</property>
+                        <property name="valign">center</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImage">
+                        <property name="icon-name">go-next-symbolic</property>
+                        <property name="valign">center</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <!-- Список добавленных правил маршрутизации -->
+                <child>
+                  <object class="GtkListBox" id="rules_list">
+                    <property name="selection-mode">none</property>
+                    <property name="margin-top">6</property>
+                    <style>
+                      <class name="boxed-list"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- ============================================================= -->
+            <!-- СЕКЦИЯ 4: СЕТЕВЫЕ ПРОТОКОЛЫ (IPV6)                            -->
+            <!-- ============================================================= -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Network Settings</property>
+                <!-- Принудительное отключение IPv6 (устраняет утечки и тайм-ауты) -->
+                <child>
+                  <object class="AdwSwitchRow" id="disable_ipv6_row">
+                    <property name="title" translatable="yes">Disable IPv6</property>
+                    <property name="subtitle" translatable="yes">Force VPN core to use IPv4 only</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- ============================================================= -->
+            <!-- СЕКЦИЯ 5: ПРЕДУСТАНОВЛЕННЫЕ РЕГИОНАЛЬНЫЕ ПРАВИЛА              -->
+            <!-- ============================================================= -->
+            <child>
+              <object class="AdwPreferencesGroup" id="regional_rules_group">
+                <property name="title" translatable="yes">Predefined Regional Rules</property>
+                <property name="description" translatable="yes">Quick toggles for precompiled binary rule-sets (SRS)</property>
+                <property name="sensitive" bind-source="enable_routing_row" bind-property="active" bind-flags="sync-create"/>
+
+                <!-- Экспандер для России (RU) -->
+                <child>
+                  <object class="AdwExpanderRow" id="route_ru_expander">
+                    <property name="title" translatable="yes">Russia (RU)</property>
+                    <property name="subtitle" translatable="yes">Direct bypass for domestic websites and IP subnets</property>
+
+                    <!-- Сайты РФ (GeoSite RU) -->
+                    <child>
+                      <object class="AdwSwitchRow" id="route_ru_sites_row">
+                        <property name="title" translatable="yes">Russian Websites (GeoSite RU)</property>
+                        <property name="subtitle" translatable="yes">Direct bypass for Russian domains (category-ru.srs)</property>
+                      </object>
+                    </child>
+
+                    <!-- IP-адреса РФ (GeoIP RU) -->
+                    <child>
+                      <object class="AdwSwitchRow" id="route_ru_ips_row">
+                        <property name="title" translatable="yes">Russian IP Ranges (GeoIP RU)</property>
+                        <property name="subtitle" translatable="yes">Direct bypass for Russian IP subnets (geoip-ru.srs)</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <!-- Экспандер для Китая (CN) -->
+                <child>
+                  <object class="AdwExpanderRow" id="route_cn_expander">
+                    <property name="title" translatable="yes">China (CN)</property>
+                    <property name="subtitle" translatable="yes">Direct bypass for Chinese services</property>
+
+                    <child>
+                      <object class="AdwSwitchRow" id="route_cn_sites_row">
+                        <property name="title" translatable="yes">Chinese Websites (GeoSite CN)</property>
+                        <property name="subtitle" translatable="yes">Direct bypass for Chinese domains (geosite-cn.srs)</property>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="AdwSwitchRow" id="route_cn_ips_row">
+                        <property name="title" translatable="yes">Chinese IP Ranges (GeoIP CN)</property>
+                        <property name="subtitle" translatable="yes">Direct bypass for Chinese IP subnets (geoip-cn.srs)</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <!-- Экспандер для Ирана (IR) -->
+                <child>
+                  <object class="AdwExpanderRow" id="route_ir_expander">
+                    <property name="title" translatable="yes">Iran (IR)</property>
+                    <property name="subtitle" translatable="yes">Direct bypass for Iranian services</property>
+
+                    <child>
+                      <object class="AdwSwitchRow" id="route_ir_sites_row">
+                        <property name="title" translatable="yes">Iranian Websites (GeoSite IR)</property>
+                        <property name="subtitle" translatable="yes">Direct bypass for Iranian domains (geosite-ir.srs)</property>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="AdwSwitchRow" id="route_ir_ips_row">
+                        <property name="title" translatable="yes">Iranian IP Ranges (GeoIP IR)</property>
+                        <property name="subtitle" translatable="yes">Direct bypass for Iranian IP subnets (geoip-ir.srs)</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <!-- Экспандер для реестра Антизапрет (Antifilter) -->
+                <child>
+                  <object class="AdwExpanderRow" id="route_antifilter_expander">
+                    <property name="title" translatable="yes">Antifilter (Blocked Domains Registry)</property>
+                    <property name="subtitle" translatable="yes">Route blocked domains community list via VPN</property>
+
+                    <child>
+                      <object class="AdwSwitchRow" id="route_antifilter_row">
+                        <property name="title" translatable="yes">Antifilter Community List</property>
+                        <property name="subtitle" translatable="yes">Proxy blocked resources via active VPN (geosite-antifilter.srs)</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+              </object>
+            </child>
+
+          </object>
+        </property>
+
+      </object>
+    </property>
+  </template>
+</interface>

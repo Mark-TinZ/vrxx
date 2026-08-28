@@ -1,3 +1,13 @@
+# meson.build
+#
+# Copyright 2026 Mark
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# SPDX-License-Identifier: MPL-2.0
+
 pkgdatadir = get_option('prefix') / get_option('datadir') / meson.project_name()
 gnome = import('gnome')
 
@@ -30,10 +40,7 @@ run_command(
 cargo_bin  = find_program('cargo')
 cargo_opt  = [ '--manifest-path', meson.project_source_root() / 'Cargo.toml' ]
 cargo_opt += [ '--target-dir', meson.project_build_root()  / 'src' ]
-cargo_env  = [
-  'CARGO_HOME=' + meson.project_build_root()  / 'cargo-home',
-  'VRXX_CONFIG_RS_PATH=' + meson.project_build_root() / 'src' / 'config.rs'
-]
+config_rs_path = meson.project_build_root() / 'src' / 'config.rs'
 
 if get_option('buildtype') == 'release'
   cargo_opt += [ '--release' ]
@@ -41,6 +48,8 @@ if get_option('buildtype') == 'release'
 else
   rust_target = 'debug'
 endif
+
+sh = find_program('sh')
 
 cargo_build = custom_target(
   'cargo-build',
@@ -51,8 +60,14 @@ cargo_build = custom_target(
   install: true,
   install_dir: get_option('bindir'),
   command: [
-    'env', cargo_env,
-    cargo_bin, 'build',
-    cargo_opt, '&&', 'cp', 'src' / rust_target / meson.project_name(), '@OUTPUT@',
+    sh, '-c',
+    'VRXX_CONFIG_RS_PATH="@0@" @1@ build @2@ && cp "@3@" "@4@"'.format(
+      config_rs_path,
+      cargo_bin.full_path(),
+      ' '.join(cargo_opt),
+      meson.project_build_root() / 'src' / rust_target / meson.project_name(),
+      '@OUTPUT@'
+    )
   ]
 )
+

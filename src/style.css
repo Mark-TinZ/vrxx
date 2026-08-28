@@ -1,0 +1,112 @@
+/* style.css
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+/* =============================================================================
+   ОГЛАВЛЕНИЕ СТИЛЕЙ ПРИЛОЖЕНИЯ VRXX
+   =============================================================================
+   1. КОМПОНЕНТ ПЕРЕКЛЮЧЕНИЯ ТЕМЫ (Theme Switcher)
+      1.1. Базовые отступы и размеры круглых кнопок
+      1.2. Подсветка активного состояния (@accent_bg_color)
+      1.3. Градиенты и цвета режимов (System, Light, Dark)
+      1.4. Кастомный радио-индикатор с галочкой
+   2. ЗАЩИТА ПРИВАТНОСТИ QR-КОДА (Privacy Blur)
+   3. ОКНО ПРОСМОТРА СИСТЕМНЫХ ЛОГОВ (Log View)
+   ============================================================================= */
+
+/* =============================================================================
+   1. КОМПОНЕНТ ПЕРЕКЛЮЧЕНИЯ ТЕМЫ (Theme Switcher)
+   ============================================================================= */
+
+/* Отступы контейнера переключателя внутри меню */
+.themeselector,
+.theme-switcher {
+  margin: 9px;
+}
+
+/* Круглые кнопки выбора темы с тонкой полупрозрачной обводкой */
+.themeselector checkbutton,
+.theme-switcher checkbutton {
+  padding: 1px;
+  min-height: 44px;
+  min-width: 44px;
+  background-clip: content-box;
+  border-radius: 9999px;
+  box-shadow: inset 0 0 0 1px alpha(currentColor, 0.15);
+}
+
+/* Активная выбранная тема — акцентная двойная обводка */
+.themeselector checkbutton.follow:checked,
+.themeselector checkbutton.light:checked,
+.themeselector checkbutton.dark:checked,
+.theme-switcher checkbutton.follow:checked,
+.theme-switcher checkbutton.light:checked,
+.theme-switcher checkbutton.dark:checked {
+  box-shadow: inset 0 0 0 2px @accent_bg_color;
+}
+
+/* 1. Системный режим: разделение по диагонали (белый/черный) */
+.themeselector checkbutton.follow,
+.theme-switcher checkbutton.follow {
+  background-image: linear-gradient(to bottom right, #ffffff 49.99%, #202020 50.01%);
+}
+
+/* 2. Светлый режим: чистый белый фон */
+.themeselector checkbutton.light,
+.theme-switcher checkbutton.light {
+  background-color: #ffffff;
+}
+
+/* 3. Тёмный режим: тёмно-серый фон */
+.themeselector checkbutton.dark,
+.theme-switcher checkbutton.dark {
+  background-color: #202020;
+}
+
+/* Скрытие стандартного системного радио-кружка GTK */
+.themeselector checkbutton radio,
+.theme-switcher checkbutton radio {
+  -gtk-icon-source: none;
+  border: none;
+  background: none;
+  box-shadow: none;
+  min-width: 12px;
+  min-height: 12px;
+  transform: translate(27px, 14px);
+  padding: 2px;
+}
+
+/* Иконка галочки выбора поверх активной кнопки темы */
+checkbutton.theme-selector radio:checked,
+checkbutton.theme-switcher-button radio:checked {
+  -gtk-icon-source: -gtk-icontheme("object-select-symbolic");
+  background-color: @accent_bg_color;
+  color: @accent_fg_color;
+  border-radius: 9999px;
+}
+
+/* =============================================================================
+   2. ЗАЩИТА ПРИВАТНОСТИ QR-КОДА (Privacy Blur)
+   ============================================================================= */
+
+/* Размытие QR-кода при открытии диалога для защиты от подглядывания */
+.blurred-qr {
+  filter: blur(12px);
+  transition: filter 0.3s ease;
+}
+
+/* =============================================================================
+   3. ОКНО ПРОСМОТРА СИСТЕМНЫХ ЛОГОВ (Log View)
+   ============================================================================= */
+
+/* Моноширинный шрифт для вывода консольных логов и таймстампов */
+.log-view {
+  font-family: monospace;
+}

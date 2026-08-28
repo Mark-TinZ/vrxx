@@ -1,3 +1,23 @@
+/* app.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+//! # Состояние и бизнес-логика TUI приложения (TUI App State)
+//!
+//! Модуль содержит модель [`App`], хранящую:
+//! - Настройки приложения, загруженные из `SettingsManager`
+//! - Текущий индекс выбранного VPN-профиля
+//! - Буферы измерений скорости входящего и исходящего трафика (для Sparkline)
+//! - Кольцевой буфер текстовых логов
+//! - Режим отображения экрана ([`ViewMode::Main`] или [`ViewMode::Logs`])
+
 use crate::daemon::DaemonEvent;
 use crate::domain::key_parser::ParsedKey;
 use crate::domain::singbox_config::build_singbox_config;
@@ -5,7 +25,7 @@ use crate::ipc::DaemonClient;
 use crate::settings::{AppSettings, SettingsManager};
 use anyhow::Result;
 
-/// Режим отображения в TUI
+/// Режим отображения экрана в TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewMode {
     Main,
@@ -35,6 +55,7 @@ impl Default for App {
 }
 
 impl App {
+    /// Создает новый экземпляр App с загрузкой настроек.
     pub fn new() -> Self {
         let settings = SettingsManager::new().load();
         let tun_mode = settings.tun_mode;
@@ -84,7 +105,7 @@ impl App {
     pub async fn load_initial_logs(&mut self) {
         if let Ok(history) = self.ipc_client.get_history().await {
             for event in history {
-                if let DaemonEvent::Log { level, message } = event {
+                if let DaemonEvent::Log { level, message, .. } = event {
                     self.push_log(format!("[{}] {}", level.to_uppercase(), message));
                 }
             }
@@ -107,18 +128,19 @@ impl App {
                 return Ok(());
             }
 
-            let key = match self.settings.keys.get(self.selected_index) {
-                Some(k) => k,
+            let (key_name, key_url) = match self.settings.keys.get(self.selected_index) {
+                Some(k) => (
+                    k.name.clone(),
+                    if !k.url.is_empty() {
+                        k.url.clone()
+                    } else {
+                        k.name.clone()
+                    },
+                ),
                 None => return Ok(()),
             };
 
-            let key_url = if !key.url.is_empty() {
-                &key.url
-            } else {
-                &key.name
-            };
-
-            let parsed_key = match ParsedKey::parse(key_url) {
+            let parsed_key = match ParsedKey::parse(&key_url) {
                 Ok(pk) => pk,
                 Err(e) => {
                     self.status = "Error (Invalid Key)".to_string();
@@ -127,6 +149,12 @@ impl App {
                 }
             };
 
+            if let Err(val_err) = parsed_key.validate() {
+                self.status = "Error (Invalid Key)".to_string();
+                self.push_log(format!("[ERROR] Key validation error: {val_err}"));
+                return Ok(());
+            }
+
             let config_json = build_singbox_config(&parsed_key, &self.settings);
             match self
                 .ipc_client
@@ -134,10 +162,39 @@ impl App {
                 .await
             {
                 Ok(_) => {
-                    self.is_connected = true;
-                    self.status = "Connected".to_string();
-                    self.active_server = Some(key.name.clone());
-                    self.push_log(format!("[INFO] Connected to {}", key.name));
+                    self.push_log(
+                        "[INFO] Core started. Verifying end-to-end proxy connectivity..."
+                            .to_string(),
+                    );
+                    let target_url = if self.settings.ping_target_url.is_empty() {
+                        "https://www.gstatic.com/generate_204"
+                    } else {
+                        &self.settings.ping_target_url
+                    };
+                    let probe = crate::services::ping::verify_proxy_connectivity(
+                        self.settings.socks_port,
+                        target_url,
+                        std::time::Duration::from_secs(8),
+                    )
+                    .await;
+
+                    match probe {
+                        Ok(latency) => {
+                            self.is_connected = true;
+                            self.status = "Connected".to_string();
+                            self.active_server = Some(key_name.clone());
+                            self.push_log(format!(
+                                "[INFO] Successfully connected to {} ({} ms)",
+                                key_name, latency
+                            ));
+                        }
+                        Err(e) => {
+                            let _ = self.ipc_client.stop_proxy().await;
+                            self.is_connected = false;
+                            self.status = "Error (Server/Auth Failed)".to_string();
+                            self.push_log(format!("[ERROR] Connectivity verification failed: {e}"));
+                        }
+                    }
                 }
                 Err(e) => {
                     self.is_connected = false;

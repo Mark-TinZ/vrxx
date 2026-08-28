@@ -1,25 +1,58 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- menus.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
 <interface domain="vrxx">
+  <!--
+    ============================================================================
+    ГЛАВНОЕ МЕНЮ ПРИЛОЖЕНИЯ (primary_menu)
+    ============================================================================
+
+    СТРУКТУРА МЕНЮ:
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ Секция 1: [theme_switcher] (Кастомный слот переключателя темы)           │
+    ├──────────────────────────────────────────────────────────────────────────┤
+    │ Секция 2:                                                                │
+    │ ├─ Preferences        (app.preferences: Перейти в настройки)            │
+    │ ├─ Keyboard Shortcuts (app.shortcuts: Диалог горячих клавиш)             │
+    │ ├─ About Vrxx         (app.about: Диалог сведений о программе)          │
+    │ └─ Quit               (app.quit: Завершение работы приложения)           │
+    └──────────────────────────────────────────────────────────────────────────┘
+  -->
+
   <menu id="primary_menu">
+    <!-- Секция 1: Кастомный виджет выбора цветовой схемы (VrxxThemeSwitcher) -->
     <section>
-      <!-- Custom widget slot for Theme Switcher -->
       <item>
         <attribute name="custom">theme_switcher</attribute>
       </item>
     </section>
+
+    <!-- Секция 2: Стандартные действия приложения -->
     <section>
+      <!-- Настройки -->
       <item>
         <attribute name="label" translatable="yes">_Preferences</attribute>
         <attribute name="action">app.preferences</attribute>
       </item>
+      <!-- Горячие клавиши -->
       <item>
         <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
         <attribute name="action">app.shortcuts</attribute>
       </item>
+      <!-- О программе -->
       <item>
         <attribute name="label" translatable="yes">_About Vrxx</attribute>
         <attribute name="action">app.about</attribute>
       </item>
+      <!-- Выход -->
       <item>
         <attribute name="label" translatable="yes">_Quit</attribute>
         <attribute name="action">app.quit</attribute>

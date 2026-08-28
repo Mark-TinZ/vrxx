@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- routing_rule_row.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
+<interface domain="vrxx">
+  <!--
+    ============================================================================
+    Компонент строки пользовательского правила маршрутизации (VrxxRoutingRuleRow)
+    ============================================================================
+
+    СТРУКТУРА МАКЕТА (GNOME HIG):
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ GtkListBoxRow:                                                           │
+    │ └─ AdwActionRow (action_row):                                            │
+    │    ├─ Префикс: GtkImage (icon_type) - web-browser / wired / folder       │
+    │    ├─ Заголовок: Название правила или значение (title)                    │
+    │    ├─ Подзаголовок: Тип • Значение ➔ Действие (subtitle)                 │
+    │    └─ Суффикс:                                                           │
+    │       ├─ GtkButton (btn_edit): Редактировать правило                     │
+    │       └─ GtkButton (btn_delete): Удалить правило                         │
+    └──────────────────────────────────────────────────────────────────────────┘
+  -->
+
+  <template class="VrxxRoutingRuleRow" parent="GtkListBoxRow">
+    <property name="activatable">True</property>
+    <property name="child">
+      <object class="AdwActionRow" id="action_row">
+        <property name="title-lines">1</property>
+        <property name="subtitle-lines">1</property>
+
+        <!-- Префикс: Иконка типа правила -->
+        <child type="prefix">
+          <object class="GtkImage" id="icon_type">
+            <property name="icon-name">web-browser-symbolic</property>
+            <property name="valign">center</property>
+            <style>
+              <class name="dim-label"/>
+            </style>
+          </object>
+        </child>
+
+        <!-- Суффиксы: Кнопки редактирования и удаления -->
+        <child type="suffix">
+          <object class="GtkBox">
+            <property name="orientation">horizontal</property>
+            <property name="spacing">4</property>
+            <property name="valign">center</property>
+
+            <!-- Кнопка редактирования правила -->
+            <child>
+              <object class="GtkButton" id="btn_edit">
+                <property name="icon-name">document-edit-symbolic</property>
+                <property name="tooltip-text" translatable="yes">Edit Rule</property>
+                <property name="valign">center</property>
+                <style>
+                  <class name="flat"/>
+                </style>
+              </object>
+            </child>
+
+            <!-- Кнопка удаления правила -->
+            <child>
+              <object class="GtkButton" id="btn_delete">
+                <property name="icon-name">user-trash-symbolic</property>
+                <property name="tooltip-text" translatable="yes">Delete Rule</property>
+                <property name="valign">center</property>
+                <style>
+                  <class name="flat"/>
+                  <class name="destructive-action"/>
+                </style>
+              </object>
+            </child>
+          </object>
+        </child>
+
+      </object>
+    </property>
+  </template>
+</interface>

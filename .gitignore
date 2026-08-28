@@ -6,3 +6,10 @@ src/vrxx.gresource
 .env
 output.md
 reports/
+sing-box
+sing-box.exe
+settings
+jsconfig.json
+compiled_javascript/
+*.mo
+locale/**/*.mo

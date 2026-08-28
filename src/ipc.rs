@@ -1,3 +1,19 @@
+/* ipc.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+//! # Клиент межпроцессного взаимодействия (IPC Client)
+//!
+//! Модуль содержит клиент [`DaemonClient`] для отправки команд и подписки на события
+//! привилегированного демона `vrxx-daemon` по HTTP REST API и Server-Sent Events (SSE).
+
 use crate::daemon::DaemonEvent;
 use reqwest::Client;
 use reqwest_eventsource::{Event, EventSource};
@@ -61,26 +77,38 @@ impl DaemonClient {
             config_json,
             tun_mode,
         };
-        let res = self
+        let resp = self
             .client
             .post(format!("{}/api/proxy/start", self.base_url))
             .json(&payload)
             .send()
-            .await?
-            .text()
             .await?;
+        if !resp.status().is_success() {
+            let err_text = resp
+                .text()
+                .await
+                .unwrap_or_else(|_| "Daemon error".to_string());
+            anyhow::bail!("{err_text}");
+        }
+        let res = resp.text().await?;
         Ok(res)
     }
 
     /// Отправляет команду на остановку ядра прокси.
     pub async fn stop_proxy(&self) -> anyhow::Result<String> {
-        let res = self
+        let resp = self
             .client
             .post(format!("{}/api/proxy/stop", self.base_url))
             .send()
-            .await?
-            .text()
             .await?;
+        if !resp.status().is_success() {
+            let err_text = resp
+                .text()
+                .await
+                .unwrap_or_else(|_| "Daemon error".to_string());
+            anyhow::bail!("{err_text}");
+        }
+        let res = resp.text().await?;
         Ok(res)
     }
 
@@ -133,7 +161,7 @@ impl DaemonClient {
                 while let Some(event) = es.next().await {
                     match event {
                         Ok(Event::Open) => {
-                            tracing::debug!("SSE connected");
+                            tracing::debug!("SSE connection established");
                             retry_count = 0;
                         }
                         Ok(Event::Message(message)) => {
@@ -146,9 +174,12 @@ impl DaemonClient {
                             }
                         }
                         Err(err) => {
-                            // Логируем ошибку только если это не первый раз, чтобы не спамить при запуске
+                            // Логируем периодически, чтобы не засорять журнал при первом подключении
                             if retry_count % 10 == 0 {
-                                tracing::warn!("SSE connection lost, retrying... (error: {})", err);
+                                tracing::warn!(
+                                    "Потеряно SSE соединение с демоном, повторная попытка... (ошибка: {})",
+                                    err
+                                );
                             }
                             retry_count += 1;
                             es.close();
@@ -156,7 +187,7 @@ impl DaemonClient {
                         }
                     }
                 }
-                // Повторная попытка подключения при разрыве.
+                // Повторная попытка подключения при разрыве
                 tokio::time::sleep(std::time::Duration::from_secs(3)).await;
             }
         });

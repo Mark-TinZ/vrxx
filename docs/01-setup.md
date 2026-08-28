@@ -131,7 +131,8 @@ sudo meson install -C build
 Все пользовательские данные хранятся локально в домашней директории пользователя в соответствии со стандартами XDG:
 
 - **Настройки приложения:** `~/.config/vrxx/settings.json` (права доступа 0600)
-- **Логи приложения:** `~/.config/vrxx/logs/` (`app.log`, `daemon.log`, `all.log`, `core.log`)
+- **Защищенное хранилище ключей (AES-256-GCM):** `~/.config/vrxx/data.dat` (права доступа 0600)
+- **Логи приложения:** `~/.local/share/vrxx/logs/` (`app.log`, `daemon.log`, `all.log`, `core.log`)
 - **IPC Unix Сокет:** `/run/vrxx/daemon.sock` (создается демоном `vrxx-daemon`)
 - **Гео-базы данных:** `~/.config/vrxx/geosite.dat`, `geoip.dat` и др.
 - **Ядро Sing-box:** `~/.local/share/vrxx/bin/sing-box` (устанавливается через интерфейс приложения или системный пакет)

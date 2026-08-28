@@ -1,6 +1,6 @@
 /* error_dialog.rs
  *
- * Copyright 2026 Unknown
+ * Copyright 2026 Mark
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,10 +9,16 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
+//! # Диалог отображения ошибок и диагностики (Error Dialog)
+//!
+//! Отвечает за:
+//! - Форматирование системных ошибок ядра и демона в понятные человеку сообщения (`format_human_error`)
+//! - Показ нативного диалога `AdwAlertDialog` с возможностью быстрого копирования технического стектрейса/лога
+
 use adw::prelude::*;
 use gettextrs::gettext;
 
-/// Отображает модальный диалог `AdwAlertDialog` при критических ошибках с кнопкой скопировать лог.
+/// Отображает модальный диалог `AdwAlertDialog` при критических ошибках с кнопкой «Скопировать лог».
 pub fn show_error_dialog<P: IsA<gtk::Widget>>(
     parent: Option<&P>,
     title: Option<&str>,
@@ -37,7 +43,7 @@ pub fn show_error_dialog<P: IsA<gtk::Widget>>(
         if let Some(display) = gdk::Display::default() {
             let clipboard = display.clipboard();
             clipboard.set_text(&log_content);
-            tracing::info!("Technical log copied to clipboard.");
+            tracing::info!("Технический лог скопирован в буфер обмена.");
         }
     });
 
@@ -53,7 +59,7 @@ pub fn show_error_dialog<P: IsA<gtk::Widget>>(
     }
 }
 
-/// Преобразует сырую ошибку бэкенда/сети в понятное пользователю сообщение (i18n).
+/// Преобразует сырую ошибку бэкенда/сети в понятное пользователю сообщение с поддержкой локализации (i18n).
 pub fn format_human_error(raw_err: &str) -> String {
     let lower = raw_err.to_lowercase();
     if lower.contains("core not found") || lower.contains("sing-box") {

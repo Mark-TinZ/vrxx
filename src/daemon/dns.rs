@@ -1,3 +1,21 @@
+/* dns.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+//! # Управление DNS через systemd-resolved (D-Bus DNS Manager)
+//!
+//! Модуль взаимодействует с D-Bus сервисом `org.freedesktop.resolve1` для:
+//! - Назначения эксклюзивных DNS-серверов интерфейсу `vrxx-tun`
+//! - Маршрутизации всех доменных запросов (`~.`) в туннель для предотвращения утечек DNS (DNS Leak Protection)
+//! - Сброса настроек DNS при отключении прокси
+
 use anyhow::Result;
 use std::net::IpAddr;
 use zbus::{proxy, Connection};
@@ -12,16 +30,19 @@ trait Resolve1Manager {
     fn set_link_domains(&self, ifindex: i32, domains: &[(&str, bool)]) -> zbus::Result<()>;
 }
 
+/// Менеджер DNS, работающий через системную шину D-Bus.
 pub struct DnsManager {
     connection: Connection,
 }
 
 impl DnsManager {
+    /// Создает новый экземпляр DnsManager с подключением к системной шине.
     pub async fn new() -> Result<Self> {
         let connection = zbus::Connection::system().await?;
         Ok(Self { connection })
     }
 
+    /// Назначает DNS-серверы и поисковые домены для заданного индекса сетевого интерфейса.
     pub async fn set_dns(&self, iface_index: i32, dns_servers: Vec<String>) -> Result<()> {
         let proxy = Resolve1ManagerProxy::new(&self.connection).await?;
 
@@ -45,6 +66,7 @@ impl DnsManager {
         Ok(())
     }
 
+    /// Сбрасывает DNS-настройки интерфейса.
     pub async fn reset_dns(&self, iface_index: i32) -> Result<()> {
         let proxy = Resolve1ManagerProxy::new(&self.connection).await?;
         proxy.set_link_dns(iface_index, &[]).await?;

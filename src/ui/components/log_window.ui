@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<interface>
+<!-- log_window.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
+<interface domain="vrxx">
+  <!--
+    ============================================================================
+    ОКНО ПРОСМОТРА СИСТЕМНЫХ ЛОГОВ (VrxxLogWindow)
+    ============================================================================
+
+    СТРУКТУРА МАКЕТА:
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ AdwHeaderBar (Шапка окна):                                               │
+    │ ├─ [Кнопка: Автоскролл] [Выпадающий список: Фильтр уровней логов]        │
+    │ ├─ AdwWindowTitle: "System Logs" / "Системные логи"                      │
+    │ └─ [Кнопка: Поиск Ctrl+F] [Кнопка Меню: Масштаб, Копировать, Сохранить] │
+    ├──────────────────────────────────────────────────────────────────────────┤
+    │ GtkSearchBar (Панель поиска, search_bar):                                │
+    │ └─ GtkSearchEntry (search_entry: Поле фильтрации строк)                  │
+    ├──────────────────────────────────────────────────────────────────────────┤
+    │ GtkScrolledWindow (Контентная область, scrolled_window):                 │
+    │ └─ GtkTextView (text_view: Моноширинный вывод логов в реальном времени)  │
+    └──────────────────────────────────────────────────────────────────────────┘
+  -->
+
+  <!-- Контекстное меню действий с логами -->
   <menu id="log_menu">
+    <!-- Слот кастомного виджета управления масштабом шрифта -->
     <section>
       <item>
         <attribute name="custom">zoom-row</attribute>
       </item>
     </section>
+
+    <!-- Операции с содержимым -->
     <section>
       <item>
         <attribute name="label" translatable="yes">Copy Logs</attribute>
@@ -18,6 +52,8 @@
         <attribute name="icon">document-save-as-symbolic</attribute>
       </item>
     </section>
+
+    <!-- Очистка логов -->
     <section>
       <item>
         <attribute name="label" translatable="yes">Clear Logs</attribute>
@@ -33,6 +69,10 @@
     <property name="default-height">500</property>
     <property name="content">
       <object class="AdwToolbarView">
+
+        <!-- ================================================================= -->
+        <!-- 1. ВЕРХНЯЯ ПАНЕЛЬ ИНСТРУМЕНТОВ (HEADERBAR)                        -->
+        <!-- ================================================================= -->
         <child type="top">
           <object class="AdwHeaderBar">
             <property name="title-widget">
@@ -40,6 +80,8 @@
                 <property name="title" translatable="yes">System Logs</property>
               </object>
             </property>
+
+            <!-- Переключатель автоматической прокрутки вниз при новых событиях -->
             <child type="start">
               <object class="GtkToggleButton" id="btn_autoscroll">
                 <property name="icon-name">go-down-symbolic</property>
@@ -50,10 +92,14 @@
                 </style>
               </object>
             </child>
+
+            <!-- Выпадающий список фильтрации по уровню (All, Error, Warn, Info, Debug) -->
             <child type="start">
               <object class="GtkDropDown" id="dropdown_filter">
               </object>
             </child>
+
+            <!-- Кнопка вызова контекстного меню окна логов -->
             <child type="end">
               <object class="GtkMenuButton" id="menu_btn">
                 <property name="icon-name">open-menu-symbolic</property>
@@ -62,6 +108,7 @@
                 <property name="popover">
                   <object class="GtkPopoverMenu">
                     <property name="menu-model">log_menu</property>
+                    <!-- Виджет регулировки масштаба шрифта логов -->
                     <child type="zoom-row">
                       <object class="GtkBox" id="zoom_controls">
                         <property name="orientation">horizontal</property>
@@ -71,6 +118,7 @@
                         <property name="margin-top">3</property>
                         <property name="margin-bottom">3</property>
                         <property name="spacing">6</property>
+                        <!-- Уменьшить шрифт -->
                         <child>
                           <object class="GtkButton">
                             <property name="action-name">win.zoom_out</property>
@@ -82,6 +130,7 @@
                             </style>
                           </object>
                         </child>
+                        <!-- Сбросить к 100% -->
                         <child>
                           <object class="GtkButton" id="btn_zoom_normal">
                             <property name="action-name">win.zoom_normal</property>
@@ -98,6 +147,7 @@
                             </property>
                           </object>
                         </child>
+                        <!-- Увеличить шрифт -->
                         <child>
                           <object class="GtkButton">
                             <property name="action-name">win.zoom_in</property>
@@ -115,6 +165,8 @@
                 </property>
               </object>
             </child>
+
+            <!-- Кнопка открытия строки поиска (Ctrl+F) -->
             <child type="end">
               <object class="GtkToggleButton" id="btn_search">
                 <property name="icon-name">edit-find-symbolic</property>
@@ -126,6 +178,10 @@
             </child>
           </object>
         </child>
+
+        <!-- ================================================================= -->
+        <!-- 2. ПАНЕЛЬ ПОИСКА ПО ТЕКСТУ ЛОГОВ (SEARCH BAR)                     -->
+        <!-- ================================================================= -->
         <child type="top">
           <object class="GtkSearchBar" id="search_bar">
             <property name="search-mode-enabled" bind-source="btn_search" bind-property="active" bind-flags="bidirectional"/>
@@ -137,6 +193,10 @@
             </property>
           </object>
         </child>
+
+        <!-- ================================================================= -->
+        <!-- 3. ОБЛАСТЬ ВЫВОДА ТЕКСТА ЛОГОВ (TEXT VIEW)                        -->
+        <!-- ================================================================= -->
         <property name="content">
           <object class="GtkScrolledWindow" id="scrolled_window">
             <property name="child">
@@ -154,6 +214,7 @@
             </property>
           </object>
         </property>
+
       </object>
     </property>
   </template>

@@ -1,8 +1,15 @@
-# Project: vrxx
-# Description: Your project description here
+# meson.build
+#
+# Copyright 2026 Mark
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# SPDX-License-Identifier: MPL-2.0
 
 project('vrxx', 'rust',
-          version: '0.1.8',
+          version: '26.1.0-beta.1',
     meson_version: '>= 1.0.0',
   default_options: [ 'warning_level=2', 'werror=false', ],
 )

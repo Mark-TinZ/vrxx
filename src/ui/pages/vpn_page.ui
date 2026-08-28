@@ -1,24 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<interface>
+<!-- vpn_page.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
+<interface domain="vrxx">
+  <!--
+    ============================================================================
+    СТРАНИЦА УПРАВЛЕНИЯ VPN-КЛЮЧАМИ (VrxxVpnPage)
+    ============================================================================
+
+    СТРУКТУРА МАКЕТА:
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ AdwHeaderBar (Шапка страницы):                                           │
+    │ ├─ [Кнопка +: Добавить по ссылке] [Кнопка Вставить: Из буфера]          │
+    │ ├─ AdwWindowTitle: "VPN"                                                 │
+    │ └─ [Кнопка Меню: primary_menu_btn] [Кнопка Стоп: Отключить VPN]          │
+    ├──────────────────────────────────────────────────────────────────────────┤
+    │ AdwPreferencesPage (Контентная область):                                 │
+    │ └─ AdwPreferencesGroup ("Connection list" / "Список подключений"):      │
+    │    └─ GtkListBox (keys_list: boxed-list строк VrxxVpnKeyRow)             │
+    │       └─ Строки ключей генерируются динамически в Rust-коде              │
+    └──────────────────────────────────────────────────────────────────────────┘
+  -->
+
   <template class="VrxxVpnPage" parent="AdwBin">
     <property name="child">
       <object class="AdwToolbarView">
 
-        <!-- TITLE BAR -->
+        <!-- ================================================================= -->
+        <!-- 1. ВЕРХНЯЯ ПАНЕЛЬ ИНСТРУМЕНТОВ (HEADERBAR & ACTIONS)              -->
+        <!-- ================================================================= -->
         <child type="top">
           <object class="AdwHeaderBar">
-            <!-- Заголовок -->
+
+            <!-- Заголовок страницы -->
             <property name="title-widget">
-                <object class="AdwWindowTitle" id="window_title">
-                    <property name="title" translatable="yes">VPN</property>
-                </object>
+              <object class="AdwWindowTitle" id="window_title">
+                <property name="title" translatable="yes">VPN</property>
+              </object>
             </property>
 
-            <!-- Кнопки импорта ключей -->
+            <!-- Кнопки добавления и импорта VPN-ключей (в начале панели) -->
             <child type="start">
               <object class="GtkBox">
                 <property name="spacing">6</property>
-                
+
+                <!-- Добавить ключ по ссылке вручную -->
                 <child>
                   <object class="GtkButton" id="btn_import_link">
                     <property name="icon-name">list-add-symbolic</property>
@@ -27,6 +60,7 @@
                   </object>
                 </child>
 
+                <!-- Вставить ключ из системного буфера обмена -->
                 <child>
                   <object class="GtkButton" id="btn_import_clipboard">
                     <property name="icon-name">edit-paste-symbolic</property>
@@ -38,6 +72,7 @@
               </object>
             </child>
 
+            <!-- Главное контекстное меню приложения -->
             <child type="end">
               <object class="GtkMenuButton" id="primary_menu_btn">
                 <property name="icon-name">open-menu-symbolic</property>
@@ -45,9 +80,11 @@
               </object>
             </child>
 
+            <!-- Кнопка принудительного отключения текущего активного VPN -->
             <child type="end">
               <object class="GtkButton">
-                <property name="label" translatable="yes">Disconnect</property>
+                <property name="icon-name">media-playback-stop-symbolic</property>
+                <property name="tooltip-text" translatable="yes">Disconnect</property>
                 <property name="action-name">vpn.disconnect</property>
                 <style>
                   <class name="destructive-action"/>
@@ -57,32 +94,31 @@
           </object>
         </child>
 
-        <!-- CONTENT -->
+        <!-- ================================================================= -->
+        <!-- 2. ОСНОВНОЙ СПИСОК VPN-ПОДКЛЮЧЕНИЙ (PREFERENCES PAGE)             -->
+        <!-- ================================================================= -->
         <property name="content">
-        <object class="AdwPreferencesPage">
-          <child>
-            <!-- ОДНА ГРУППА ДЛЯ ВСЕХ КЛЮЧЕЙ -->
-            <object class="AdwPreferencesGroup">
-              <property name="title" translatable="yes">Connection list</property>
-              <child>
-                <!-- ОДИН СПИСOK С ID -->
-                <object class="GtkListBox" id="keys_list">
-                  <property name="selection-mode">none</property>
-                  <property name="show-separators">True</property> <!-- Разделители между ключами -->
-                  <style>
-                    <class name="boxed-list"/>
-                  </style>
-                  <!-- Внутренности (строки) будут созданы Rust-кодом -->
-                </object>
-              </child>
-            </object>
-          </child>
-
-        </object>
-      </property>
+          <object class="AdwPreferencesPage">
+            <child>
+              <!-- Группа списка сохраненных профилей -->
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Connection list</property>
+                <child>
+                  <!-- Контейнер строк ключей (каждая строка — компонент VrxxVpnKeyRow) -->
+                  <object class="GtkListBox" id="keys_list">
+                    <property name="selection-mode">none</property>
+                    <property name="show-separators">True</property>
+                    <style>
+                      <class name="boxed-list"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </property>
 
       </object>
     </property>
   </template>
 </interface>
-

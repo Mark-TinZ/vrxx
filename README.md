@@ -299,10 +299,11 @@ sudo ./target/release/vrxx --daemon &
 
 | Путь | Назначение | Права |
 | --- | --- | --- |
-| `~/.config/vrxx/settings.json` | Все настройки приложения, VPN-ключи, правила маршрутизации | `0o600` |
-| `~/.config/vrxx/logs/app.log` | Логи GUI | `0o600` |
-| `~/.config/vrxx/logs/daemon.log` | Логи демона | `0o600` |
-| `~/.config/vrxx/logs/all.log` | Объединённый поток логов | `0o600` |
+| `~/.config/vrxx/settings.json` | Открытые настройки приложения, правила маршрутизации, белые списки | `0o600` |
+| `~/.config/vrxx/data.dat` | Защищенное зашифрованное хранилище VPN-ключей (AES-256-GCM) | `0o600` |
+| `~/.local/share/vrxx/logs/app.log` | Логи GUI | `0o600` |
+| `~/.local/share/vrxx/logs/daemon.log` | Логи демона | `0o600` |
+| `~/.local/share/vrxx/logs/all.log` | Объединённый поток логов | `0o600` |
 | `~/.config/vrxx/geosite.dat` | База GeoSite (Loyalsoldier) | `0o600` |
 | `~/.config/vrxx/geoip.dat` | База GeoIP (Loyalsoldier) | `0o600` |
 | `~/.config/vrxx/geosite_ru.dat` | База GeoSite для RU (runet-geodata) | `0o600` |

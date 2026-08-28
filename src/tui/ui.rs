@@ -1,3 +1,22 @@
+/* ui.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
+//! # Отрисовка компонентов терминального интерфейса (TUI Renderer)
+//!
+//! Модуль отвечает за:
+//! - Разметку терминального экрана (Header, Графики трафика, Список профилей, Панель действий)
+//! - Отрисовку цветовых индикаторов статуса подключения (CONNECTED, DISCONNECTED, ERROR)
+//! - Графическое отображение входящего/исходящего трафика через Sparkline
+//! - Модальное всплывающее окно просмотра системных логов демона
+
 use super::app::{App, ViewMode};
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -7,7 +26,7 @@ use ratatui::{
     Frame,
 };
 
-/// Главная функция рендеринга ТUI интерфейса
+/// Главная функция рендеринга TUI интерфейса.
 pub fn draw_ui(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -28,7 +47,7 @@ pub fn draw_ui(f: &mut Frame, app: &mut App) {
     }
 }
 
-/// Отрисовка верхней панели статуса
+/// Отрисовка верхней панели статуса.
 fn draw_header(f: &mut Frame, app: &App, area: Rect) {
     let (status_color, status_text) = if app.is_connected {
         (Color::Green, "CONNECTED")
@@ -76,7 +95,7 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(header, area);
 }
 
-/// Отрисовка центральной части (Спектрограммы скорости и списка профилей)
+/// Отрисовка центральной части (спектрограммы скорости и списка профилей).
 fn draw_center(f: &mut Frame, app: &mut App, area: Rect) {
     let main_chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -164,7 +183,7 @@ fn draw_center(f: &mut Frame, app: &mut App, area: Rect) {
     f.render_stateful_widget(list_widget, main_chunks[1], &mut state);
 }
 
-/// Отрисовка нижней панели подсказок горячих клавиш
+/// Отрисовка нижней панели подсказок горячих клавиш.
 fn draw_footer(f: &mut Frame, _app: &App, area: Rect) {
     let footer_text = vec![
         Span::styled(
@@ -211,7 +230,7 @@ fn draw_footer(f: &mut Frame, _app: &App, area: Rect) {
     f.render_widget(footer, area);
 }
 
-/// Отрисовка всплывающего окна логов (Modal Overlay)
+/// Отрисовка всплывающего окна логов (Modal Overlay).
 fn draw_logs_modal(f: &mut Frame, app: &App, area: Rect) {
     let popup_area = centered_rect(80, 70, area);
 
@@ -232,7 +251,7 @@ fn draw_logs_modal(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(logs_widget, popup_area);
 }
 
-/// Вспомогательная функция для центрирования прямоугольника
+/// Вспомогательная функция для центрирования прямоугольника.
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
