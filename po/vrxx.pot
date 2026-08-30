@@ -6,7 +6,7 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: vrxx 26.1.0-beta.1\n"
+"Project-Id-Version: vrxx 26.1.0-beta.2\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-08-28 15:29+0600\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -1501,3 +1501,22 @@ msgstr ""
 #: src/window.ui:542
 msgid "Content"
 msgstr ""
+
+#: src/ui/menus.ui:56
+msgid "_Close Window"
+msgstr ""
+
+#: src/application.rs:426
+msgid "Quit Vrxx"
+msgstr ""
+
+#: src/application.rs:427
+msgid ""
+"This will disconnect any active VPN connection and terminate both the "
+"application and the background service."
+msgstr ""
+
+#: src/application.rs:431
+msgid "Quit"
+msgstr ""
+

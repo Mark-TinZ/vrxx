@@ -570,7 +570,7 @@ impl VrxxWindow {
                 );
             }
             Err(e) => {
-                tracing::error!("Не удалось распарсить ссылку URL-схемы '{uri}': {e}");
+                tracing::error!("Failed to parse deep link URI '{uri}': {e}");
             }
         }
     }

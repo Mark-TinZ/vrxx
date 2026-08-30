@@ -5,7 +5,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: vrxx 26.1.0-beta.1\n"
+"Project-Id-Version: vrxx 26.1.0-beta.2\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-08-28 15:29+0600\n"
 "PO-Revision-Date: 2026-03-03 00:10+0600\n"
@@ -1547,6 +1547,223 @@ msgstr "Активное подключение"
 #: src/window.ui:542
 msgid "Content"
 msgstr "Контент"
+
+#: src/ui/menus.ui:56
+msgid "_Close Window"
+msgstr "_Закрыть"
+
+#: src/application.rs:426
+msgid "Quit Vrxx"
+msgstr "Выход из Vrxx"
+
+#: src/application.rs:427
+msgid ""
+"This will disconnect any active VPN connection and terminate both the "
+"application and the background service."
+msgstr ""
+"Это действие остановит активное VPN-соединение, службу демона и полностью "
+"завершит работу программы."
+
+#: src/ui/pages/settings_page.ui:85
+msgid "Application interface, startup, and notification preferences"
+msgstr "Параметры интерфейса, автозапуска и системных уведомлений"
+
+#: src/ui/pages/settings_page.ui:90
+msgid "Select the interface language. Changing the language requires restarting the application."
+msgstr "Выберите язык интерфейса. Для применения нового языка потребуется перезапуск приложения."
+
+#: src/ui/pages/settings_page.ui:105
+msgid "Starts VRXX in the background minimized when your system boots up."
+msgstr "Запускает VRXX в фоновом режиме в системном трее при включении компьютера."
+
+#: src/ui/pages/settings_page.ui:113
+msgid "Automatically connects to the last active VPN server when the application starts."
+msgstr "Автоматически подключается к последнему использованному серверу при запуске VRXX."
+
+#: src/ui/pages/settings_page.ui:120
+msgid "Show desktop notifications on connection events"
+msgstr "Показывать системные уведомления о событиях подключения"
+
+#: src/ui/pages/settings_page.ui:121
+msgid "Displays system notifications when connection status changes or when errors occur."
+msgstr "Отображает всплывающие уведомления при смене статуса сети или возникновении ошибок."
+
+#: src/ui/pages/settings_page.ui:129
+msgid "Masks IP addresses, server domains, and configuration keys in the interface to prevent accidental exposure during screen recording or live streaming."
+msgstr "Скрывает IP-адреса, доменные имена и секретные ключи в интерфейсе для предотвращения их случайного раскрытия при трансляции или записи экрана."
+
+#: src/ui/pages/settings_page.ui:137
+msgid "Network and Core"
+msgstr "Сеть и ядро"
+
+#: src/ui/pages/settings_page.ui:138
+msgid "Core protocol engine parameters and transparent traffic routing"
+msgstr "Параметры сетевого протокола ядра и прозрачная маршрутизация трафика"
+
+#: src/ui/pages/settings_page.ui:143
+msgid "Route all system traffic through virtual adapter (requires root)"
+msgstr "Маршрутизировать весь трафик системы через виртуальный адаптер (требуются права root)"
+
+#: src/ui/pages/settings_page.ui:144
+msgid "Creates a virtual network card (vrxx-tun) to route all system traffic transparently, without needing proxy settings in individual apps."
+msgstr "Создает виртуальный сетевой интерфейс (vrxx-tun) для прозрачного проксирования всего трафика без настройки прокси в отдельных приложениях."
+
+#: src/ui/pages/settings_page.ui:151
+msgid "Extract destination domain from TLS SNI and HTTP headers"
+msgstr "Извлекать целевой домен из заголовков TLS SNI и HTTP"
+
+#: src/ui/pages/settings_page.ui:152
+msgid "Inspects outgoing packets to identify actual domain names for accurate routing and bypass rules."
+msgstr "Анализирует исходящие пакеты для точного определения доменов в правилах маршрутизации и обхода."
+
+#: src/ui/pages/settings_page.ui:159
+msgid "Force browsers to use TCP to prevent connection drops"
+msgstr "Принудительно переключать браузеры на TCP для предотвращения обрывов"
+
+#: src/ui/pages/settings_page.ui:160
+msgid "Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and Firefox to use TCP. Prevents streaming buffering and connection stalls on restricted networks."
+msgstr "Блокирует трафик QUIC (UDP 443), вынуждая браузеры (Chrome, Firefox) использовать TCP. Предотвращает зависания и буферизацию на ограниченных сетях."
+
+#: src/ui/pages/settings_page.ui:168
+msgid "Directs local network subnets (192.168.x.x, 10.x.x.x, local printers, smart home devices) directly to your local router instead of through the VPN tunnel."
+msgstr "Направляет трафик локальных адресов (192.168.x.x, 10.x.x.x, принтеры, умный дом) напрямую в локальную сеть в обход VPN."
+
+#: src/ui/pages/settings_page.ui:176
+msgid "Return synthetic local IPs for ultra-fast domain resolution"
+msgstr "Возвращать фиктивные локальные IP для мгновенного отклика DNS"
+
+#: src/ui/pages/settings_page.ui:177
+msgid "Assigns synthetic IP addresses (198.18.0.0/15) locally for instant response, while resolving real IPs on the remote proxy server. Speeds up connection opening significantly."
+msgstr "Локально возвращает синтетические IP-адреса (198.18.0.0/15) для ускорения ответа, в то время как реальные IP разрешаются на прокси-сервере."
+
+#: src/ui/pages/settings_page.ui:185
+msgid "Advanced Connection"
+msgstr "Расширенная оптимизация"
+
+#: src/ui/pages/settings_page.ui:186
+msgid "TCP stream multiplexing and connection optimization"
+msgstr "Мультиплексирование TCP-потоков и оптимизация соединений"
+
+#: src/ui/pages/settings_page.ui:191
+msgid "Combine multiple TCP streams into a single connection (h2mux)"
+msgstr "Объединять несколько TCP-потоков в одно соединение (h2mux)"
+
+#: src/ui/pages/settings_page.ui:192
+msgid "Reuses a single persistent TCP connection for multiple streams, reducing latency when opening many connections simultaneously. May cause jitter on high-packet-loss networks."
+msgstr "Переиспользует одно TCP-соединение для множества потоков, снижая задержку при открытии страниц. Может вызывать джиттер на сетях с потерями пакетов."
+
+#: src/ui/pages/settings_page.ui:199
+msgid "Maximum concurrent multiplexed streams (1–128)"
+msgstr "Максимальное число параллельных потоков на соединение (1–128)"
+
+#: src/ui/pages/settings_page.ui:200
+msgid "Defines how many concurrent streams can be transmitted simultaneously over one TCP connection. Default value is 8."
+msgstr "Задает максимальное число одновременных потоков через одно TCP-соединение. Рекомендуемое значение: 8."
+
+#: src/ui/pages/settings_page.ui:216
+msgid "Geo Data"
+msgstr "Базы гео-данных"
+
+#: src/ui/pages/settings_page.ui:217
+msgid "Precompiled binary rule-sets (GeoIP and GeoSite) for domain and IP routing"
+msgstr "Скомпилированные бинарные наборы правил (GeoIP и GeoSite) для маршрутизации"
+
+#: src/ui/pages/settings_page.ui:222
+msgid "Download latest GeoIP and GeoSite binary rule-sets (.srs)"
+msgstr "Загрузить актуальные бинарные наборы правил GeoIP и GeoSite (.srs)"
+
+#: src/ui/pages/settings_page.ui:223
+msgid "Fetches the latest compiled binary rule-sets for GeoIP and GeoSite databases to keep regional bypass lists up to date."
+msgstr "Загружает свежие скомпилированные базы правил для GeoIP и GeoSite для поддержания списков обхода в актуальном состоянии."
+
+#: src/ui/pages/settings_page.ui:232
+msgid "Download latest geo-databases now"
+msgstr "Загрузить актуальные гео-базы сейчас"
+
+#: src/ui/pages/settings_page.ui:250
+msgid "Methods and parameters for measuring server response time"
+msgstr "Методы и параметры замера времени отклика серверов"
+
+#: src/ui/pages/settings_page.ui:255
+msgid "Method used for measuring server response time"
+msgstr "Метод измерения времени отклика сервера"
+
+#: src/ui/pages/settings_page.ui:256
+msgid "Choose measurement method: TCP Handshake (fast, connects to port), ICMP Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test through tunnel)."
+msgstr "Выберите метод проверки: TCP Handshake (быстро, проверка порта), ICMP Ping (проверка IP хоста) или HTTP GET/HEAD через прокси (сквозной тест через туннель)."
+
+#: src/ui/pages/settings_page.ui:274
+msgid "The lightweight URL requested during HTTP proxy latency measurements (default is Google generate_204)."
+msgstr "Легковесный URL, запрашиваемый при замере задержки через прокси (по умолчанию Google generate_204)."
+
+#: src/ui/pages/settings_page.ui:283
+msgid "Core version information, logs, and troubleshooting tools"
+msgstr "Информация о версии ядра, журналы и средства диагностики"
+
+#: src/ui/pages/settings_page.ui:289
+msgid "Displays the currently installed binary version and compilation tags of the sing-box core."
+msgstr "Отображает версию и флаги сборки установленного исполняемого файла sing-box."
+
+#: src/ui/pages/settings_page.ui:296
+msgid "Verbosity of core output messages"
+msgstr "Степень подробности вывода сообщений ядра"
+
+#: src/ui/pages/settings_page.ui:297
+msgid "Controls how detailed the core log messages are: Error (critical only), Warning (potential issues), Info (standard connection events), Debug (detailed packet diagnostics)."
+msgstr "Управляет детализацией логов ядра: Error (только критические ошибки), Warning (предупреждения), Info (стандартные события), Debug (подробная диагностика пакетов)."
+
+#: src/ui/pages/settings_page.ui:314
+msgid "Open real-time console log viewer"
+msgstr "Открыть окно просмотра логов в реальном времени"
+
+#: src/ui/pages/settings_page.ui:315
+msgid "Opens the integrated live log viewer window with real-time filtering, pause, search, and export options."
+msgstr "Открывает встроенное окно журнала с фильтрацией в реальном времени, паузой, поиском и экспортом."
+
+#: src/ui/pages/settings_page.ui:328
+msgid "Open system directory containing log files"
+msgstr "Открыть системный каталог с файлами журналов"
+
+#: src/ui/pages/settings_page.ui:329
+msgid "Opens the local system directory containing persistent log files in your file manager."
+msgstr "Открывает директорию с файлами логов в системном файловом менеджере."
+
+#: src/ui/pages/settings_page.ui:344
+msgid "Export and import application settings and VPN profiles"
+msgstr "Экспорт и импорт настроек приложения и профилей VPN"
+
+#: src/ui/pages/settings_page.ui:349
+msgid "Restore settings and profiles from a backup file"
+msgstr "Восстановить настройки и профили из файла резервной копии"
+
+#: src/ui/pages/settings_page.ui:350
+msgid "Loads application settings, custom routing rules, and VPN profiles from a JSON backup file."
+msgstr "Загружает настройки программы, пользовательские правила маршрутизации и профили VPN из файла резервной копии JSON."
+
+#: src/ui/pages/settings_page.ui:363
+msgid "Save current configuration and profiles to a backup file"
+msgstr "Сохранить текущую конфигурацию и профили в файл резервной копии"
+
+#: src/ui/pages/settings_page.ui:364
+msgid "Exports all application settings, routing rules, and VPN profiles to a portable JSON backup file."
+msgstr "Экспортирует все настройки, правила маршрутизации и профили VPN в файл резервной копии JSON."
+
+#: src/ui/pages/settings_page.ui:378
+msgid "Danger Zone"
+msgstr "Опасная зона"
+
+#: src/ui/pages/settings_page.ui:379
+msgid "Irreversible actions and complete configuration reset"
+msgstr "Необратимые действия и полный сброс конфигурации"
+
+#: src/ui/pages/settings_page.ui:384
+msgid "Erase all profiles and restore factory defaults"
+msgstr "Удалить все профили и вернуть настройки по умолчанию"
+
+#: src/ui/pages/settings_page.ui:385
+msgid "Permanently erases all saved VPN keys, custom rules, and configuration settings, returning the application to its default state."
+msgstr "Безвозвратно удаляет все сохраненные VPN-профили, правила и настройки, возвращая программу к начальному состоянию."
+
 
 
 

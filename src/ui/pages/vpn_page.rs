@@ -339,7 +339,7 @@ impl VrxxVpnPage {
                         }
                     }
                 } else {
-                    tracing::debug!("Страница VPN уничтожена, завершение слушателя перезапуска");
+                    tracing::debug!("VPN page destroyed, terminating core restart listener");
                     break;
                 }
             }
@@ -390,9 +390,7 @@ impl VrxxVpnPage {
                     if let Some(page) = page_weak.upgrade() {
                         page.handle_daemon_status_change(&status);
                     } else {
-                        tracing::debug!(
-                            "Страница VPN уничтожена, завершение слушателя событий демона"
-                        );
+                        tracing::debug!("VPN page destroyed, terminating daemon event listener");
                         break;
                     }
                 }
@@ -482,9 +480,7 @@ impl VrxxVpnPage {
 
                 if is_connecting_target || is_switching_loading {
                     // При переключении: демон остановил старый прокси, новый запускается
-                    tracing::debug!(
-                        "Игнорируем событие Disconnected в процессе активной смены ключа"
-                    );
+                    tracing::debug!("Ignoring Disconnected event during active key transition");
                 } else {
                     // Истинное отключение: сбрасываем визуальный статус и таймеры
                     imp.connecting_target_url.replace(None);
@@ -1805,7 +1801,7 @@ impl VrxxVpnPage {
         import_clip_action.connect_activate(move |_, _| {
             if let Some(page) = page_weak_clip.upgrade() {
                 let Some(display) = gdk::Display::default() else {
-                    tracing::warn!("Графический дисплей GDK недоступен для чтения буфера обмена");
+                    tracing::warn!("GDK display unavailable for reading clipboard");
                     return;
                 };
                 let clipboard = display.clipboard();
@@ -1828,10 +1824,7 @@ impl VrxxVpnPage {
                                     }
                                 }
                                 Err(e) => {
-                                    tracing::error!(
-                                        "{}",
-                                        &format!("Ошибка парсинга ключа из буфера: {e}")
-                                    );
+                                    tracing::error!("Failed to parse key from clipboard: {e}");
                                 }
                             }
                         }

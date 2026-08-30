@@ -87,10 +87,9 @@ WantedBy=multi-user.target
 
 ## 4. Сетевые компоненты (TunManager & DnsManager)
 
-### TUN-режим (`src/daemon/network.rs`):
-- При `tun_mode: true` создается интерфейс `vrxx-tun` (через `tun-rs`).
-- Назначаются IP-адреса (`172.19.0.1/30` IPv4, `fdfe:dcba:9876::1/126` IPv6).
-- Через `rtnetlink` интерфейс переводится в состояние `UP` и добавляются правила маршрутизации (`fwmark 0x255` для предотвращения петель).
+### TUN-режим (`src/daemon/network.rs` & `sing-box`):
+- Для основного ядра `sing-box` управление интерфейсом `vrxx-tun`, назначение IP-адресов (`172.19.0.1/30` IPv4, `fdfe:dcba:9876::1/126` IPv6) и маршрутизация выполняются нативно ядром `sing-box` (`auto_route: true, strict_route: true`). Демон очищает возможные сиротские интерфейсы перед запуском и после остановки.
+- `TunManager` используется как fallback-драйвер для ручного режима и сторонних ядер: создание интерфейса через `tun-rs`, перевод в `UP` через `rtnetlink` и добавление маршрутов в таблицу 100.
 
 ### Менеджер DNS (`src/daemon/dns.rs`):
 - Перенаправление DNS через `systemd-resolved` (`org.freedesktop.resolve1.Manager` по D-Bus с помощью крейта `zbus`).

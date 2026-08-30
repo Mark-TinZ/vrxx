@@ -131,7 +131,7 @@ pub async fn update_geo_databases(
         }
 
         if should_download {
-            tracing::info!("Загрузка базы {}...", filename);
+            tracing::info!("Downloading database {}...", filename);
             let mut download_success = false;
 
             // Попытка 1: Основной источник GitHub Raw
@@ -139,7 +139,10 @@ pub async fn update_geo_databases(
                 if res.status().is_success() {
                     if let Ok(bytes) = res.bytes().await {
                         if save_file_safely(&file_path, &bytes).is_ok() {
-                            tracing::info!("{} успешно загружен из основного источника.", filename);
+                            tracing::info!(
+                                "{} successfully downloaded from primary source.",
+                                filename
+                            );
                             download_success = true;
                         }
                     }
@@ -149,14 +152,17 @@ pub async fn update_geo_databases(
             // Попытка 2: Резервный источник jsDelivr CDN
             if !download_success {
                 tracing::warn!(
-                    "Основной источник недоступен для {}. Пробуем резервный CDN...",
+                    "Primary source unavailable for {}. Trying fallback CDN...",
                     filename
                 );
                 if let Ok(res) = client.get(fallback_url).send().await {
                     if res.status().is_success() {
                         if let Ok(bytes) = res.bytes().await {
                             if save_file_safely(&file_path, &bytes).is_ok() {
-                                tracing::info!("{} успешно загружен из резервного CDN.", filename);
+                                tracing::info!(
+                                    "{} successfully downloaded from fallback CDN.",
+                                    filename
+                                );
                                 download_success = true;
                             }
                         }
@@ -165,7 +171,10 @@ pub async fn update_geo_databases(
             }
 
             if !download_success {
-                tracing::error!("Не удалось загрузить {} ни из одного источника.", filename);
+                tracing::error!(
+                    "Failed to download {} from all available sources.",
+                    filename
+                );
             }
         }
 

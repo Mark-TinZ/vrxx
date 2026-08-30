@@ -399,7 +399,7 @@ impl SettingsManager {
                 parsed
             } else {
                 tracing::warn!(
-                    "Файл настроек {:?} поврежден или пуст. Попытка восстановления из резервной копии...",
+                    "Settings file {:?} is corrupt or empty. Attempting backup restore...",
                     self.config_path
                 );
                 self.load_settings_backup()
@@ -420,7 +420,7 @@ impl SettingsManager {
         if bak_path.exists() {
             if let Ok(bak_content) = fs::read_to_string(&bak_path) {
                 if let Ok(mut settings) = serde_json::from_str::<AppSettings>(&bak_content) {
-                    tracing::info!("Настройки успешно восстановлены из {:?}", bak_path);
+                    tracing::info!("Settings successfully restored from {:?}", bak_path);
                     self.migrate_legacy_rules(&mut settings);
                     let _ = fs::copy(&bak_path, &self.config_path);
                     return settings;
@@ -444,7 +444,7 @@ impl SettingsManager {
                     {
                         if !legacy_keys.is_empty() {
                             tracing::info!(
-                                "Обнаружено {} ключей в открытом settings.json. Выполняется автоматическая миграция в зашифрованный data.dat...",
+                                "Found {} plain keys in settings.json. Migrating to encrypted data.dat...",
                                 legacy_keys.len()
                             );
                             self.save_keys(&legacy_keys);
@@ -510,7 +510,7 @@ impl SettingsManager {
 
             if let Err(e) = write_res {
                 tracing::error!(
-                    "Ошибка атомарного сохранения настроек в {:?}: {}",
+                    "Error saving settings atomically to {:?}: {}",
                     self.config_path,
                     e
                 );
@@ -533,13 +533,13 @@ impl SettingsManager {
                     Ok(keys) => return keys,
                     Err(e) => {
                         tracing::warn!(
-                            "Ошибка дешифрования {:?}: {e}. Попытка восстановления из резервной копии .bak...",
+                            "Failed to decrypt {:?}: {e}. Attempting backup restore...",
                             self.data_path
                         );
                     }
                 },
                 Err(e) => {
-                    tracing::warn!("Ошибка чтения файла {:?}: {e}", self.data_path);
+                    tracing::warn!("Failed to read file {:?}: {e}", self.data_path);
                 }
             }
         }
@@ -550,7 +550,7 @@ impl SettingsManager {
             if let Ok(bak_bytes) = fs::read(&bak_path) {
                 if let Ok(keys) = crate::crypto::keystore::decrypt_keys(&bak_bytes) {
                     tracing::info!(
-                        "Зашифрованные ключи успешно восстановлены из резервной копии {:?}",
+                        "Encrypted keys successfully restored from backup {:?}",
                         bak_path
                     );
                     let _ = fs::copy(&bak_path, &self.data_path);
@@ -567,7 +567,7 @@ impl SettingsManager {
         let encrypted_container = match crate::crypto::keystore::encrypt_keys(keys) {
             Ok(data) => data,
             Err(e) => {
-                tracing::error!("Критическая ошибка шифрования профилей VPN: {e}");
+                tracing::error!("Critical error encrypting VPN profiles: {e}");
                 return;
             }
         };
@@ -600,7 +600,7 @@ impl SettingsManager {
 
         if let Err(e) = write_res {
             tracing::error!(
-                "Ошибка атомарного сохранения зашифрованных ключей в {:?}: {}",
+                "Error saving encrypted keys atomically to {:?}: {}",
                 self.data_path,
                 e
             );

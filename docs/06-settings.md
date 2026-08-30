@@ -33,36 +33,39 @@
 | `theme` | String | `"default"` | Тема оформления UI: `"default"` (авто), `"force-light"`, `"force-dark"` |
 | `language` | String | `"system"` | Язык интерфейса: `"system"` (по переменным окружения), `"ru"`, `"en"` |
 | `core` | String | `"sing-box"` | Выбранное ядро проксирования (Sing-box) |
-| `tun_mode` | bool | `false` | Режим прозрачного проксирования через сетевой интерфейс (TUN) |
-| `autostart` | bool | `true` | Добавление в автозагрузку системы |
+| `tun_mode` | bool | `false` | Режим прозрачного проксирования через сетевой интерфейс (TUN, gVisor stack) |
+| `autostart` | bool | `true` | Добавление в автозагрузку системы (`~/.config/autostart/`) |
 | `connect_on_startup` | bool | `false` | Автоматически подключать активный профиль при старте |
 | `notifications` | bool | `true` | Системные уведомления (desktop notifications) |
-| `streamer_mode` | bool | `false` | Режим стримера (скрытие IP и SNI в интерфейсе) |
-| `log_level` | String | `"info"` | Уровень логгирования: `"trace"`, `"debug"`, `"info"`, `"warn"`, `"error"` |
+| `streamer_mode` | bool | `false` | Режим стримера (скрытие IP, SNI и UUID в интерфейсе) |
+| `log_level` | String | `"info"` | Уровень логгирования: `"error"`, `"warning"`, `"info"`, `"debug"` |
 | `set_system_proxy` | bool | `true` | Устанавливать системный прокси GNOME при подключении |
 | `socks_port` | u16 | `10808` | Локальный порт для SOCKS5 прокси |
 | `http_port` | u16 | `10809` | Локальный порт для HTTP прокси |
 | `allow_lan` | bool | `false` | Открыть локальные порты для других устройств в сети (`0.0.0.0`) |
-| `enable_sniffing` | bool | `false` | Включить сниффинг трафика (определение доменов из TCP-пакетов) |
-| `domain_strategy` | String | `"AsIs"` | Стратегия разрешения доменных имён |
-| `bypass_lan` | bool | `false` | Направлять трафик к локальной сети напрямую (мимо VPN) |
-| `enable_fake_dns` | bool | `false` | Включить FakeDNS (возврат ложных IP для ускорения маршрутизации) |
+| `enable_sniffing` | bool | `true` | Включить сниффинг трафика (определение доменов из TLS SNI и HTTP) |
+| `block_quic` | bool | `true` | Блокировать QUIC (UDP 443) для принудительного использования TCP |
+| `domain_strategy` | String | `"PreferIPv4"` | Стратегия разрешения доменных имён (`PreferIPv4`, `PreferIPv6`, `AsIs`) |
+| `bypass_lan` | bool | `true` | Направлять трафик к локальной сети напрямую (`geoip-private.srs`) |
+| `enable_fake_dns` | bool | `true` | Включить Fake DNS (`198.18.0.0/15` для ускорения маршрутизации) |
 | `enable_local_dns` | bool | `false` | Использовать локальный DNS-сервер |
-| `enable_mux` | bool | `false` | Включить мультиплексирование соединений (smux) |
-| `mux_concurrency` | i32 | `8` | Количество потоков мультиплексирования |
+| `enable_mux` | bool | `false` | Включить мультиплексирование соединений (`h2mux`) |
+| `mux_concurrency` | i32 | `8` | Количество потоков мультиплексирования (1–128) |
 | `enable_fragment` | bool | `false` | Включить фрагментацию пакетов (в стадии реализации) |
 | `ping_algorithm` | String | `"tcp_handshake"` | Алгоритм пинга: `"tcp_handshake"`, `"icmp_ping"`, `"via_proxy_get"`, `"via_proxy_head"` |
 | `ping_target_url` | String | `"https://www.gstatic.com/generate_204"` | URL-адрес для HTTP проверки задержки через прокси |
-| `keys` | Vec<VpnKeyData>| `[]` | Список VPN-ключей (в памяти; сохраняется в `data.dat`) |
+| `keys` | Vec<VpnKeyData>| `[]` | Список VPN-ключей (в памяти; сохраняется в зашифрованном `data.dat`) |
 | `whitelist` | Vec<String>| `[]` | Белый список доменов |
-| `enable_routing` | bool | `false` | Активировать продвинутую маршрутизацию |
+| `enable_routing` | bool | `true` | Активировать продвинутую маршрутизацию |
 | `routing_mode` | String | `"bypass"` | Режим маршрутизации: `"bypass"` (обход для регионов) или `"proxy"` (только для регионов) |
-| `route_ru` | bool | `false` | Подключить правила для РФ (geosite/geoip) |
+| `route_ru` | bool | `true` | Подключить правила для РФ (legacy флаг) |
+| `route_ru_sites` | bool | `true` | Направлять сайты РФ напрямую (`geosite-ru`) |
+| `route_ru_ips` | bool | `true` | Направлять IP РФ напрямую (`geoip-ru`) |
 | `route_ir` | bool | `false` | Подключить правила для Ирана |
 | `route_cn` | bool | `false` | Подключить правила для Китая |
 | `route_antifilter`| bool | `false` | Подключить правила Antifilter |
-| `block_ads` | bool | `false` | Блокировать рекламные домены |
-| `disable_ipv6` | bool | `false` | Блокировать весь IPv6 трафик (отклонять AAAA запросы) |
+| `block_ads` | bool | `false` | Блокировать рекламные домены (`geosite-ads`) |
+| `disable_ipv6` | bool | `true` | Блокировать весь IPv6 трафик (отклонять AAAA запросы) |
 | `routing_rules` | Vec<RoutingRule>| `[]` | Пользовательские правила маршрутизации |
 
 ---

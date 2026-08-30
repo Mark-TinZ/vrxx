@@ -185,7 +185,7 @@ pub fn find_singbox_binary() -> Option<PathBuf> {
         }
     }
 
-    tracing::error!("Валидный исполняемый файл sing-box не найден среди путей-кандидатов");
+    tracing::error!("No valid sing-box executable found among candidate search paths");
     None
 }
 

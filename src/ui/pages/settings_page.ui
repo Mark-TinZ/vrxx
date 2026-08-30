@@ -12,24 +12,25 @@
 <interface domain="vrxx">
   <!--
     ============================================================================
-    СТРАНИЦА НАСТРОЕК ПРИЛОЖЕНИЯ (VrxxSettingsPage)
+    СТРАНИЦА НАСТРОЕК ПРИЛОЖЕНИЯ И СЕТЕВОГО ЯДРА (VrxxSettingsPage)
     ============================================================================
 
-    СТРУКТУРА МАКЕТА:
+    СТРУКТУРА МАКЕТА (GNOME HIG 4+):
     ┌──────────────────────────────────────────────────────────────────────────┐
     │ AdwHeaderBar (Шапка):                                                    │
-    │ ├─ [Кнопка Сохранить: btn_apply] (Применить и перезапустить ядро)        │
+    │ ├─ [Кнопка Применить: btn_apply] (Скрыта до появления несохраненных изм) │
     │ ├─ AdwWindowTitle: "Settings" / "Настройки"                              │
     │ └─ [Кнопка Меню: primary_menu_btn]                                       │
     ├──────────────────────────────────────────────────────────────────────────┤
-    │ AdwPreferencesPage (Настройки, сгруппированные по категориям):          │
-    │ ├─ 1. General (Общие): Язык, автозапуск, автоподключение, стример-режим  │
-    │ ├─ 2. Core (Ядро): Версия sing-box                                       │
-    │ ├─ 3. Network & Routing (Сеть): TUN, сниффинг, QUIC, GeoIP/Site, Mux    │
-    │ ├─ 4. Backup (Резервное копирование): Импорт/Экспорт конфигурации        │
-    │ ├─ 5. Latency Testing (Замер задержки): Алгоритм пинга, URL для проверки │
-    │ ├─ 6. Diagnostics (Диагностика): Уровень логов, окно логов, папка логов  │
-    │ └─ 7. Danger Zone (Опасная зона): Сброс всех настроек к заводским        │
+    │ AdwPreferencesPage (Настройки, сгруппированные по 8 категориям):         │
+    │ ├─ 1. General (Общие): Язык, автозапуск, автоподключение, уведомления    │
+    │ ├─ 2. Network & Core (Сеть и ядро): TUN, сниффинг, QUIC, LAN, FakeDNS   │
+    │ ├─ 3. Advanced Connection (Мультиплексирование): Mux (h2mux) и потоки    │
+    │ ├─ 4. Geo Data (Базы гео-данных): Обновление GeoIP и GeoSite (.srs)      │
+    │ ├─ 5. Latency Testing (Замер задержки): Алгоритм пинга, URL проверки     │
+    │ ├─ 6. Diagnostics & Core (Диагностика): Версия sing-box, уровень логов   │
+    │ ├─ 7. Backup & Restore (Резервное копирование): Импорт/Экспорт настроек  │
+    │ └─ 8. Danger Zone (Опасная зона): Сброс всех настроек к заводским        │
     └──────────────────────────────────────────────────────────────────────────┘
   -->
 
@@ -78,17 +79,19 @@
           <object class="AdwPreferencesPage">
 
             <!-- ============================================================= -->
-            <!-- СЕКЦИЯ 1: ОБЩИЕ НАСТРОЙКИ (GENERAL)                           -->
+            <!-- СЕКЦИЯ 1: ОБЩИЕ ПАРАМЕТРЫ (GENERAL)                           -->
             <!-- ============================================================= -->
             <child>
               <object class="AdwPreferencesGroup">
                 <property name="title" translatable="yes">General</property>
+                <property name="description" translatable="yes">Application interface, startup, and notification preferences</property>
 
                 <!-- Выбор языка интерфейса -->
                 <child>
                   <object class="AdwComboRow" id="language_row">
                     <property name="title" translatable="yes">Language</property>
                     <property name="subtitle" translatable="yes">Application restart required</property>
+                    <property name="tooltip-text" translatable="yes">Select the interface language. Changing the language requires restarting the application.</property>
                     <property name="model">
                       <object class="GtkStringList">
                         <items>
@@ -106,6 +109,7 @@
                   <object class="AdwSwitchRow" id="autostart_row">
                     <property name="title" translatable="yes">Run at startup</property>
                     <property name="subtitle" translatable="yes">Automatically start application in the background</property>
+                    <property name="tooltip-text" translatable="yes">Starts VRXX in the background minimized when your system boots up.</property>
                     <property name="active">True</property>
                   </object>
                 </child>
@@ -115,6 +119,7 @@
                   <object class="AdwSwitchRow" id="connect_startup_row">
                     <property name="title" translatable="yes">Connect on startup</property>
                     <property name="subtitle" translatable="yes">Restore last active connection</property>
+                    <property name="tooltip-text" translatable="yes">Automatically connects to the last active VPN server when the application starts.</property>
                     <property name="active">False</property>
                   </object>
                 </child>
@@ -123,7 +128,8 @@
                 <child>
                   <object class="AdwSwitchRow" id="notifications_row">
                     <property name="title" translatable="yes">Notifications</property>
-                    <property name="subtitle" translatable="yes">Show notifications on connection status change</property>
+                    <property name="subtitle" translatable="yes">Show desktop notifications on connection events</property>
+                    <property name="tooltip-text" translatable="yes">Displays system notifications when connection status changes or when errors occur.</property>
                     <property name="active">True</property>
                   </object>
                 </child>
@@ -133,7 +139,7 @@
                   <object class="AdwSwitchRow" id="streamer_mode_row">
                     <property name="title" translatable="yes">Streamer mode</property>
                     <property name="subtitle" translatable="yes">Hide IP addresses and sensitive information in the interface</property>
-                    <property name="tooltip-text" translatable="yes">Hides IP addresses, domain names, and secret URLs in the interface to prevent accidental disclosure during screen sharing or streaming.</property>
+                    <property name="tooltip-text" translatable="yes">Masks IP addresses, server domains, and configuration keys in the interface to prevent accidental exposure during screen recording or live streaming.</property>
                     <property name="active">False</property>
                   </object>
                 </child>
@@ -141,36 +147,19 @@
             </child>
 
             <!-- ============================================================= -->
-            <!-- СЕКЦИЯ 2: ИНФОРМАЦИЯ О ЯДРЕ (CORE)                            -->
+            <!-- СЕКЦИЯ 2: СЕТЬ И ЯДРО (NETWORK & CORE)                        -->
             <!-- ============================================================= -->
             <child>
               <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">Core</property>
-                <property name="description" translatable="yes">Select the routing engine used for connection</property>
-
-                <!-- Версия sing-box в системе -->
-                <child>
-                  <object class="AdwActionRow" id="core_info_row">
-                    <property name="title" translatable="yes">Core version</property>
-                    <property name="subtitle" translatable="yes">Unknown</property>
-                  </object>
-                </child>
-              </object>
-            </child>
-
-            <!-- ============================================================= -->
-            <!-- СЕКЦИЯ 3: СЕТЕВЫЕ ПАРАМЕТРЫ (NETWORK & ROUTING)               -->
-            <!-- ============================================================= -->
-            <child>
-              <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">Network and Routing</property>
+                <property name="title" translatable="yes">Network and Core</property>
+                <property name="description" translatable="yes">Core protocol engine parameters and transparent traffic routing</property>
 
                 <!-- TUN режим (прозрачная виртуальная сетевая карта) -->
                 <child>
                   <object class="AdwSwitchRow" id="tun_mode_row">
                     <property name="title" translatable="yes">Enable TUN Mode</property>
-                    <property name="subtitle" translatable="yes">Requires root privileges</property>
-                    <property name="tooltip-text" translatable="yes">Creates a virtual network interface to route all system traffic transparently, bypassing application-specific proxy settings.</property>
+                    <property name="subtitle" translatable="yes">Route all system traffic through virtual adapter (requires root)</property>
+                    <property name="tooltip-text" translatable="yes">Creates a virtual network card (vrxx-tun) to route all system traffic transparently, without needing proxy settings in individual apps.</property>
                   </object>
                 </child>
 
@@ -178,8 +167,8 @@
                 <child>
                   <object class="AdwSwitchRow" id="sniffing_row">
                     <property name="title" translatable="yes">Sniffing (Packet analysis)</property>
-                    <property name="subtitle" translatable="yes">Determine domain from traffic (required for routing)</property>
-                    <property name="tooltip-text" translatable="yes">Inspects encrypted SNI and HTTP headers from traffic to identify destination domains for accurate rule matching.</property>
+                    <property name="subtitle" translatable="yes">Extract destination domain from TLS SNI and HTTP headers</property>
+                    <property name="tooltip-text" translatable="yes">Inspects outgoing packets to identify actual domain names for accurate routing and bypass rules.</property>
                   </object>
                 </child>
 
@@ -187,16 +176,83 @@
                 <child>
                   <object class="AdwSwitchRow" id="block_quic_row">
                     <property name="title" translatable="yes">Block QUIC (UDP 443)</property>
-                    <property name="subtitle" translatable="yes">Disables HTTP/3 over UDP to force TCP and prevent VPN drops</property>
-                    <property name="tooltip-text" translatable="yes">Blocks QUIC (UDP 443) traffic, forcing browsers like Chrome to use TCP. Prevents connection drops on restricted networks.</property>
+                    <property name="subtitle" translatable="yes">Force browsers to use TCP to prevent connection drops</property>
+                    <property name="tooltip-text" translatable="yes">Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and Firefox to use TCP. Prevents streaming buffering and connection stalls on restricted networks.</property>
                   </object>
                 </child>
+
+                <!-- Обход локальной сети (Bypass LAN) -->
+                <child>
+                  <object class="AdwSwitchRow" id="bypass_lan_row">
+                    <property name="title" translatable="yes">Bypass LAN</property>
+                    <property name="subtitle" translatable="yes">Do not route local network traffic through VPN</property>
+                    <property name="tooltip-text" translatable="yes">Directs local network subnets (192.168.x.x, 10.x.x.x, local printers, smart home devices) directly to your local router instead of through the VPN tunnel.</property>
+                  </object>
+                </child>
+
+                <!-- Fake DNS (виртуальные локальные IP для снижения задержек) -->
+                <child>
+                  <object class="AdwSwitchRow" id="fake_dns_row">
+                    <property name="title" translatable="yes">Fake DNS</property>
+                    <property name="subtitle" translatable="yes">Return synthetic local IPs for ultra-fast domain resolution</property>
+                    <property name="tooltip-text" translatable="yes">Assigns synthetic IP addresses (198.18.0.0/15) locally for instant response, while resolving real IPs on the remote proxy server. Speeds up connection opening significantly.</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- ============================================================= -->
+            <!-- СЕКЦИЯ 3: РАСШИРЕННАЯ ОПТИМИЗАЦИЯ (ADVANCED CONNECTION)       -->
+            <!-- ============================================================= -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Advanced Connection</property>
+                <property name="description" translatable="yes">TCP stream multiplexing and connection optimization</property>
+
+                <!-- Мультиплексирование соединений (Mux) -->
+                <child>
+                  <object class="AdwExpanderRow" id="mux_row">
+                    <property name="title" translatable="yes">Multiplexing (Mux)</property>
+                    <property name="subtitle" translatable="yes">Combine multiple TCP streams into a single connection (h2mux)</property>
+                    <property name="tooltip-text" translatable="yes">Reuses a single persistent TCP connection for multiple streams, reducing latency when opening many connections simultaneously. May cause jitter on high-packet-loss networks.</property>
+                    <property name="show-enable-switch">True</property>
+
+                    <!-- Количество параллельных потоков на соединение -->
+                    <child>
+                      <object class="AdwSpinRow" id="mux_concurrency_row">
+                        <property name="title" translatable="yes">Concurrency</property>
+                        <property name="subtitle" translatable="yes">Maximum concurrent multiplexed streams (1–128)</property>
+                        <property name="tooltip-text" translatable="yes">Defines how many concurrent streams can be transmitted simultaneously over one TCP connection. Default value is 8.</property>
+                        <property name="adjustment">
+                          <object class="GtkAdjustment">
+                            <property name="lower">1</property>
+                            <property name="upper">128</property>
+                            <property name="value">8</property>
+                            <property name="step-increment">1</property>
+                            <property name="page-increment">8</property>
+                          </object>
+                        </property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- ============================================================= -->
+            <!-- СЕКЦИЯ 4: БАЗЫ ГЕО-ДАННЫХ (GEO DATA)                          -->
+            <!-- ============================================================= -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Geo Data</property>
+                <property name="description" translatable="yes">Precompiled binary rule-sets (GeoIP and GeoSite) for domain and IP routing</property>
 
                 <!-- Обновление гео-баз GeoIP / GeoSite -->
                 <child>
                   <object class="AdwActionRow" id="update_geo_row">
                     <property name="title" translatable="yes">Update Geo Data</property>
-                    <property name="subtitle" translatable="yes">Download latest geoip and geosite data</property>
+                    <property name="subtitle" translatable="yes">Download latest GeoIP and GeoSite binary rule-sets (.srs)</property>
+                    <property name="tooltip-text" translatable="yes">Fetches the latest compiled binary rule-sets for GeoIP and GeoSite databases to keep regional bypass lists up to date.</property>
                     <child>
                       <object class="GtkStack" id="geo_update_stack">
                         <property name="transition-type">crossfade</property>
@@ -206,6 +262,7 @@
                             <property name="child">
                               <object class="GtkButton" id="btn_update_geo">
                                 <property name="label" translatable="yes">Update</property>
+                                <property name="tooltip-text" translatable="yes">Download latest geo-databases now</property>
                                 <property name="valign">center</property>
                               </object>
                             </property>
@@ -227,95 +284,6 @@
                     </child>
                   </object>
                 </child>
-
-                <!-- Обход локальной сети (Bypass LAN) -->
-                <child>
-                  <object class="AdwSwitchRow" id="bypass_lan_row">
-                    <property name="title" translatable="yes">Bypass LAN</property>
-                    <property name="subtitle" translatable="yes">Do not route local traffic through VPN</property>
-                    <property name="tooltip-text" translatable="yes">Directs traffic for local network addresses (192.168.x.x, 10.x.x.x, local printers) away from the VPN so local devices remain accessible.</property>
-                  </object>
-                </child>
-
-                <!-- Fake DNS (виртуальные локальные IP для снижения задержек) -->
-                <child>
-                  <object class="AdwSwitchRow" id="fake_dns_row">
-                    <property name="title" translatable="yes">Fake DNS</property>
-                    <property name="subtitle" translatable="yes">Return fake IPs (improves speed but breaks some apps)</property>
-                    <property name="tooltip-text" translatable="yes">Returns synthetic local IP addresses (198.18.0.0/15) for fast domain responses while resolving real target IPs remotely on the proxy server.</property>
-                  </object>
-                </child>
-
-                <!-- Расширенные сетевые настройки: Мультиплексирование (Mux) -->
-                <child>
-                  <object class="AdwExpanderRow" id="advanced_network_expander">
-                    <property name="title" translatable="yes">Advanced Settings</property>
-
-                    <child>
-                      <object class="AdwExpanderRow" id="mux_row">
-                        <property name="title" translatable="yes">Multiplexing (Mux)</property>
-                        <property name="subtitle" translatable="yes">Speeds up connections but may cause instability</property>
-                        <property name="tooltip-text" translatable="yes">Reduces handshake latency by reusing a single TCP connection for multiple streams. May increase jitter or trigger DPI traffic detection.</property>
-                        <property name="show-enable-switch">True</property>
-                        <child>
-                          <object class="AdwSpinRow" id="mux_concurrency_row">
-                            <property name="title" translatable="yes">Concurrency</property>
-                            <property name="adjustment">
-                              <object class="GtkAdjustment">
-                                <property name="lower">-1</property>
-                                <property name="upper">1024</property>
-                                <property name="value">8</property>
-                                <property name="step-increment">1</property>
-                              </object>
-                            </property>
-                          </object>
-                        </child>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-
-              </object>
-            </child>
-
-            <!-- ============================================================= -->
-            <!-- СЕКЦИЯ 4: РЕЗЕРВНОЕ КОПИРОВАНИЕ (BACKUP)                      -->
-            <!-- ============================================================= -->
-            <child>
-              <object class="AdwPreferencesGroup">
-                <property name="title" translatable="yes">Backup</property>
-
-                <!-- Импорт настроек и профилей из JSON файла -->
-                <child>
-                  <object class="AdwActionRow">
-                    <property name="title" translatable="yes">Import settings</property>
-                    <property name="subtitle" translatable="yes">Load profiles and settings from file</property>
-                    <property name="activatable">True</property>
-                    <property name="action-name">app.import_config</property>
-                    <child>
-                      <object class="GtkImage">
-                        <property name="icon-name">document-open-symbolic</property>
-                        <property name="valign">center</property>
-                      </object>
-                    </child>
-                  </object>
-                </child>
-
-                <!-- Экспорт текущих настроек и профилей в JSON файл -->
-                <child>
-                  <object class="AdwActionRow">
-                    <property name="title" translatable="yes">Export settings</property>
-                    <property name="subtitle" translatable="yes">Save current configuration to file</property>
-                    <property name="activatable">True</property>
-                    <property name="action-name">app.export_config</property>
-                    <child>
-                      <object class="GtkImage">
-                        <property name="icon-name">document-save-symbolic</property>
-                        <property name="valign">center</property>
-                      </object>
-                    </child>
-                  </object>
-                </child>
               </object>
             </child>
 
@@ -325,12 +293,14 @@
             <child>
               <object class="AdwPreferencesGroup">
                 <property name="title" translatable="yes">Latency Testing</property>
+                <property name="description" translatable="yes">Methods and parameters for measuring server response time</property>
 
                 <!-- Выбор алгоритма измерения задержки -->
                 <child>
                   <object class="AdwComboRow" id="ping_algorithm_row">
                     <property name="title" translatable="yes">Ping Algorithm</property>
-                    <property name="subtitle" translatable="yes">Method used for measuring server latency</property>
+                    <property name="subtitle" translatable="yes">Method used for measuring server response time</property>
+                    <property name="tooltip-text" translatable="yes">Choose measurement method: TCP Handshake (fast, connects to port), ICMP Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test through tunnel).</property>
                     <property name="model">
                       <object class="GtkStringList">
                         <items>
@@ -349,6 +319,7 @@
                 <child>
                   <object class="AdwEntryRow" id="ping_target_url_row">
                     <property name="title" translatable="yes">Ping Target URL</property>
+                    <property name="tooltip-text" translatable="yes">The lightweight URL requested during HTTP proxy latency measurements (default is Google generate_204).</property>
                     <property name="text">https://www.gstatic.com/generate_204</property>
                   </object>
                 </child>
@@ -356,16 +327,28 @@
             </child>
 
             <!-- ============================================================= -->
-            <!-- СЕКЦИЯ 6: ДИАГНОСТИКА И ЛОГИ (DIAGNOSTICS)                    -->
+            <!-- СЕКЦИЯ 6: ДИАГНОСТИКА И ЯДРО (DIAGNOSTICS & CORE)             -->
             <!-- ============================================================= -->
             <child>
               <object class="AdwPreferencesGroup">
                 <property name="title" translatable="yes">Diagnostics</property>
+                <property name="description" translatable="yes">Core version information, logs, and troubleshooting tools</property>
+
+                <!-- Версия sing-box в системе -->
+                <child>
+                  <object class="AdwActionRow" id="core_info_row">
+                    <property name="title" translatable="yes">Core version</property>
+                    <property name="subtitle" translatable="yes">Unknown</property>
+                    <property name="tooltip-text" translatable="yes">Displays the currently installed binary version and compilation tags of the sing-box core.</property>
+                  </object>
+                </child>
 
                 <!-- Уровень детализации системных логов -->
                 <child>
                   <object class="AdwComboRow" id="log_level_row">
                     <property name="title" translatable="yes">Logging level</property>
+                    <property name="subtitle" translatable="yes">Verbosity of core output messages</property>
+                    <property name="tooltip-text" translatable="yes">Controls how detailed the core log messages are: Error (critical only), Warning (potential issues), Info (standard connection events), Debug (detailed packet diagnostics).</property>
                     <property name="model">
                       <object class="GtkStringList">
                         <items>
@@ -384,7 +367,8 @@
                 <child>
                   <object class="AdwActionRow">
                     <property name="title" translatable="yes">View logs</property>
-                    <property name="subtitle" translatable="yes">Open console with real-time logs</property>
+                    <property name="subtitle" translatable="yes">Open real-time console log viewer</property>
+                    <property name="tooltip-text" translatable="yes">Opens the integrated live log viewer window with real-time filtering, pause, search, and export options.</property>
                     <property name="activatable">True</property>
                     <property name="action-name">app.view_logs</property>
                     <child>
@@ -400,7 +384,8 @@
                 <child>
                   <object class="AdwActionRow">
                     <property name="title" translatable="yes">Open logs folder</property>
-                    <property name="subtitle" translatable="yes">Open system folder with log files</property>
+                    <property name="subtitle" translatable="yes">Open system directory containing log files</property>
+                    <property name="tooltip-text" translatable="yes">Opens the local system directory containing persistent log files in your file manager.</property>
                     <property name="activatable">True</property>
                     <property name="action-name">app.open_log_dir</property>
                     <child>
@@ -415,15 +400,63 @@
             </child>
 
             <!-- ============================================================= -->
-            <!-- СЕКЦИЯ 7: ОПАСНАЯ ЗОНА (DANGER ZONE)                          -->
+            <!-- СЕКЦИЯ 7: РЕЗЕРВНОЕ КОПИРОВАНИЕ (BACKUP & RESTORE)            -->
             <!-- ============================================================= -->
             <child>
               <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Backup</property>
+                <property name="description" translatable="yes">Export and import application settings and VPN profiles</property>
+
+                <!-- Импорт настроек и профилей из JSON файла -->
+                <child>
+                  <object class="AdwActionRow">
+                    <property name="title" translatable="yes">Import settings</property>
+                    <property name="subtitle" translatable="yes">Restore settings and profiles from a backup file</property>
+                    <property name="tooltip-text" translatable="yes">Loads application settings, custom routing rules, and VPN profiles from a JSON backup file.</property>
+                    <property name="activatable">True</property>
+                    <property name="action-name">app.import_config</property>
+                    <child>
+                      <object class="GtkImage">
+                        <property name="icon-name">document-open-symbolic</property>
+                        <property name="valign">center</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <!-- Экспорт текущих настроек и профилей в JSON файл -->
+                <child>
+                  <object class="AdwActionRow">
+                    <property name="title" translatable="yes">Export settings</property>
+                    <property name="subtitle" translatable="yes">Save current configuration and profiles to a backup file</property>
+                    <property name="tooltip-text" translatable="yes">Exports all application settings, routing rules, and VPN profiles to a portable JSON backup file.</property>
+                    <property name="activatable">True</property>
+                    <property name="action-name">app.export_config</property>
+                    <child>
+                      <object class="GtkImage">
+                        <property name="icon-name">document-save-symbolic</property>
+                        <property name="valign">center</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- ============================================================= -->
+            <!-- СЕКЦИЯ 8: ОПАСНАЯ ЗОНА (DANGER ZONE)                          -->
+            <!-- ============================================================= -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <property name="title" translatable="yes">Danger Zone</property>
+                <property name="description" translatable="yes">Irreversible actions and complete configuration reset</property>
+
                 <!-- Сброс всех профилей и настроек -->
                 <child>
                   <object class="AdwActionRow">
                     <property name="title" translatable="yes">Reset settings</property>
-                    <property name="subtitle" translatable="yes">Delete all saved data (danger zone)</property>
+                    <property name="subtitle" translatable="yes">Erase all profiles and restore factory defaults</property>
+                    <property name="tooltip-text" translatable="yes">Permanently erases all saved VPN keys, custom rules, and configuration settings, returning the application to its default state.</property>
                     <property name="activatable">True</property>
                     <property name="action-name">app.reset_settings</property>
                     <style>

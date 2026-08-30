@@ -48,15 +48,15 @@ impl TunManager {
 
     /// Выполняет создание TUN-устройства `vrxx-tun`, назначение IP и настройку маршрутизации.
     pub async fn setup(&mut self) -> Result<()> {
-        tracing::info!("Настройка TUN интерфейса vrxx-tun (172.19.0.1/30, table 100)...");
+        tracing::info!("Configuring TUN interface vrxx-tun (172.19.0.1/30, table 100)...");
 
         // 1. Создание TUN устройства
         let tun = DeviceBuilder::new()
             .name("vrxx-tun")
             .build_async()
-            .context("Не удалось создать TUN устройство")?;
+            .context("Failed to create TUN device")?;
         self.tun = Some(tun);
-        tracing::debug!("TUN устройство vrxx-tun успешно создано");
+        tracing::debug!("TUN device vrxx-tun successfully created");
 
         // 2. Получение индекса сетевого интерфейса
         let mut links = self
@@ -68,9 +68,9 @@ impl TunManager {
         let link = links
             .try_next()
             .await?
-            .context("Интерфейс vrxx-tun не найден")?;
+            .context("Interface vrxx-tun not found")?;
         self.if_index = link.header.index;
-        tracing::debug!("Интерфейс vrxx-tun найден, if_index={}", self.if_index);
+        tracing::debug!("Interface vrxx-tun found, if_index={}", self.if_index);
 
         // 3. Установка IPv4 адреса 172.19.0.1/30
         let addr = Ipv4Addr::new(172, 19, 0, 1);
@@ -80,8 +80,8 @@ impl TunManager {
             .add(self.if_index, IpAddr::V4(addr), prefix)
             .execute()
             .await
-            .context("Не удалось назначить IP адрес интерфейсу")?;
-        tracing::debug!("Интерфейсу vrxx-tun назначен адрес 172.19.0.1/30");
+            .context("Failed to assign IP address to interface")?;
+        tracing::debug!("Assigned 172.19.0.1/30 to vrxx-tun");
 
         // 4. Перевод интерфейса в состояние UP
         self.handle
@@ -89,8 +89,8 @@ impl TunManager {
             .set(LinkUnspec::new_with_index(self.if_index).up().build())
             .execute()
             .await
-            .context("Не удалось поднять интерфейс")?;
-        tracing::debug!("Интерфейс vrxx-tun переведен в состояние UP");
+            .context("Failed to set interface UP")?;
+        tracing::debug!("Interface vrxx-tun set to UP state");
 
         // 5. Создание таблицы маршрутизации 100 и добавление маршрута по умолчанию
         let route_msg = RouteMessageBuilder::<Ipv4Addr>::new()
@@ -103,8 +103,8 @@ impl TunManager {
             .add(route_msg)
             .execute()
             .await
-            .context("Не удалось добавить маршрут по умолчанию в таблицу 100")?;
-        tracing::debug!("Добавлен маршрут по умолчанию в таблицу 100 через vrxx-tun");
+            .context("Failed to add default route to table 100")?;
+        tracing::debug!("Added default route to table 100 via vrxx-tun");
 
         // 6. Добавление ip rule для перенаправления трафика в таблицу 100
         let status = tokio::process::Command::new("ip")
@@ -112,9 +112,9 @@ impl TunManager {
             .status()
             .await?;
         if !status.success() {
-            anyhow::bail!("Не удалось добавить ip rule для таблицы 100");
+            anyhow::bail!("Failed to add ip rule for table 100");
         }
-        tracing::info!("Настройка TUN интерфейса vrxx-tun успешно завершена");
+        tracing::info!("TUN interface vrxx-tun configuration completed successfully");
 
         Ok(())
     }
@@ -123,18 +123,20 @@ impl TunManager {
     pub async fn teardown(&mut self) -> Result<()> {
         if self.if_index != 0 {
             tracing::info!(
-                "Очистка и удаление TUN интерфейса vrxx-tun (if_index={})...",
+                "Cleaning and removing TUN interface vrxx-tun (if_index={})...",
                 self.if_index
             );
 
             // Удаление ip rule
             if let Ok(st) = tokio::process::Command::new("ip")
                 .args(["rule", "del", "not", "fwmark", "0x255", "table", "100"])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
                 .status()
                 .await
             {
                 if !st.success() {
-                    tracing::warn!("Не удалось удалить ip rule для таблицы 100 при остановке");
+                    tracing::warn!("Failed to delete ip rule for table 100 during teardown");
                 }
             }
 
@@ -144,16 +146,13 @@ impl TunManager {
                 .table_id(100)
                 .build();
             if let Err(e) = self.handle.route().del(route_msg).execute().await {
-                tracing::warn!(
-                    "Не удалось удалить маршрут по умолчанию из таблицы 100: {}",
-                    e
-                );
+                tracing::warn!("Failed to delete default route from table 100: {}", e);
             }
         }
 
         self.tun = None;
         self.connection_task.abort();
-        tracing::debug!("Задача Netlink соединения остановлена");
+        tracing::debug!("Netlink connection task aborted");
         Ok(())
     }
 }
@@ -164,11 +163,13 @@ impl TunManager {
 /// 2. Очистка подвисших правил таблицы маршрутизации (`ip rule del table 100`).
 /// 3. Сброс `org.gnome.system.proxy mode` на `"none"`, если прокси не подключен.
 pub async fn self_heal() -> Result<()> {
-    tracing::info!("Запуск процедур сетевого самовосстановления (Self-Healing)...");
+    tracing::info!("Running network self-healing procedures...");
 
     // 1. Проверка наличия и удаление сиротских интерфейсов vrxx-tun
     let status_del_tun = tokio::process::Command::new("ip")
         .args(["link", "del", "vrxx-tun"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .status()
         .await;
 
@@ -186,6 +187,8 @@ pub async fn self_heal() -> Result<()> {
     loop {
         let status = tokio::process::Command::new("ip")
             .args(["rule", "del", "table", "100"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .status()
             .await;
 

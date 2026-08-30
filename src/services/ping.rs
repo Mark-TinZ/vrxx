@@ -220,7 +220,7 @@ pub async fn verify_proxy_connectivity(
 ) -> Result<u128, ConnectivityError> {
     let proxy_url = format!("socks5://127.0.0.1:{}", socks_port);
     tracing::debug!(
-        "Запуск E2E Warm-Up проверки сквозной связи через {} к {} (таймаут: {:?})",
+        "Starting E2E Warm-Up connectivity check via {} to {} (timeout: {:?})",
         proxy_url,
         target_url,
         timeout_duration
@@ -248,7 +248,7 @@ pub async fn verify_proxy_connectivity(
         {
             port_ready = true;
             tracing::debug!(
-                "Локальный SOCKS5 порт {} открыт и готов к приему трафика за {} ms",
+                "Local SOCKS5 port {} is open and ready to accept traffic in {} ms",
                 socks_port,
                 start.elapsed().as_millis()
             );
@@ -260,12 +260,12 @@ pub async fn verify_proxy_connectivity(
 
     if !port_ready {
         tracing::warn!(
-            "Локальный SOCKS5 порт {} не начал отвечать за {} ms",
+            "Local SOCKS5 port {} did not respond within {} ms",
             socks_port,
             start.elapsed().as_millis()
         );
         return Err(ConnectivityError::ProxyError(format!(
-            "Локальный SOCKS5 сокет ядра (127.0.0.1:{}) не открылся вовремя",
+            "Local SOCKS5 core socket (127.0.0.1:{}) did not open in time",
             socks_port
         )));
     }
@@ -303,27 +303,23 @@ pub async fn verify_proxy_connectivity(
                 if status.is_success() || status.as_u16() == 204 {
                     let latency = start.elapsed().as_millis();
                     tracing::info!(
-                        "E2E Warm-Up проверка успешно пройдена с попытки {} за {} ms (статус {})",
+                        "E2E Warm-Up check succeeded on attempt {} in {} ms (status {})",
                         attempt,
                         latency,
                         status
                     );
                     return Ok(latency);
                 } else {
-                    tracing::warn!("E2E проверка вернула неуспешный HTTP-статус: {}", status);
+                    tracing::warn!("E2E check returned non-success HTTP status: {}", status);
                     last_error = Some(ConnectivityError::RequestFailed(format!(
-                        "Неожиданный HTTP-статус {}",
+                        "Unexpected HTTP status {}",
                         status
                     )));
                 }
             }
             Ok(Err(e)) => {
                 let err_str = e.to_string();
-                tracing::debug!(
-                    "E2E проверка: попытка {} завершилась с ошибкой: {}",
-                    attempt,
-                    err_str
-                );
+                tracing::debug!("E2E check: attempt {} failed: {}", attempt, err_str);
                 if e.is_timeout() {
                     last_error = Some(ConnectivityError::Timeout(timeout_duration));
                 } else if err_str.contains("connection reset")
@@ -340,7 +336,7 @@ pub async fn verify_proxy_connectivity(
                 }
             }
             Err(_) => {
-                tracing::debug!("E2E проверка: таймаут попытки {}", attempt);
+                tracing::debug!("E2E check: attempt {} timed out", attempt);
                 last_error = Some(ConnectivityError::Timeout(timeout_duration));
             }
         }
@@ -355,7 +351,7 @@ pub async fn verify_proxy_connectivity(
 
     let final_err = last_error.unwrap_or(ConnectivityError::Timeout(timeout_duration));
     tracing::warn!(
-        "E2E проверка сквозной связи не удалась за {} ms: {:?}",
+        "E2E connectivity check failed in {} ms: {:?}",
         start.elapsed().as_millis(),
         final_err
     );

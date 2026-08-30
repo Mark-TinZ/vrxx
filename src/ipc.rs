@@ -177,7 +177,7 @@ impl DaemonClient {
                             // Логируем периодически, чтобы не засорять журнал при первом подключении
                             if retry_count % 10 == 0 {
                                 tracing::warn!(
-                                    "Потеряно SSE соединение с демоном, повторная попытка... (ошибка: {})",
+                                    "Lost SSE connection to daemon, retrying... (error: {})",
                                     err
                                 );
                             }

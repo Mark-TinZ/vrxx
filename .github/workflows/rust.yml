@@ -25,7 +25,7 @@ jobs:
     - name: Install GTK4 dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libgtk-4-dev libadwaita-1-dev gettext xvfb libssl-dev pkg-config
+        sudo apt-get install -y libgtk-4-dev libadwaita-1-dev gettext xvfb libssl-dev pkg-config locales locales-all
 
     - name: Cache cargo registry
       uses: actions/cache@v4

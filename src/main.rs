@@ -131,12 +131,12 @@ fn main() -> glib::ExitCode {
         let rt = match tokio::runtime::Runtime::new() {
             Ok(runtime) => runtime,
             Err(e) => {
-                tracing::error!("Не удалось создать Tokio Runtime для TUI: {e}");
+                tracing::error!("Failed to create Tokio Runtime for TUI: {e}");
                 std::process::exit(1);
             }
         };
         if let Err(e) = rt.block_on(tui::run_tui()) {
-            tracing::error!("Ошибка выполнения TUI: {e}");
+            tracing::error!("TUI execution error: {e}");
             std::process::exit(1);
         }
         std::process::exit(0);
@@ -156,13 +156,13 @@ fn main() -> glib::ExitCode {
         match tokio::runtime::Runtime::new() {
             Ok(rt) => {
                 if let Err(e) = rt.block_on(daemon::run_with_manager(event_manager)) {
-                    tracing::error!("Аварийная остановка системного демона: {e}");
+                    tracing::error!("Fatal daemon termination: {e}");
                     std::process::exit(1);
                 }
                 std::process::exit(0);
             }
             Err(e) => {
-                tracing::error!("Не удалось создать Tokio Runtime для системного демона: {e}");
+                tracing::error!("Failed to create Tokio Runtime for system daemon: {e}");
                 std::process::exit(1);
             }
         }
@@ -179,7 +179,10 @@ fn main() -> glib::ExitCode {
 
     // Если локаль не была установлена (None) или сбросилась в "C" / "POSIX" / "C.UTF-8",
     // gettext в glibc отключает перевод по переменной LANGUAGE. Переключаем процесс на доступную UTF-8 локаль:
-    if loc.as_deref().is_none_or(|l| l == b"C" || l == b"POSIX" || l == b"C.UTF-8" || l == b"C.utf8") {
+    if loc
+        .as_deref()
+        .is_none_or(|l| l == b"C" || l == b"POSIX" || l == b"C.UTF-8" || l == b"C.utf8")
+    {
         loc = setlocale(LocaleCategory::LcAll, "en_US.UTF-8")
             .or_else(|| setlocale(LocaleCategory::LcAll, "en_US.utf8"))
             .or_else(|| setlocale(LocaleCategory::LcAll, "ru_RU.UTF-8"))
@@ -210,7 +213,7 @@ fn main() -> glib::ExitCode {
     }
 
     tracing::info!(
-        "Приложение VRXX запущено (локаль: {:?}, язык: {})",
+        "VRXX application started (locale: {:?}, language: {})",
         loc.as_deref()
             .map(|b| String::from_utf8_lossy(b).into_owned()),
         app_settings.language
@@ -254,13 +257,13 @@ fn main() -> glib::ExitCode {
     }
 
     if let Err(e) = bindtextdomain(GETTEXT_PACKAGE, &locale_dir) {
-        tracing::warn!("Не удалось привязать домен локализации gettext: {}", e);
+        tracing::warn!("Failed to bind gettext localization domain: {}", e);
     }
     if let Err(e) = bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8") {
-        tracing::warn!("Не удалось установить кодировку домена gettext: {}", e);
+        tracing::warn!("Failed to set gettext domain codeset: {}", e);
     }
     if let Err(e) = textdomain(GETTEXT_PACKAGE) {
-        tracing::warn!("Не удалось переключить домен gettext: {}", e);
+        tracing::warn!("Failed to switch gettext domain: {}", e);
     }
 
     // Загрузка скомпилированных ресурсов GResource
@@ -268,7 +271,7 @@ fn main() -> glib::ExitCode {
     if let Ok(res) = gio::Resource::from_data(&glib::Bytes::from(res_data)) {
         gio::resources_register(&res);
     } else {
-        tracing::error!("Не удалось загрузить скомпилированные ресурсы GResource");
+        tracing::error!("Failed to load compiled GResource bundle");
     }
 
     // Перехват системных логов GLib/GTK и перенаправление в tracing
@@ -300,7 +303,7 @@ fn main() -> glib::ExitCode {
     let rt = match tokio::runtime::Runtime::new() {
         Ok(runtime) => runtime,
         Err(e) => {
-            tracing::error!("Не удалось создать Tokio Runtime для GUI: {e}");
+            tracing::error!("Failed to create Tokio Runtime for GUI: {e}");
             return glib::ExitCode::FAILURE;
         }
     };

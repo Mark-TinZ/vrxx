@@ -210,29 +210,43 @@ impl ProxyManager {
 
         // Настройка TUN интерфейса при необходимости
         if tun_mode {
-            let mut tun_mgr = network::TunManager::new().await?;
-            if let Err(e) = tun_mgr.setup().await {
-                tracing::error!("Failed to configure TUN interface: {}", e);
-                let mut status = self.status.lock().await;
-                *status = "Error".to_string();
-                self.event_manager
-                    .broadcast(DaemonEvent::StatusChanged("Error".to_string()));
-                anyhow::bail!("TUN interface configuration error: {e}");
-            }
-
-            if let Ok(dns_mgr) = dns::DnsManager::new().await {
-                if let Err(e) = dns_mgr
-                    .set_dns(tun_mgr.if_index as i32, vec!["172.19.0.1".to_string()])
-                    .await
-                {
-                    tracing::warn!("Failed to configure DNS via systemd-resolved: {}", e);
+            if core_type == "sing-box" {
+                // Для sing-box сетевой интерфейс TUN и таблицы маршрутизации создаются и управляются
+                // ядром sing-box самостоятельно благодаря auto_route: true и strict_route: true в config.json.
+                // Выполняем превентивную очистку возможного сиротского интерфейса перед запуском.
+                let _ = tokio::process::Command::new("ip")
+                    .args(["link", "del", "vrxx-tun"])
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .status()
+                    .await;
+                tracing::debug!("TUN interface and routing are managed natively by sing-box (auto_route: true).");
+            } else {
+                tracing::info!("Setting up TUN interface and DNS for proxy (manual mode)...");
+                let mut tun_mgr = network::TunManager::new().await?;
+                if let Err(e) = tun_mgr.setup().await {
+                    tracing::error!("Failed to configure TUN interface: {}", e);
+                    let mut status = self.status.lock().await;
+                    *status = "Error".to_string();
+                    self.event_manager
+                        .broadcast(DaemonEvent::StatusChanged("Error".to_string()));
+                    anyhow::bail!("TUN interface configuration error: {e}");
                 }
-                let mut dns_guard = self.dns_manager.lock().await;
-                *dns_guard = Some(dns_mgr);
-            }
 
-            let mut tun_guard = self.tun_manager.lock().await;
-            *tun_guard = Some(tun_mgr);
+                if let Ok(dns_mgr) = dns::DnsManager::new().await {
+                    if let Err(e) = dns_mgr
+                        .set_dns(tun_mgr.if_index as i32, vec!["172.19.0.1".to_string()])
+                        .await
+                    {
+                        tracing::warn!("Failed to configure DNS via systemd-resolved: {}", e);
+                    }
+                    let mut dns_guard = self.dns_manager.lock().await;
+                    *dns_guard = Some(dns_mgr);
+                }
+
+                let mut tun_guard = self.tun_manager.lock().await;
+                *tun_guard = Some(tun_mgr);
+            }
         }
 
         tracing::info!(
@@ -394,6 +408,14 @@ impl ProxyManager {
             *dns_guard = None;
             *tun_guard = None;
 
+            // Гарантированная очистка интерфейса vrxx-tun при завершении процесса
+            let _ = tokio::process::Command::new("ip")
+                .args(["link", "del", "vrxx-tun"])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .await;
+
             tracing::debug!("Background task for core PID {} finished", child_pid);
         });
 
@@ -482,6 +504,14 @@ impl ProxyManager {
             *dns_guard = None;
             *tun_guard = None;
         }
+
+        // Гарантированная очистка интерфейса vrxx-tun при остановке
+        let _ = tokio::process::Command::new("ip")
+            .args(["link", "del", "vrxx-tun"])
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .await;
 
         {
             let mut status = self.status.lock().await;

@@ -167,9 +167,9 @@ cargo test
 
 | Файл | Поле | Пример |
 | :--- | :--- | :--- |
-| `Cargo.toml` | `[package] version` | `version = "26.1.0-beta.1"` |
-| `meson.build` | `project(..., version:)` | `version: '26.1.0-beta.1'` |
-| `data/ru.mark.vrxx.metainfo.xml.in` | `<release version=...>` | `<release version="26.1.0-beta.1" date="...">` |
+| `Cargo.toml` | `[package] version` | `version = "26.1.0-beta.2"` |
+| `meson.build` | `project(..., version:)` | `version: '26.1.0-beta.2'` |
+| `data/ru.mark.vrxx.metainfo.xml.in` | `<release version=...>` | `<release version="26.1.0-beta.2" date="...">` |
 
 При сборке через `cargo build`, версия автоматически подтягивается из `Cargo.toml` через макрос `env!("CARGO_PKG_VERSION")` в `src/config.rs` и используется в CLI (`clap`) и окне «О программе» (`Libadwaita AboutDialog`).
 

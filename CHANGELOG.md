@@ -2,6 +2,23 @@
 
 Все изменения проекта документируются в соответствии с [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [26.1.0-beta.2] - 2026-08-30
+
+### 🚀 Новые возможности
+
+- *(scripts)* Modernize install and uninstall scripts with automatic privilege elevation (`sudo -v` keepalive loop), unprivileged user build, and systemd service management
+- *(ui)* Split menu actions into "Close Window" (`_Close Window`, GUI only) and "Quit" (`_Quit`, stops VPN tunnel, terminates daemon, and closes app with `AdwAlertDialog` confirmation)
+
+### 🐛 Исправления ошибок
+
+- *(daemon)* Fix TUN startup conflict `TUNSETIFF: device or resource busy` by delegating interface lifecycle and routing to sing-box native `auto_route` driver with orphan link cleanup
+- *(logging)* Standardize application logs format (`YYYY-MM-DD HH:MM:SS LEVEL [target]: message`) and translate all internal tracing logs across the codebase to English
+- *(ui)* Fix log level coloring in `VrxxLogWindow` so application and system logs are correctly tagged by level (Error, Warning, Debug, Info)
+
+### 📚 Документация
+
+- *(docs)* Update daemon architecture documentation to reflect sing-box native TUN driver and fallback TunManager
+
 ## [26.1.0-beta.1] - 2026-08-28
 
 ### 🚀 Новые возможности

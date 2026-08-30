@@ -32,11 +32,11 @@ use std::sync::Arc;
 
 /// Точка входа для запуска демона с предустановленным менеджером событий.
 pub async fn run_with_manager(event_manager: Arc<events::EventManager>) -> anyhow::Result<()> {
-    tracing::info!("Запуск REST API демона vrxx на 127.0.0.1:13337...");
+    tracing::info!("Starting VRXX daemon REST API on 127.0.0.1:13337...");
 
     // 0. Запуск процедур самовосстановления сети (Self-Healing)
     if let Err(e) = network::self_heal().await {
-        tracing::warn!("Предупреждение процедуры самовосстановления сети: {}", e);
+        tracing::warn!("Network self-healing warning: {}", e);
     }
 
     // 1. Инициализируем менеджер прокси
@@ -53,25 +53,21 @@ pub async fn run_with_manager(event_manager: Arc<events::EventManager>) -> anyho
     let bind_addr = "127.0.0.1:13337";
     let listener = match tokio::net::TcpListener::bind(bind_addr).await {
         Ok(l) => {
-            tracing::info!("VRXX демон успешно привязан к http://{}", bind_addr);
+            tracing::info!("VRXX daemon successfully bound to http://{}", bind_addr);
             l
         }
         Err(e) => {
             tracing::error!(
-                "Не удалось привязать VRXX демон к {}: {}. Запущен ли другой экземпляр?",
+                "Failed to bind VRXX daemon to {}: {}. Is another instance running?",
                 bind_addr,
                 e
             );
-            return Err(anyhow::anyhow!(
-                "Не удалось привязать к {}: {}",
-                bind_addr,
-                e
-            ));
+            return Err(anyhow::anyhow!("Failed to bind to {}: {}", bind_addr, e));
         }
     };
 
     axum::serve(listener, app).await?;
-    tracing::info!("Сервер VRXX демона корректно остановлен");
+    tracing::info!("VRXX daemon server stopped gracefully");
 
     Ok(())
 }

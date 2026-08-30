@@ -18,11 +18,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev meson gettext libssl-dev pkg-config
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev meson gettext libssl-dev pkg-config locales locales-all
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -40,7 +42,6 @@ jobs:
         run: cargo build --release
 
       - name: Prepare Artifacts
-        if: startsWith(github.ref, 'refs/tags/')
         env:
           SINGBOX_VERSION: "1.13.18"
         run: |
@@ -151,10 +152,44 @@ jobs:
           chmod +x vrxx-linux-x86_64
           sha256sum vrxx-linux-x86_64 > vrxx-linux-x86_64.sha256
 
-      - name: Create Release
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vrxx-linux-x86_64
+          path: |
+            vrxx-linux-x86_64.tar.gz
+            vrxx-linux-x86_64.tar.gz.sha256
+            vrxx-linux-x86_64
+            vrxx-linux-x86_64.sha256
+
+      - name: Extract Release Notes
         if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          python3 -c '
+          import sys, re
+          tag = sys.argv[1]
+          version = tag.lstrip("v")
+          try:
+              with open("CHANGELOG.md", "r", encoding="utf-8") as f:
+                  text = f.read()
+              pattern = rf"## \[{re.escape(version)}\][^\n]*\n(.*?)(?=\n## \[|\Z)"
+              match = re.search(pattern, text, re.DOTALL)
+              if match and match.group(1).strip():
+                  notes = match.group(1).strip()
+              else:
+                  notes = f"Release {tag}"
+          except Exception:
+              notes = f"Release {tag}"
+
+          with open("RELEASE_NOTES.md", "w", encoding="utf-8") as out:
+              out.write(notes + "\n")
+          ' "${{ github.ref_name }}"
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/') && !env.ACT
         uses: softprops/action-gh-release@v2
         with:
+          body_path: RELEASE_NOTES.md
           files: |
             vrxx-linux-x86_64.tar.gz
             vrxx-linux-x86_64.tar.gz.sha256

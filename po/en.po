@@ -5,7 +5,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: vrxx 26.1.0-beta.1\n"
+"Project-Id-Version: vrxx 26.1.0-beta.2\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-08-28 15:29+0600\n"
 "PO-Revision-Date: 2026-08-28 15:29+0600\n"
@@ -1540,3 +1540,224 @@ msgstr "Active Connection"
 #: src/window.ui:542
 msgid "Content"
 msgstr "Content"
+
+#: src/ui/menus.ui:56
+msgid "_Close Window"
+msgstr "_Close Window"
+
+#: src/application.rs:426
+msgid "Quit Vrxx"
+msgstr "Quit Vrxx"
+
+#: src/application.rs:427
+msgid ""
+"This will disconnect any active VPN connection and terminate both the "
+"application and the background service."
+msgstr ""
+"This will disconnect any active VPN connection and terminate both the "
+"application and the background service."
+
+#: src/application.rs:431
+msgid "Quit"
+msgstr "Quit"
+
+#: src/ui/pages/settings_page.ui:85
+msgid "Application interface, startup, and notification preferences"
+msgstr "Application interface, startup, and notification preferences"
+
+#: src/ui/pages/settings_page.ui:90
+msgid "Select the interface language. Changing the language requires restarting the application."
+msgstr "Select the interface language. Changing the language requires restarting the application."
+
+#: src/ui/pages/settings_page.ui:105
+msgid "Starts VRXX in the background minimized when your system boots up."
+msgstr "Starts VRXX in the background minimized when your system boots up."
+
+#: src/ui/pages/settings_page.ui:113
+msgid "Automatically connects to the last active VPN server when the application starts."
+msgstr "Automatically connects to the last active VPN server when the application starts."
+
+#: src/ui/pages/settings_page.ui:120
+msgid "Show desktop notifications on connection events"
+msgstr "Show desktop notifications on connection events"
+
+#: src/ui/pages/settings_page.ui:121
+msgid "Displays system notifications when connection status changes or when errors occur."
+msgstr "Displays system notifications when connection status changes or when errors occur."
+
+#: src/ui/pages/settings_page.ui:129
+msgid "Masks IP addresses, server domains, and configuration keys in the interface to prevent accidental exposure during screen recording or live streaming."
+msgstr "Masks IP addresses, server domains, and configuration keys in the interface to prevent accidental exposure during screen recording or live streaming."
+
+#: src/ui/pages/settings_page.ui:137
+msgid "Network and Core"
+msgstr "Network and Core"
+
+#: src/ui/pages/settings_page.ui:138
+msgid "Core protocol engine parameters and transparent traffic routing"
+msgstr "Core protocol engine parameters and transparent traffic routing"
+
+#: src/ui/pages/settings_page.ui:143
+msgid "Route all system traffic through virtual adapter (requires root)"
+msgstr "Route all system traffic through virtual adapter (requires root)"
+
+#: src/ui/pages/settings_page.ui:144
+msgid "Creates a virtual network card (vrxx-tun) to route all system traffic transparently, without needing proxy settings in individual apps."
+msgstr "Creates a virtual network card (vrxx-tun) to route all system traffic transparently, without needing proxy settings in individual apps."
+
+#: src/ui/pages/settings_page.ui:151
+msgid "Extract destination domain from TLS SNI and HTTP headers"
+msgstr "Extract destination domain from TLS SNI and HTTP headers"
+
+#: src/ui/pages/settings_page.ui:152
+msgid "Inspects outgoing packets to identify actual domain names for accurate routing and bypass rules."
+msgstr "Inspects outgoing packets to identify actual domain names for accurate routing and bypass rules."
+
+#: src/ui/pages/settings_page.ui:159
+msgid "Force browsers to use TCP to prevent connection drops"
+msgstr "Force browsers to use TCP to prevent connection drops"
+
+#: src/ui/pages/settings_page.ui:160
+msgid "Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and Firefox to use TCP. Prevents streaming buffering and connection stalls on restricted networks."
+msgstr "Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and Firefox to use TCP. Prevents streaming buffering and connection stalls on restricted networks."
+
+#: src/ui/pages/settings_page.ui:168
+msgid "Directs local network subnets (192.168.x.x, 10.x.x.x, local printers, smart home devices) directly to your local router instead of through the VPN tunnel."
+msgstr "Directs local network subnets (192.168.x.x, 10.x.x.x, local printers, smart home devices) directly to your local router instead of through the VPN tunnel."
+
+#: src/ui/pages/settings_page.ui:176
+msgid "Return synthetic local IPs for ultra-fast domain resolution"
+msgstr "Return synthetic local IPs for ultra-fast domain resolution"
+
+#: src/ui/pages/settings_page.ui:177
+msgid "Assigns synthetic IP addresses (198.18.0.0/15) locally for instant response, while resolving real IPs on the remote proxy server. Speeds up connection opening significantly."
+msgstr "Assigns synthetic IP addresses (198.18.0.0/15) locally for instant response, while resolving real IPs on the remote proxy server. Speeds up connection opening significantly."
+
+#: src/ui/pages/settings_page.ui:185
+msgid "Advanced Connection"
+msgstr "Advanced Connection"
+
+#: src/ui/pages/settings_page.ui:186
+msgid "TCP stream multiplexing and connection optimization"
+msgstr "TCP stream multiplexing and connection optimization"
+
+#: src/ui/pages/settings_page.ui:191
+msgid "Combine multiple TCP streams into a single connection (h2mux)"
+msgstr "Combine multiple TCP streams into a single connection (h2mux)"
+
+#: src/ui/pages/settings_page.ui:192
+msgid "Reuses a single persistent TCP connection for multiple streams, reducing latency when opening many connections simultaneously. May cause jitter on high-packet-loss networks."
+msgstr "Reuses a single persistent TCP connection for multiple streams, reducing latency when opening many connections simultaneously. May cause jitter on high-packet-loss networks."
+
+#: src/ui/pages/settings_page.ui:199
+msgid "Maximum concurrent multiplexed streams (1–128)"
+msgstr "Maximum concurrent multiplexed streams (1–128)"
+
+#: src/ui/pages/settings_page.ui:200
+msgid "Defines how many concurrent streams can be transmitted simultaneously over one TCP connection. Default value is 8."
+msgstr "Defines how many concurrent streams can be transmitted simultaneously over one TCP connection. Default value is 8."
+
+#: src/ui/pages/settings_page.ui:216
+msgid "Geo Data"
+msgstr "Geo Data"
+
+#: src/ui/pages/settings_page.ui:217
+msgid "Precompiled binary rule-sets (GeoIP and GeoSite) for domain and IP routing"
+msgstr "Precompiled binary rule-sets (GeoIP and GeoSite) for domain and IP routing"
+
+#: src/ui/pages/settings_page.ui:222
+msgid "Download latest GeoIP and GeoSite binary rule-sets (.srs)"
+msgstr "Download latest GeoIP and GeoSite binary rule-sets (.srs)"
+
+#: src/ui/pages/settings_page.ui:223
+msgid "Fetches the latest compiled binary rule-sets for GeoIP and GeoSite databases to keep regional bypass lists up to date."
+msgstr "Fetches the latest compiled binary rule-sets for GeoIP and GeoSite databases to keep regional bypass lists up to date."
+
+#: src/ui/pages/settings_page.ui:232
+msgid "Download latest geo-databases now"
+msgstr "Download latest geo-databases now"
+
+#: src/ui/pages/settings_page.ui:250
+msgid "Methods and parameters for measuring server response time"
+msgstr "Methods and parameters for measuring server response time"
+
+#: src/ui/pages/settings_page.ui:255
+msgid "Method used for measuring server response time"
+msgstr "Method used for measuring server response time"
+
+#: src/ui/pages/settings_page.ui:256
+msgid "Choose measurement method: TCP Handshake (fast, connects to port), ICMP Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test through tunnel)."
+msgstr "Choose measurement method: TCP Handshake (fast, connects to port), ICMP Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test through tunnel)."
+
+#: src/ui/pages/settings_page.ui:274
+msgid "The lightweight URL requested during HTTP proxy latency measurements (default is Google generate_204)."
+msgstr "The lightweight URL requested during HTTP proxy latency measurements (default is Google generate_204)."
+
+#: src/ui/pages/settings_page.ui:283
+msgid "Core version information, logs, and troubleshooting tools"
+msgstr "Core version information, logs, and troubleshooting tools"
+
+#: src/ui/pages/settings_page.ui:289
+msgid "Displays the currently installed binary version and compilation tags of the sing-box core."
+msgstr "Displays the currently installed binary version and compilation tags of the sing-box core."
+
+#: src/ui/pages/settings_page.ui:296
+msgid "Verbosity of core output messages"
+msgstr "Verbosity of core output messages"
+
+#: src/ui/pages/settings_page.ui:297
+msgid "Controls how detailed the core log messages are: Error (critical only), Warning (potential issues), Info (standard connection events), Debug (detailed packet diagnostics)."
+msgstr "Controls how detailed the core log messages are: Error (critical only), Warning (potential issues), Info (standard connection events), Debug (detailed packet diagnostics)."
+
+#: src/ui/pages/settings_page.ui:314
+msgid "Open real-time console log viewer"
+msgstr "Open real-time console log viewer"
+
+#: src/ui/pages/settings_page.ui:315
+msgid "Opens the integrated live log viewer window with real-time filtering, pause, search, and export options."
+msgstr "Opens the integrated live log viewer window with real-time filtering, pause, search, and export options."
+
+#: src/ui/pages/settings_page.ui:328
+msgid "Open system directory containing log files"
+msgstr "Open system directory containing log files"
+
+#: src/ui/pages/settings_page.ui:329
+msgid "Opens the local system directory containing persistent log files in your file manager."
+msgstr "Opens the local system directory containing persistent log files in your file manager."
+
+#: src/ui/pages/settings_page.ui:344
+msgid "Export and import application settings and VPN profiles"
+msgstr "Export and import application settings and VPN profiles"
+
+#: src/ui/pages/settings_page.ui:349
+msgid "Restore settings and profiles from a backup file"
+msgstr "Restore settings and profiles from a backup file"
+
+#: src/ui/pages/settings_page.ui:350
+msgid "Loads application settings, custom routing rules, and VPN profiles from a JSON backup file."
+msgstr "Loads application settings, custom routing rules, and VPN profiles from a JSON backup file."
+
+#: src/ui/pages/settings_page.ui:363
+msgid "Save current configuration and profiles to a backup file"
+msgstr "Save current configuration and profiles to a backup file"
+
+#: src/ui/pages/settings_page.ui:364
+msgid "Exports all application settings, routing rules, and VPN profiles to a portable JSON backup file."
+msgstr "Exports all application settings, routing rules, and VPN profiles to a portable JSON backup file."
+
+#: src/ui/pages/settings_page.ui:378
+msgid "Danger Zone"
+msgstr "Danger Zone"
+
+#: src/ui/pages/settings_page.ui:379
+msgid "Irreversible actions and complete configuration reset"
+msgstr "Irreversible actions and complete configuration reset"
+
+#: src/ui/pages/settings_page.ui:384
+msgid "Erase all profiles and restore factory defaults"
+msgstr "Erase all profiles and restore factory defaults"
+
+#: src/ui/pages/settings_page.ui:385
+msgid "Permanently erases all saved VPN keys, custom rules, and configuration settings, returning the application to its default state."
+msgstr "Permanently erases all saved VPN keys, custom rules, and configuration settings, returning the application to its default state."
+

@@ -219,7 +219,7 @@ pub fn show_qr_dialog(parent: &gtk::Window, profile_name: &str, uri: &str) {
             imp.lbl_error.set_visible(false);
         }
         Err(e) => {
-            tracing::error!("Ошибка генерации текстуры QR-кода: {e}");
+            tracing::error!("Failed to generate QR code texture: {e}");
             imp.lbl_error
                 .set_text(&format!("{}: {e}", gettext("Failed to generate QR code")));
             imp.lbl_error.set_visible(true);
@@ -331,7 +331,7 @@ pub fn show_qr_dialog(parent: &gtk::Window, profile_name: &str, uri: &str) {
                     add_parent_toast(&parent_export, &gettext("QR code saved successfully"));
                 }
                 Err(e) => {
-                    tracing::error!("Ошибка сохранения QR-кода в файл: {e}");
+                    tracing::error!("Failed to save QR code to file: {e}");
                     add_parent_toast(
                         &parent_export,
                         &format!("{}: {e}", gettext("Failed to save QR code")),

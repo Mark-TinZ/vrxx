@@ -43,7 +43,7 @@ pub fn show_error_dialog<P: IsA<gtk::Widget>>(
         if let Some(display) = gdk::Display::default() {
             let clipboard = display.clipboard();
             clipboard.set_text(&log_content);
-            tracing::info!("Технический лог скопирован в буфер обмена.");
+            tracing::info!("Technical log copied to clipboard.");
         }
     });
 

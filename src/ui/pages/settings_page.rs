@@ -232,7 +232,7 @@ impl VrxxSettingsPage {
         s.bypass_lan = current.bypass_lan;
         s.enable_fake_dns = current.enable_fake_dns;
         s.enable_mux = current.enable_mux;
-        s.mux_concurrency = current.mux_concurrency;
+        s.mux_concurrency = current.mux_concurrency.clamp(1, 128);
 
         s.log_level = match current.log_level {
             0 => "error".to_string(),

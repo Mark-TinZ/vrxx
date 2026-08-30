@@ -151,9 +151,7 @@ impl CoreBackend {
         let rt = match Runtime::new() {
             Ok(r) => Arc::new(r),
             Err(e) => {
-                tracing::error!(
-                    "Не удалось создать multi-thread Tokio Runtime для CoreBackend: {e}"
-                );
+                tracing::error!("Failed to create multi-thread Tokio Runtime for CoreBackend: {e}");
                 match tokio::runtime::Builder::new_current_thread()
                     .enable_all()
                     .build()
@@ -161,14 +159,14 @@ impl CoreBackend {
                     Ok(current_rt) => Arc::new(current_rt),
                     Err(err) => {
                         tracing::error!(
-                            "Критическая ошибка создания current_thread Tokio Runtime: {err}"
+                            "Critical error creating current_thread Tokio Runtime: {err}"
                         );
                         // Возвращаем дефолтный пустой runtime через builders
                         Arc::new(
                             tokio::runtime::Builder::new_current_thread()
                                 .build()
                                 .unwrap_or_else(|_| {
-                                    tracing::error!("Фатальный сбой runtime");
+                                    tracing::error!("Fatal runtime failure");
                                     Runtime::new().unwrap_or_else(|_| std::process::exit(1))
                                 }),
                         )
@@ -184,11 +182,11 @@ impl CoreBackend {
             rt_bg.block_on(async {
                 match client_bg.ping().await {
                     Ok(pong) => tracing::info!(
-                        "REST API системного демона успешно проверено при старте: {}",
+                        "System daemon REST API successfully verified on startup: {}",
                         pong
                     ),
                     Err(e) => {
-                        tracing::warn!("REST API системного демона недоступно при старте: {}", e)
+                        tracing::warn!("System daemon REST API not reachable on startup: {}", e)
                     }
                 }
             });

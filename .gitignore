@@ -4,6 +4,7 @@ core.log
 vrxx_core_config.json
 src/vrxx.gresource
 .env
+.agents
 output.md
 reports/
 sing-box

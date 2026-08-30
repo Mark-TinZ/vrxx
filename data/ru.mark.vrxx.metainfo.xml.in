@@ -28,6 +28,17 @@
   </branding>
 
   <releases>
+    <release version="26.1.0-beta.2" date="2026-08-30">
+      <description translate="no">
+        <p>Release 26.1.0-beta.2</p>
+        <ul>
+          <li>Fix TUN startup device busy conflict with sing-box auto_route</li>
+          <li>Split GUI close and application quit with confirmation dialog</li>
+          <li>Standardize all internal logs in English with level color tags</li>
+          <li>Modernize install and uninstall scripts with automatic privilege elevation</li>
+        </ul>
+      </description>
+    </release>
     <release version="26.1.0-beta.1" date="2026-08-28">
       <description translate="no">
         <p>Release 26.1.0-beta.1</p>

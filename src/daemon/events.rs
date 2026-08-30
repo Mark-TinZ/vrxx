@@ -128,11 +128,16 @@ where
         let mut visitor = MessageVisitor::new();
         event.record(&mut visitor);
 
-        if let Some(message) = visitor.message {
+        if let Some(raw_msg) = visitor.message {
+            let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+            let level_upper = level.to_uppercase();
+            let target = metadata.target();
+            let formatted_msg = format!("{now} {level_upper} [{target}]: {raw_msg}");
+
             self.event_manager.broadcast(DaemonEvent::Log {
                 source: LogSource::App,
                 level,
-                message,
+                message: formatted_msg,
             });
         }
     }

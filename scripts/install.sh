@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # install.sh
 #
 # Copyright 2026 Mark
@@ -9,41 +9,117 @@
 #
 # SPDX-License-Identifier: MPL-2.0
 
+set -euo pipefail
 
-# Цвета для вывода
+# Цветовое оформление вывода в терминал
+BOLD='\033[1m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🚀 Начинаю установку Vrxx...${NC}"
+info() {
+    echo -e "${BLUE}${BOLD}[INFO]${NC} $1"
+}
 
-# 1. Сборка проекта
-echo -e "${BLUE}🔨 Собираю бинарный файл (релиз-версия)...${NC}"
-cargo build --release
+success() {
+    echo -e "${GREEN}${BOLD}[OK]${NC} $1"
+}
 
-if [ $? -ne 0 ]; then
-    echo "❌ Ошибка сборки. Убедитесь, что установлены все зависимости."
+warn() {
+    echo -e "${YELLOW}${BOLD}[WARN]${NC} $1"
+}
+
+error() {
+    echo -e "${RED}${BOLD}[ERROR]${NC} $1" >&2
+}
+
+# Определение корневого каталога репозитория
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${SCRIPT_DIR}"
+
+info "🚀 Подготовка к установке VRXX..."
+
+# 1. Проверка наличия Cargo и Rust
+if ! command -v cargo >/dev/null 2>&1; then
+    error "Rust toolchain (cargo) не найден в системе. Установите Rust: https://rustup.rs"
     exit 1
 fi
 
-# 2. Установка бинарника
-echo -e "${BLUE}📦 Копирую бинарный файл в /usr/local/bin/...${NC}"
-sudo cp target/release/vrxx /usr/local/bin/vrxx
-sudo chmod +x /usr/local/bin/vrxx
+# 2. Определение механизма повышения привилегий
+SUDO_CMD=""
+KEEPALIVE_PID=""
 
-# 3. Установка иконки
-echo -e "${BLUE}🎨 Устанавливаю иконку приложения...${NC}"
-sudo mkdir -p /usr/share/icons/hicolor/scalable/apps/
-sudo cp data/icons/hicolor/scalable/apps/ru.mark.vrxx.svg /usr/share/icons/hicolor/scalable/apps/ru.mark.vrxx.svg
+cleanup_elevation() {
+    if [[ -n "${KEEPALIVE_PID}" ]] && kill -0 "${KEEPALIVE_PID}" 2>/dev/null; then
+        kill "${KEEPALIVE_PID}" 2>/dev/null || true
+    fi
+}
+trap cleanup_elevation EXIT INT TERM
 
-# 4. Установка ярлыка (.desktop файл)
-echo -e "${BLUE}📝 Создаю ярлык в системном меню...${NC}"
-sudo mkdir -p /usr/share/applications/
-sudo cp ru.mark.vrxx.desktop /usr/share/applications/ru.mark.vrxx.desktop
+if [[ "${EUID}" -eq 0 ]]; then
+    info "Установка выполняется от имени суперпользователя (root)."
+    SUDO_CMD=""
+else
+    if command -v sudo >/dev/null 2>&1; then
+        SUDO_CMD="sudo"
+        info "Для системной установки требуются права администратора (sudo)."
+        if ! sudo -v; then
+            error "Не удалось подтвердить права sudo. Установка отменена."
+            exit 1
+        fi
+        # Фоновое поддержание активности sudo-токена на время сборки и установки
+        ( while true; do sudo -n true; sleep 50; kill -0 "$$" || exit; done 2>/dev/null ) &
+        KEEPALIVE_PID=$!
+    elif command -v doas >/dev/null 2>&1; then
+        SUDO_CMD="doas"
+        info "Используется doas для выполнения системных операций."
+    else
+        error "Для установки системных компонентов требуются права root или утилита sudo/doas."
+        exit 1
+    fi
+fi
 
-# 5. Установка и запуск системной службы vrxx-daemon
-echo -e "${BLUE}⚙️  Настраиваю и запускаю системную службу vrxx-daemon...${NC}"
-cat << 'EOF' | sudo tee /etc/systemd/system/vrxx-daemon.service > /dev/null
+# 3. Сборка проекта от имени текущего пользователя
+info "🔨 Сборка релизной версии VRXX (cargo build --release)..."
+cargo build --release
+success "Сборка успешно завершена."
+
+# 4. Установка бинарного файла
+info "📦 Установка исполняемого файла в /usr/local/bin/vrxx..."
+${SUDO_CMD} mkdir -p /usr/local/bin
+${SUDO_CMD} cp target/release/vrxx /usr/local/bin/vrxx
+${SUDO_CMD} chmod 755 /usr/local/bin/vrxx
+success "Бинарный файл установлен."
+
+# 5. Установка иконки приложения
+info "🎨 Установка иконки приложения в системную тему hicolor..."
+${SUDO_CMD} mkdir -p /usr/share/icons/hicolor/scalable/apps
+${SUDO_CMD} cp data/icons/hicolor/scalable/apps/ru.mark.vrxx.svg /usr/share/icons/hicolor/scalable/apps/ru.mark.vrxx.svg
+${SUDO_CMD} chmod 644 /usr/share/icons/hicolor/scalable/apps/ru.mark.vrxx.svg
+success "Иконка установлена."
+
+# 6. Установка ярлыка (.desktop файла)
+info "📝 Установка ярлыка меню приложений..."
+${SUDO_CMD} mkdir -p /usr/share/applications
+${SUDO_CMD} cp ru.mark.vrxx.desktop /usr/share/applications/ru.mark.vrxx.desktop
+${SUDO_CMD} chmod 644 /usr/share/applications/ru.mark.vrxx.desktop
+success "Ярлык установлен."
+
+# 7. Установка AppStream / AppData метаинформации (если файл существует)
+if [[ -f "data/ru.mark.vrxx.metainfo.xml.in" ]]; then
+    info "📄 Установка метаинформации AppStream..."
+    ${SUDO_CMD} mkdir -p /usr/share/metainfo
+    ${SUDO_CMD} cp data/ru.mark.vrxx.metainfo.xml.in /usr/share/metainfo/ru.mark.vrxx.metainfo.xml
+    ${SUDO_CMD} chmod 644 /usr/share/metainfo/ru.mark.vrxx.metainfo.xml
+    success "Метаинформация AppStream установлена."
+fi
+
+# 8. Настройка и запуск системного демона vrxx-daemon
+info "⚙️  Настройка системной службы systemd vrxx-daemon..."
+${SUDO_CMD} mkdir -p /etc/systemd/system
+cat << 'EOF' | ${SUDO_CMD} tee /etc/systemd/system/vrxx-daemon.service > /dev/null
 [Unit]
 Description=VRXX Privileged VPN & Proxy Daemon
 After=network.target network-online.target systemd-resolved.service
@@ -59,16 +135,30 @@ KillMode=process
 [Install]
 WantedBy=multi-user.target
 EOF
+${SUDO_CMD} chmod 644 /etc/systemd/system/vrxx-daemon.service
 
-if command -v systemctl >/dev/null 2>&1; then
-    sudo systemctl daemon-reload
-    sudo systemctl enable --now vrxx-daemon.service
-    echo -e "${GREEN}🔌 Служба vrxx-daemon успешно запущена и включена в автозагрузку!${NC}"
+if command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
+    ${SUDO_CMD} systemctl daemon-reload
+    ${SUDO_CMD} systemctl enable --now vrxx-daemon.service
+    success "Служба vrxx-daemon запущена и добавлена в автозагрузку systemd."
+else
+    warn "systemd не активен. Служба vrxx-daemon.service создана, но требует ручного запуска."
 fi
 
-# 6. Обновление баз данных иконок и приложений
-echo -e "${BLUE}♻️  Обновляю системные кэши...${NC}"
-sudo gtk-update-icon-cache /usr/share/icons/hicolor
-sudo update-desktop-database /usr/share/applications
+# 9. Обновление системных кэшей
+info "♻️  Обновление системных кэшей иконок и приложений..."
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    ${SUDO_CMD} gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor 2>/dev/null || true
+fi
 
-echo -e "${GREEN}✅ Установка завершена! Служба запущена. Теперь вы можете открыть Vrxx из меню приложений.${NC}"
+if command -v update-desktop-database >/dev/null 2>&1; then
+    ${SUDO_CMD} update-desktop-database -q /usr/share/applications 2>/dev/null || true
+fi
+success "Системные кэши обновлены."
+
+echo ""
+echo -e "${GREEN}${BOLD}════════════════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}${BOLD}  ✅ Установка VRXX успешно завершена!${NC}"
+echo -e "${GREEN}${BOLD}  Служба vrxx-daemon активна.${NC}"
+echo -e "${GREEN}${BOLD}  Приложение готово к запуску из системного меню или командой 'vrxx'.${NC}"
+echo -e "${GREEN}${BOLD}════════════════════════════════════════════════════════════════${NC}"

@@ -204,14 +204,11 @@ impl VrxxLogWindow {
         iter: &mut gtk::TextIter,
         entry: &LogEntryItem,
     ) {
-        let tag_name = match entry.source {
-            LogSource::App => "app",
-            _ => match entry.level.as_str() {
-                "error" | "fatal" | "panic" => "error",
-                "warning" | "warn" => "warning",
-                "debug" | "trace" => "debug",
-                _ => "info",
-            },
+        let tag_name = match entry.level.to_lowercase().as_str() {
+            "error" | "fatal" | "panic" => "error",
+            "warning" | "warn" => "warning",
+            "debug" | "trace" => "debug",
+            _ => "info",
         };
 
         let mut line = entry.message.clone();
@@ -482,17 +479,17 @@ impl VrxxLogWindow {
                         if let Some(window) = window_weak.upgrade() {
                             window.append_log_batch(&batch);
                         } else {
-                            tracing::debug!("Окно логов закрыто, завершение фоновой подписки SSE");
+                            tracing::debug!("Log window closed, terminating SSE subscription");
                             break;
                         }
                         glib::timeout_future(std::time::Duration::from_millis(50)).await;
                     }
                     Err(e) => {
                         if window_weak.upgrade().is_none() {
-                            tracing::debug!("Окно логов закрыто, завершение фоновой подписки SSE");
+                            tracing::debug!("Log window closed, terminating SSE subscription");
                             break;
                         }
-                        tracing::warn!("Поток логов отключен: {}. Повторное подключение...", e);
+                        tracing::warn!("Log stream disconnected: {}. Reconnecting...", e);
                         glib::timeout_future(std::time::Duration::from_millis(1000)).await;
                     }
                 }
@@ -600,8 +597,8 @@ impl VrxxLogWindow {
                             )
                             .await
                         {
-                            Ok(_) => tracing::info!("Логи успешно экспортированы в {}", file.uri()),
-                            Err(e) => tracing::error!("Не удалось экспортировать логи: {}", e.1),
+                            Ok(_) => tracing::info!("Logs successfully exported to {}", file.uri()),
+                            Err(e) => tracing::error!("Failed to export logs: {}", e.1),
                         }
                     });
                 }

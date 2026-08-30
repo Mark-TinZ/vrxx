@@ -9,7 +9,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 project('vrxx', 'rust',
-          version: '26.1.0-beta.1',
+          version: '26.1.0-beta.2',
     meson_version: '>= 1.0.0',
   default_options: [ 'warning_level=2', 'werror=false', ],
 )

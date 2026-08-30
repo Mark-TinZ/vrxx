@@ -61,6 +61,7 @@ mod imp {
             let obj = self.obj();
             obj.setup_gactions();
             // Регистрация горячих клавиш приложения
+            obj.set_accels_for_action("app.close_window", &["<control>w"]);
             obj.set_accels_for_action("app.quit", &["<control>q"]);
             obj.set_accels_for_action("win.disconnect", &["<control>d"]);
             obj.set_accels_for_action("win.zoom_in", &["<Primary>plus", "<Primary>equal"]);
@@ -173,9 +174,18 @@ impl VrxxApplication {
 
     /// Регистрация глобальных обработчиков действий (GActions).
     fn setup_gactions(&self) {
-        // Действие: Завершение работы
+        // Действие: Закрыть активное окно (только интерфейс, без остановки VPN)
+        let close_window_action = gio::ActionEntry::builder("close_window")
+            .activate(move |app: &Self, _, _| {
+                if let Some(window) = app.active_window() {
+                    window.close();
+                }
+            })
+            .build();
+
+        // Действие: Полный выход из приложения (GUI + остановка VPN/демона) с подтверждением
         let quit_action = gio::ActionEntry::builder("quit")
-            .activate(move |app: &Self, _, _| app.quit())
+            .activate(move |app: &Self, _, _| app.confirm_quit())
             .build();
 
         // Действие: Диалог сведений о программе
@@ -400,6 +410,7 @@ impl VrxxApplication {
             .build();
 
         self.add_action_entries([
+            close_window_action,
             quit_action,
             about_action,
             color_scheme_action,
@@ -409,6 +420,40 @@ impl VrxxApplication {
             open_log_dir_action,
             reset_settings_action,
         ]);
+    }
+
+    /// Отображает диалог подтверждения полного выхода из приложения и остановки фоновой службы.
+    pub fn confirm_quit(&self) {
+        if let Some(window) = self.active_window() {
+            let dialog = adw::AlertDialog::builder()
+                .heading(gettext("Quit Vrxx"))
+                .body(gettext(
+                    "This will disconnect any active VPN connection and terminate both the application and the background service.",
+                ))
+                .build();
+
+            dialog.add_response("cancel", &gettext("Cancel"));
+            dialog.add_response("quit", &gettext("Quit"));
+            dialog.set_response_appearance("quit", adw::ResponseAppearance::Destructive);
+            dialog.set_default_response(Some("cancel"));
+            dialog.set_close_response("cancel");
+
+            let app_clone = self.clone();
+            dialog.connect_response(None, move |_, response| {
+                if response == "quit" {
+                    // Остановка VPN ядра перед выходом
+                    let backend = crate::backend::CoreBackend::new();
+                    let _ = backend.stop();
+                    app_clone.quit();
+                }
+            });
+
+            dialog.present(Some(&window));
+        } else {
+            let backend = crate::backend::CoreBackend::new();
+            let _ = backend.stop();
+            self.quit();
+        }
     }
 
     /// Загружает CSS таблицу стилей из GResource
