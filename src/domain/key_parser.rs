@@ -142,6 +142,9 @@ impl ParsedKey {
                     return Err(KeyValidationError::MissingWireGuardPublicKey);
                 }
             }
+            "SOCKS" | "SOCKS5" | "HTTP" | "HTTPS" => {
+                // SOCKS и HTTP могут работать как с авторизацией, так и анонимно
+            }
             _ => {}
         }
 
@@ -169,6 +172,9 @@ pub fn parse_vpn_key(url_str: &str) -> Result<ParsedKey, String> {
         "hy2" | "hysteria2" => "Hysteria2",
         "tuic" => "TUIC",
         "wg" | "wireguard" => "WireGuard",
+        "socks" | "socks5" | "socks5h" => "SOCKS",
+        "http" => "HTTP",
+        "https" => "HTTP",
         other => return Err(format!("Неподдерживаемый протокол: {other}")),
     };
 
@@ -179,14 +185,37 @@ pub fn parse_vpn_key(url_str: &str) -> Result<ParsedKey, String> {
         .decode_utf8_lossy()
         .to_string();
 
-    let uuid = if !password_info.is_empty() {
+    let mut query_params = HashMap::new();
+    for (k, v) in parsed_url.query_pairs() {
+        query_params.insert(k.into_owned(), v.into_owned());
+    }
+
+    let uuid = if parsed_url.scheme() == "http"
+        || parsed_url.scheme() == "https"
+        || parsed_url.scheme().starts_with("socks")
+    {
+        if !user_info.is_empty() {
+            query_params.insert("user".to_string(), user_info.clone());
+        }
+        if parsed_url.scheme() == "https" {
+            query_params.insert("tls".to_string(), "true".to_string());
+        }
+        password_info
+    } else if !password_info.is_empty() {
         format!("{user_info}:{password_info}")
     } else {
         user_info
     };
 
     let host = parsed_url.host_str().unwrap_or("").to_string();
-    let port = parsed_url.port().unwrap_or(443);
+    let port = parsed_url
+        .port()
+        .unwrap_or_else(|| match parsed_url.scheme() {
+            "http" => 80,
+            "https" => 443,
+            "socks" | "socks5" | "socks5h" => 1080,
+            _ => 443,
+        });
 
     let name = parsed_url
         .fragment()
@@ -196,11 +225,6 @@ pub fn parse_vpn_key(url_str: &str) -> Result<ParsedKey, String> {
                 .to_string()
         })
         .unwrap_or_else(|| format!("{host}:{port}"));
-
-    let mut query_params = HashMap::new();
-    for (k, v) in parsed_url.query_pairs() {
-        query_params.insert(k.into_owned(), v.into_owned());
-    }
 
     Ok(ParsedKey {
         protocol: protocol.to_string(),
@@ -431,6 +455,20 @@ pub fn build_vpn_key(parsed: &ParsedKey) -> String {
         "hysteria2" | "hy2" => "hy2",
         "tuic" => "tuic",
         "wireguard" | "wg" => "wg",
+        "socks" | "socks5" => "socks5",
+        "http" => {
+            if parsed
+                .query_params
+                .get("tls")
+                .map(|v| v == "true" || v == "1")
+                .unwrap_or(false)
+            {
+                "https"
+            } else {
+                "http"
+            }
+        }
+        "https" => "https",
         _ => "unknown",
     };
 
@@ -442,6 +480,15 @@ pub fn build_vpn_key(parsed: &ParsedKey) -> String {
             .unwrap_or_else(|| "2022-blake3-aes-128-gcm".to_string());
         use base64::{engine::general_purpose, Engine as _};
         general_purpose::STANDARD.encode(format!("{}:{}", method, parsed.uuid))
+    } else if scheme == "socks5" || scheme == "http" || scheme == "https" {
+        let user = parsed.query_params.get("user").cloned().unwrap_or_default();
+        if !user.is_empty() && !parsed.uuid.is_empty() {
+            format!("{}:{}", user, parsed.uuid)
+        } else if !user.is_empty() {
+            user
+        } else {
+            parsed.uuid.clone()
+        }
     } else {
         parsed.uuid.clone()
     };
@@ -452,18 +499,38 @@ pub fn build_vpn_key(parsed: &ParsedKey) -> String {
         parsed.host.clone()
     };
 
-    let url_raw = format!(
-        "{}://{}@{}:{}",
-        scheme, userinfo, host_formatted, parsed.port
-    );
+    let url_raw = if userinfo.is_empty() {
+        format!("{}://{}:{}", scheme, host_formatted, parsed.port)
+    } else {
+        format!(
+            "{}://{}@{}:{}",
+            scheme, userinfo, host_formatted, parsed.port
+        )
+    };
 
     if let Ok(mut url) = Url::parse(&url_raw) {
-        if !parsed.query_params.is_empty() {
-            let mut query = url.query_pairs_mut();
-            for (k, v) in &parsed.query_params {
-                if scheme == "ss" && k == "method" {
-                    continue;
+        let filtered_params: Vec<(&String, &String)> = parsed
+            .query_params
+            .iter()
+            .filter(|(k, _)| {
+                if scheme == "ss" && k.as_str() == "method" {
+                    return false;
                 }
+                if (scheme == "socks5" || scheme == "http" || scheme == "https")
+                    && k.as_str() == "user"
+                {
+                    return false;
+                }
+                if (scheme == "http" || scheme == "https") && k.as_str() == "tls" {
+                    return false;
+                }
+                true
+            })
+            .collect();
+
+        if !filtered_params.is_empty() {
+            let mut query = url.query_pairs_mut();
+            for (k, v) in filtered_params {
                 query.append_pair(k, v);
             }
         }
@@ -672,5 +739,74 @@ mod tests {
         };
         let built = build_vpn_key(&parsed);
         assert!(built.contains("vless://a3482e88-6860-4a1c-914c-4b4ea5c49f87@[2001:db8::1]:443"));
+    }
+
+    #[test]
+    fn test_parse_socks5_url() {
+        let url_auth = "socks5://myuser:mypass@1.2.3.4:1080#MySOCKS";
+        let parsed = parse_vpn_key(url_auth).expect("Должен распарсить socks5 с авторизацией");
+        assert_eq!(parsed.protocol, "SOCKS");
+        assert_eq!(parsed.host, "1.2.3.4");
+        assert_eq!(parsed.port, 1080);
+        assert_eq!(parsed.uuid, "mypass");
+        assert_eq!(
+            parsed.query_params.get("user").map(|s| s.as_str()),
+            Some("myuser")
+        );
+        assert_eq!(parsed.name, "MySOCKS");
+
+        let built = build_vpn_key(&parsed);
+        assert!(built.contains("socks5://myuser:mypass@1.2.3.4:1080#MySOCKS"));
+
+        let url_anon = "socks5://1.2.3.4:1080#AnonSOCKS";
+        let parsed_anon = parse_vpn_key(url_anon).expect("Должен распарсить анонимный socks5");
+        assert_eq!(parsed_anon.protocol, "SOCKS");
+        assert_eq!(parsed_anon.host, "1.2.3.4");
+        assert_eq!(parsed_anon.uuid, "");
+        let built_anon = build_vpn_key(&parsed_anon);
+        assert!(built_anon.contains("socks5://1.2.3.4:1080#AnonSOCKS"));
+    }
+
+    #[test]
+    fn test_parse_http_https_url() {
+        let url_http = "http://user:pass@1.2.3.4:8080#MyHTTP";
+        let parsed_http = parse_vpn_key(url_http).expect("Должен распарсить HTTP прокси");
+        assert_eq!(parsed_http.protocol, "HTTP");
+        assert_eq!(parsed_http.host, "1.2.3.4");
+        assert_eq!(parsed_http.port, 8080);
+        assert_eq!(parsed_http.uuid, "pass");
+        assert_eq!(
+            parsed_http.query_params.get("user").map(|s| s.as_str()),
+            Some("user")
+        );
+
+        let built_http = build_vpn_key(&parsed_http);
+        assert!(built_http.contains("http://user:pass@1.2.3.4:8080"));
+        assert!(built_http.contains("MyHTTP"));
+
+        let url_https = "https://user:pass@1.2.3.4:8443#MyHTTPS";
+        let parsed_https = parse_vpn_key(url_https).expect("Должен распарсить HTTPS прокси");
+        assert_eq!(parsed_https.protocol, "HTTP");
+        assert_eq!(
+            parsed_https.query_params.get("tls").map(|s| s.as_str()),
+            Some("true")
+        );
+        let built_https = build_vpn_key(&parsed_https);
+        assert!(built_https.contains("https://user:pass@1.2.3.4:8443"));
+        assert!(built_https.contains("MyHTTPS"));
+    }
+
+    #[test]
+    fn test_parse_shadowsocks_plugin_url() {
+        let url = "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@1.2.3.4:8388?plugin=obfs-local%3Bobfs%3Dhttp%3Bobfs-host%3Dexample.com#SS-Plugin";
+        let parsed = parse_vpn_key(url).expect("Должен успешно распарсить SS с плагином");
+        assert_eq!(parsed.protocol, "Shadowsocks");
+        assert_eq!(parsed.host, "1.2.3.4");
+        assert_eq!(parsed.port, 8388);
+        assert!(parsed.query_params.contains_key("plugin"));
+        assert_eq!(
+            parsed.query_params.get("plugin").map(|s| s.as_str()),
+            Some("obfs-local;obfs=http;obfs-host=example.com")
+        );
     }
 }

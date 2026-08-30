@@ -70,6 +70,10 @@ pub struct SsSettings {
     pub password: String,
     pub address: String,
     pub port: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plugin_opts: Option<String>,
 }
 
 /// Настройки протокола WireGuard.
@@ -78,6 +82,14 @@ pub struct WireguardSettings {
     pub private_key: String,
     pub address: Vec<String>,
     pub endpoint: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preshared_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reserved: Option<Vec<u8>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mtu: Option<u16>,
 }
 
 /// Настройки протокола SOCKS5.
@@ -85,6 +97,12 @@ pub struct WireguardSettings {
 pub struct SocksSettings {
     pub address: String,
     pub port: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
 }
 
 /// Настройки HTTP-прокси.
@@ -92,6 +110,14 @@ pub struct SocksSettings {
 pub struct HttpSettings {
     pub address: String,
     pub port: u16,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tls: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sni: Option<String>,
 }
 
 impl ProtocolSettings {

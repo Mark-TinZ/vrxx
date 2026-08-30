@@ -1,0 +1,28 @@
+# Maintainer: Mark <https://github.com/Mark-TinZ/vrxx>
+pkgname=vrxx
+pkgver=26.1.0_beta.2
+pkgrel=1
+pkgdesc="Fast, modern Linux GTK4/Libadwaita GUI and TUI client for sing-box"
+arch=('x86_64' 'aarch64')
+url="https://github.com/Mark-TinZ/vrxx"
+license=('MPL-2.0')
+depends=('gtk4' 'libadwaita' 'polkit' 'sing-box>=1.13.18')
+makedepends=('cargo' 'meson' 'ninja' 'gettext')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v${pkgver//_/-}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "$pkgname-${pkgver//_/-}"
+    arch-meson build
+    ninja -C build
+}
+
+check() {
+    cd "$pkgname-${pkgver//_/-}"
+    ninja -C build test
+}
+
+package() {
+    cd "$pkgname-${pkgver//_/-}"
+    DESTDIR="$pkgdir" ninja -C build install
+}

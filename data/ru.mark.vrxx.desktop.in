@@ -7,5 +7,4 @@ Type=Application
 Categories=Network;
 Keywords=GTK;vpn;proxy;xray;v2ray;sing-box;
 StartupNotify=true
-DBusActivatable=true
-MimeType=x-scheme-handler/vless;x-scheme-handler/vmess;x-scheme-handler/trojan;x-scheme-handler/ss;x-scheme-handler/hysteria2;x-scheme-handler/hy2;x-scheme-handler/tuic;
+MimeType=x-scheme-handler/vless;x-scheme-handler/vmess;x-scheme-handler/trojan;x-scheme-handler/ss;x-scheme-handler/hysteria2;x-scheme-handler/hy2;x-scheme-handler/tuic;x-scheme-handler/wg;x-scheme-handler/wireguard;x-scheme-handler/socks;x-scheme-handler/socks5;

@@ -21,48 +21,76 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev meson gettext libssl-dev pkg-config locales locales-all
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev meson gettext libssl-dev pkg-config locales locales-all rpm desktop-file-utils appstream
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache cargo registry
+      - name: Cache cargo registry & tools
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
+            ~/.cargo/bin
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Build Release
-        run: cargo build --release
+      - name: Install cargo packaging tools
+        run: |
+          which cargo-deb || cargo install cargo-deb --locked
+          which cargo-generate-rpm || cargo install cargo-generate-rpm --locked
 
-      - name: Prepare Artifacts
+      - name: Build Release Binaries
+        run: |
+          cargo build --release --bin vrxx --bin vrxx-tui
+
+      - name: Prepare Assets & Metainfo
+        run: |
+          cp data/ru.mark.vrxx.desktop.in data/ru.mark.vrxx.desktop
+          cp data/ru.mark.vrxx.metainfo.xml.in data/ru.mark.vrxx.metainfo.xml
+
+      - name: Build DEB Package
+        run: |
+          cargo deb --no-build
+          mkdir -p release-assets
+          cp target/debian/*.deb release-assets/
+
+      - name: Build RPM Package
+        run: |
+          cargo generate-rpm
+          cp target/generate-rpm/*.rpm release-assets/
+
+      - name: Prepare Universal Archive & Arch PKGBUILD
         env:
           SINGBOX_VERSION: "1.13.18"
         run: |
-          rm -rf dist vrxx-linux-x86_64 vrxx-linux-x86_64.tar.gz*
+          rm -rf dist vrxx-linux-x86_64
           BUNDLE_DIR="dist/vrxx-linux-x86_64"
           mkdir -p "${BUNDLE_DIR}"
 
-          # 1. Копируем бинарник VRXX
+          # 1. Копируем бинарники VRXX (GUI и TUI)
           cp target/release/vrxx "${BUNDLE_DIR}/vrxx"
-          chmod +x "${BUNDLE_DIR}/vrxx"
+          cp target/release/vrxx-tui "${BUNDLE_DIR}/vrxx-tui"
+          chmod +x "${BUNDLE_DIR}/vrxx" "${BUNDLE_DIR}/vrxx-tui"
 
-          # 2. Скачиваем официальный бинарник ядра sing-box
+          # 2. Скачиваем официальный бинарник ядра sing-box 1.13.18
           curl -fSL --retry 3 --retry-delay 2 -o sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz"
           tar -xzf sing-box.tar.gz
           cp "sing-box-${SINGBOX_VERSION}-linux-amd64/sing-box" "${BUNDLE_DIR}/sing-box"
           chmod +x "${BUNDLE_DIR}/sing-box"
           rm -rf sing-box.tar.gz "sing-box-${SINGBOX_VERSION}-linux-amd64"
 
-          # 3. Копируем иконку, .desktop файл, лицензию и документацию
-          cp data/icons/hicolor/scalable/apps/ru.mark.vrxx.svg "${BUNDLE_DIR}/ru.mark.vrxx.svg"
-          cp ru.mark.vrxx.desktop "${BUNDLE_DIR}/ru.mark.vrxx.desktop"
+          # 3. Копируем иконки, .desktop файл, polkit, dbus, лицензию и README
+          mkdir -p "${BUNDLE_DIR}/icons"
+          cp -r data/icons/* "${BUNDLE_DIR}/icons/"
+          cp data/ru.mark.vrxx.desktop "${BUNDLE_DIR}/ru.mark.vrxx.desktop"
+          cp data/ru.mark.vrxx.metainfo.xml "${BUNDLE_DIR}/ru.mark.vrxx.metainfo.xml"
+          cp data/ru.mark.vrxx.policy "${BUNDLE_DIR}/ru.mark.vrxx.policy"
+          cp data/ru.mark.vrxx.daemon.conf "${BUNDLE_DIR}/ru.mark.vrxx.daemon.conf"
           cp README.md "${BUNDLE_DIR}/README.md"
           cp COPYING "${BUNDLE_DIR}/COPYING"
 
@@ -77,41 +105,35 @@ jobs:
 
           echo -e "${BLUE}🚀 Установка VRXX в систему...${NC}"
           sudo install -m 755 "${SCRIPT_DIR}/vrxx" /usr/local/bin/vrxx
+          if [ -f "${SCRIPT_DIR}/vrxx-tui" ]; then
+              sudo install -m 755 "${SCRIPT_DIR}/vrxx-tui" /usr/local/bin/vrxx-tui
+          fi
           if [ -f "${SCRIPT_DIR}/sing-box" ]; then
               sudo install -m 755 "${SCRIPT_DIR}/sing-box" /usr/local/bin/sing-box
           fi
           sudo mkdir -p /usr/share/icons/hicolor/scalable/apps/
-          if [ -f "${SCRIPT_DIR}/ru.mark.vrxx.svg" ]; then
-              sudo install -m 644 "${SCRIPT_DIR}/ru.mark.vrxx.svg" /usr/share/icons/hicolor/scalable/apps/ru.mark.vrxx.svg
+          sudo mkdir -p /usr/share/icons/hicolor/symbolic/apps/
+          if [ -f "${SCRIPT_DIR}/icons/hicolor/scalable/apps/ru.mark.vrxx.svg" ]; then
+              sudo install -m 644 "${SCRIPT_DIR}/icons/hicolor/scalable/apps/ru.mark.vrxx.svg" /usr/share/icons/hicolor/scalable/apps/ru.mark.vrxx.svg
+          fi
+          if [ -f "${SCRIPT_DIR}/icons/hicolor/symbolic/apps/ru.mark.vrxx-symbolic.svg" ]; then
+              sudo install -m 644 "${SCRIPT_DIR}/icons/hicolor/symbolic/apps/ru.mark.vrxx-symbolic.svg" /usr/share/icons/hicolor/symbolic/apps/ru.mark.vrxx-symbolic.svg
           fi
           sudo mkdir -p /usr/share/applications/
           if [ -f "${SCRIPT_DIR}/ru.mark.vrxx.desktop" ]; then
               sudo install -m 644 "${SCRIPT_DIR}/ru.mark.vrxx.desktop" /usr/share/applications/ru.mark.vrxx.desktop
           fi
-
-          # Настройка и запуск системной службы vrxx-daemon
-          echo -e "${BLUE}⚙️  Настраиваю системную службу vrxx-daemon...${NC}"
-          cat << 'SERVICE_EOF' | sed -e 's/^[ \t]*//' | sudo tee /etc/systemd/system/vrxx-daemon.service > /dev/null
-          [Unit]
-          Description=VRXX Privileged VPN & Proxy Daemon
-          After=network.target network-online.target systemd-resolved.service
-          Wants=network-online.target
-
-          [Service]
-          Type=simple
-          ExecStart=/usr/local/bin/vrxx --daemon
-          Restart=always
-          RestartSec=3s
-          KillMode=process
-
-          [Install]
-          WantedBy=multi-user.target
-          SERVICE_EOF
-
-          if command -v systemctl >/dev/null 2>&1; then
-              sudo systemctl daemon-reload
-              sudo systemctl enable --now vrxx-daemon.service
-              echo -e "${GREEN}🔌 Служба vrxx-daemon запущена и добавлена в автозагрузку!${NC}"
+          sudo mkdir -p /usr/share/metainfo/
+          if [ -f "${SCRIPT_DIR}/ru.mark.vrxx.metainfo.xml" ]; then
+              sudo install -m 644 "${SCRIPT_DIR}/ru.mark.vrxx.metainfo.xml" /usr/share/metainfo/ru.mark.vrxx.metainfo.xml
+          fi
+          sudo mkdir -p /usr/share/polkit-1/actions/
+          if [ -f "${SCRIPT_DIR}/ru.mark.vrxx.policy" ]; then
+              sudo install -m 644 "${SCRIPT_DIR}/ru.mark.vrxx.policy" /usr/share/polkit-1/actions/ru.mark.vrxx.policy
+          fi
+          sudo mkdir -p /usr/share/dbus-1/system.d/
+          if [ -f "${SCRIPT_DIR}/ru.mark.vrxx.daemon.conf" ]; then
+              sudo install -m 644 "${SCRIPT_DIR}/ru.mark.vrxx.daemon.conf" /usr/share/dbus-1/system.d/ru.mark.vrxx.daemon.conf
           fi
 
           command -v gtk-update-icon-cache >/dev/null 2>&1 && sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
@@ -134,33 +156,39 @@ jobs:
               sudo rm -f /etc/systemd/system/vrxx-daemon.service
               sudo systemctl daemon-reload 2>/dev/null || true
           fi
-          sudo rm -f /usr/local/bin/vrxx
+          sudo rm -f /usr/local/bin/vrxx /usr/local/bin/vrxx-tui
           sudo rm -f /usr/share/icons/hicolor/scalable/apps/ru.mark.vrxx.svg
+          sudo rm -f /usr/share/icons/hicolor/symbolic/apps/ru.mark.vrxx-symbolic.svg
           sudo rm -f /usr/share/applications/ru.mark.vrxx.desktop
+          sudo rm -f /usr/share/metainfo/ru.mark.vrxx.metainfo.xml
+          sudo rm -f /usr/share/polkit-1/actions/ru.mark.vrxx.policy
+          sudo rm -f /usr/share/dbus-1/system.d/ru.mark.vrxx.daemon.conf
           command -v gtk-update-icon-cache >/dev/null 2>&1 && sudo gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
           command -v update-desktop-database >/dev/null 2>&1 && sudo update-desktop-database /usr/share/applications || true
-          echo -e "${GREEN}✅ VRXX и служба vrxx-daemon удалены из системы.${NC}"
+          echo -e "${GREEN}✅ VRXX удален из системы.${NC}"
           EOF
           chmod +x "${BUNDLE_DIR}/uninstall.sh"
 
-          # 6. Упаковываем tar.gz архив
-          tar -czf vrxx-linux-x86_64.tar.gz -C dist vrxx-linux-x86_64
-          sha256sum vrxx-linux-x86_64.tar.gz > vrxx-linux-x86_64.tar.gz.sha256
+          # 6. Упаковываем tar.gz универсальный архив
+          tar -czf release-assets/vrxx-linux-x86_64.tar.gz -C dist vrxx-linux-x86_64
 
-          # 7. Подготавливаем отдельный бинарник
-          cp target/release/vrxx vrxx-linux-x86_64
-          chmod +x vrxx-linux-x86_64
-          sha256sum vrxx-linux-x86_64 > vrxx-linux-x86_64.sha256
+          # 7. Копируем PKGBUILD для Arch Linux
+          cp pkg/arch/PKGBUILD release-assets/PKGBUILD
+
+          # 8. Генерируем SHA256 контрольные суммы для всех файлов релизов
+          cd release-assets
+          for f in *; do
+              if [ -f "$f" ] && [[ "$f" != *.sha256 ]]; then
+                  sha256sum "$f" > "${f}.sha256"
+              fi
+          done
+          cd ..
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: vrxx-linux-x86_64
-          path: |
-            vrxx-linux-x86_64.tar.gz
-            vrxx-linux-x86_64.tar.gz.sha256
-            vrxx-linux-x86_64
-            vrxx-linux-x86_64.sha256
+          name: vrxx-packages
+          path: release-assets/*
 
       - name: Extract Release Notes
         if: startsWith(github.ref, 'refs/tags/')
@@ -185,16 +213,12 @@ jobs:
               out.write(notes + "\n")
           ' "${{ github.ref_name }}"
 
-      - name: Create Release
+      - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/') && !env.ACT
         uses: softprops/action-gh-release@v2
         with:
           body_path: RELEASE_NOTES.md
-          files: |
-            vrxx-linux-x86_64.tar.gz
-            vrxx-linux-x86_64.tar.gz.sha256
-            vrxx-linux-x86_64
-            vrxx-linux-x86_64.sha256
+          files: release-assets/*
           draft: false
           prerelease: false
         env:

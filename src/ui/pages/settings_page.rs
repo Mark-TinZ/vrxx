@@ -40,6 +40,7 @@ pub struct SettingsSnapshot {
     enable_fake_dns: bool,
     enable_mux: bool,
     mux_concurrency: i32,
+    enable_fragment: bool,
     log_level: u32,
     ping_algorithm: u32,
     ping_target_url: String,
@@ -92,6 +93,8 @@ mod imp {
         pub mux_row: TemplateChild<adw::ExpanderRow>,
         #[template_child]
         pub mux_concurrency_row: TemplateChild<adw::SpinRow>,
+        #[template_child]
+        pub enable_fragment_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
         pub ping_algorithm_row: TemplateChild<adw::ComboRow>,
         #[template_child]
@@ -176,6 +179,7 @@ impl VrxxSettingsPage {
             enable_fake_dns: imp.fake_dns_row.is_active(),
             enable_mux: imp.mux_row.enables_expansion(),
             mux_concurrency: imp.mux_concurrency_row.value() as i32,
+            enable_fragment: imp.enable_fragment_row.is_active(),
             log_level: imp.log_level_row.selected(),
             ping_algorithm: imp.ping_algorithm_row.selected(),
             ping_target_url: imp.ping_target_url_row.text().trim().to_string(),
@@ -233,6 +237,7 @@ impl VrxxSettingsPage {
         s.enable_fake_dns = current.enable_fake_dns;
         s.enable_mux = current.enable_mux;
         s.mux_concurrency = current.mux_concurrency.clamp(1, 128);
+        s.enable_fragment = current.enable_fragment;
 
         s.log_level = match current.log_level {
             0 => "error".to_string(),
@@ -242,10 +247,10 @@ impl VrxxSettingsPage {
         };
 
         s.ping_algorithm = match current.ping_algorithm {
+            0 => "tcp_handshake".to_string(),
             1 => "icmp_ping".to_string(),
-            2 => "via_proxy_get".to_string(),
             3 => "via_proxy_head".to_string(),
-            _ => "tcp_handshake".to_string(),
+            _ => "via_proxy_get".to_string(),
         };
 
         if !current.ping_target_url.is_empty() {
@@ -334,6 +339,7 @@ impl VrxxSettingsPage {
             imp.mux_row.set_enable_expansion(snapshot.enable_mux);
             imp.mux_concurrency_row
                 .set_value(snapshot.mux_concurrency as f64);
+            imp.enable_fragment_row.set_active(snapshot.enable_fragment);
             imp.log_level_row.set_selected(snapshot.log_level);
             imp.ping_algorithm_row.set_selected(snapshot.ping_algorithm);
             imp.ping_target_url_row.set_text(&snapshot.ping_target_url);
@@ -373,6 +379,7 @@ impl VrxxSettingsPage {
         imp.mux_row.set_enable_expansion(settings.enable_mux);
         imp.mux_concurrency_row
             .set_value(settings.mux_concurrency as f64);
+        imp.enable_fragment_row.set_active(settings.enable_fragment);
 
         let log_idx = match settings.log_level.as_str() {
             "error" => 0,
@@ -383,10 +390,10 @@ impl VrxxSettingsPage {
         imp.log_level_row.set_selected(log_idx);
 
         let ping_algo_idx = match settings.ping_algorithm.as_str() {
+            "tcp_handshake" => 0,
             "icmp_ping" => 1,
-            "via_proxy_get" => 2,
             "via_proxy_head" => 3,
-            _ => 0, // tcp_handshake
+            _ => 2, // via_proxy_get default
         };
         imp.ping_algorithm_row.set_selected(ping_algo_idx);
         imp.ping_target_url_row.set_text(&settings.ping_target_url);
@@ -434,6 +441,7 @@ impl VrxxSettingsPage {
         connect_switch(&imp.block_quic_row, self);
         connect_switch(&imp.bypass_lan_row, self);
         connect_switch(&imp.fake_dns_row, self);
+        connect_switch(&imp.enable_fragment_row, self);
 
         let p_weak_lang = self.downgrade();
         imp.language_row.connect_selected_notify(move |_| {

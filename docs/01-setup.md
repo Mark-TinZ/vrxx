@@ -4,6 +4,20 @@
 
 VRXX — это современный, высокопроизводительный графический клиент для VPN-ядра Sing-box, написанный на Rust с использованием GTK4 и Libadwaita. Приложение предоставляет нативный Linux-интерфейс, строго следующий гайдлайнам GNOME HIG, и позволяет легко управлять сложными протоколами (VLESS, VMess, Trojan) и правилами маршрутизации без необходимости ручной правки JSON-конфигураций ядра.
 
+## Способы установки и пакетная матрица
+
+VRXX поставляется в готовых пакетах для всех основных дистрибутивов Linux, строго зафиксированных на стабильную версию ядра **sing-box 1.13.18**:
+
+| Пакет / Дистрибутив | Формат | Способ установки / Сборка |
+| :--- | :--- | :--- |
+| **Arch Linux / Manjaro** | `PKGBUILD` / AUR | Сборка из исходников через `makepkg -si` в `pkg/arch/` |
+| **Debian / Ubuntu / Mint** | `.deb` пакет | `sudo dpkg -i vrxx_*_amd64.deb` (сгенерирован через `cargo-deb`) |
+| **Fedora / RHEL / CentOS** | `.rpm` пакет | `sudo dnf install vrxx-*.rpm` (сгенерирован через `cargo-generate-rpm`) |
+| **Универсальный архив** | `.tar.gz` | Архив со встроенным бинарником `sing-box 1.13.18`, GUI/TUI, скриптами `install.sh` и `uninstall.sh` |
+
+> [!NOTE]
+> **Отказ от Flatpak:** Проект полностью отказался от формата Flatpak ввиду жесткой изоляции песочницы (sandbox), которая препятствует прямому взаимодействию с системным D-Bus, управлению системными TUN-интерфейсами (`/dev/net/tun`), созданию сетевых таблиц маршрутизации ядра и повышению привилегий Polkit.
+
 ## Требования к окружению
 
 Для сборки и работы приложения требуются следующие зависимости:
@@ -11,13 +25,12 @@ VRXX — это современный, высокопроизводительн
 | Зависимость | Версия | Описание |
 | --- | --- | --- |
 | Rust | 1.80+ | Основной компилятор (устанавливается через rustup) |
-| GTK4 | 4.16+ | Библиотеки графического интерфейса |
-| Libadwaita | 1.6+ | Виджеты экосистемы GNOME |
+| GTK4 | 4.14+ | Библиотеки графического интерфейса |
+| Libadwaita | 1.5+ | Виджеты экосистемы GNOME |
 | libssl | — | OpenSSL (для сетевых соединений и загрузок) |
 | pkg-config | — | Утилита для поиска библиотек C |
 | gettext | — | Инструменты локализации |
-| Meson | 1.0+ | Опционально: для сборки Flatpak и системной установки |
-| **Sing-box** | 1.13.18+ | Сетевое VPN-ядро |
+| **Sing-box** | **1.13.18** | Сетевое VPN-ядро (зафиксировано в релизах) |
 
 ## Установка системных зависимостей
 
@@ -26,17 +39,17 @@ VRXX — это современный, высокопроизводительн
 ### Ubuntu / Debian (включая Pop!_OS)
 ```bash
 sudo apt update
-sudo apt install libgtk-4-dev libadwaita-1-dev libssl-dev pkg-config gettext
+sudo apt install libgtk-4-dev libadwaita-1-dev libssl-dev pkg-config gettext polkitd
 ```
 
 ### Arch Linux / Manjaro
 ```bash
-sudo pacman -S gtk4 libadwaita openssl pkg-config gettext
+sudo pacman -S gtk4 libadwaita openssl pkgconf gettext polkit
 ```
 
 ### Fedora
 ```bash
-sudo dnf install gtk4-devel libadwaita-devel openssl-devel pkg-config gettext
+sudo dnf install gtk4-devel libadwaita-devel openssl-devel pkgconf gettext polkit
 ```
 
 ## Сборка из исходного кода
@@ -52,7 +65,7 @@ cd vrxx
 cargo build --release
 ```
 
-Бинарный файл приложения будет находиться по пути: `target/release/vrxx`.
+Бинарные файлы приложения будут находиться по пути: `target/release/vrxx` (GUI) и `target/release/vrxx-tui` (TUI).
 
 ## Запуск и Управление Демоном
 
@@ -60,14 +73,12 @@ VRXX использует двухпроцессную модель с разд�
 
 ### 1. Системный сервис systemd (Основной способ)
 
-При установке пакета (`PKGBUILD`, `.deb`, `.rpm`) создается системный юнит `/usr/lib/systemd/system/vrxx-daemon.service`.
+При установке пакета (`PKGBUILD`, `.deb`, `.rpm` или `install.sh`) создается системный юнит `vrxx-daemon.service`.
 
 Для включения и запуска фонового сервиса выполните:
 ```bash
 sudo systemctl enable --now vrxx-daemon.service
 ```
-
-Демон запустится от имени `root`, создаст Unix Domain Socket `/run/vrxx/daemon.sock` (с правами доступа `0666` или группой `wheel`/`vrxx`) и перейдет в режим ожидания команд от GUI или CLI.
 
 ### 2. Ручной запуск демона (Для разработки)
 
@@ -85,19 +96,13 @@ sudo ./target/release/vrxx --daemon &
 
 > **Совет:** Флаг `--hidden` позволяет запустить UI в скрытом режиме (удобно для автозапуска при входе в систему).
 
-## Установка в систему
+## Установка из универсального архива
 
-В репозитории предусмотрены bash-скрипты для упрощения системной установки:
-
-- `scripts/install.sh` — копирует собранный бинарник в `/usr/local/bin/vrxx`, устанавливает systemd unit `/usr/lib/systemd/system/vrxx-daemon.service`, иконку приложения, `.desktop` файл и обновляет кэши иконок.
-- `scripts/update.sh` — производит пересборку проекта и обновляет установленные системные файлы и сервисы.
-- `scripts/uninstall.sh` — удаляет приложение и системную службу из системы (пользовательские настройки сохраняются).
-
-Пример установки:
-```bash
-./scripts/install.sh
-sudo systemctl enable --now vrxx-daemon.service
-```
+В релизах VRXX доступен универсальный архив `vrxx-linux-x86_64.tar.gz`:
+1. Распакуйте архив: `tar -xzf vrxx-linux-x86_64.tar.gz`
+2. Перейдите в каталог: `cd vrxx-linux-x86_64`
+3. Запустите скрипт установки: `sudo ./install.sh`
+4. Для полного удаления: `sudo ./uninstall.sh`
 
 ### Настройка Capabilities (Альтернативный вариант для пакетов)
 

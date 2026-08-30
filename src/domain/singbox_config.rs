@@ -28,6 +28,7 @@ pub fn build_proxy_outbound_and_endpoints(
     parsed_key: &ParsedKey,
     enable_mux: bool,
     mux_concurrency: i32,
+    enable_fragment: bool,
 ) -> (serde_json::Value, Vec<serde_json::Value>) {
     let qp = &parsed_key.query_params;
     let proto_lower = parsed_key.protocol.to_lowercase();
@@ -77,14 +78,27 @@ pub fn build_proxy_outbound_and_endpoints(
                 .get("method")
                 .cloned()
                 .unwrap_or_else(|| "2022-blake3-aes-128-gcm".to_string());
-            json!({
+            let mut outbound = json!({
                 "type": "shadowsocks",
                 "tag": "proxy",
                 "server": parsed_key.host,
                 "server_port": parsed_key.port,
                 "method": method,
                 "password": parsed_key.uuid,
-            })
+            });
+            if let Some(plugin) = qp.get("plugin") {
+                let (p_name, p_opts) = if let Some((n, o)) = plugin.split_once(';') {
+                    (n, o)
+                } else {
+                    (plugin.as_str(), "")
+                };
+                outbound["plugin"] = json!(p_name);
+                if !p_opts.is_empty() {
+                    outbound["plugin_opts"] = json!(p_opts);
+                }
+                outbound["udp_over_tcp"] = json!(true);
+            }
+            outbound
         }
         "hysteria2" | "hy2" => {
             let mut outbound = json!({
@@ -142,23 +156,103 @@ pub fn build_proxy_outbound_and_endpoints(
                 .cloned()
                 .unwrap_or_else(|| "10.0.0.2/32".to_string());
             let peer_pub = qp.get("public_key").cloned().unwrap_or_default();
+            let mut peer = json!({
+                "address": parsed_key.host,
+                "port": parsed_key.port,
+                "public_key": peer_pub,
+                "allowed_ips": ["0.0.0.0/0", "::/0"]
+            });
+            if let Some(psk) = qp
+                .get("psk")
+                .or_else(|| qp.get("pre_shared_key"))
+                .or_else(|| qp.get("preshared_key"))
+            {
+                if !psk.is_empty() {
+                    peer["pre_shared_key"] = json!(psk);
+                }
+            }
+            if let Some(reserved_str) = qp.get("reserved") {
+                let bytes: Vec<u8> = reserved_str
+                    .split(&[',', ' '][..])
+                    .filter_map(|s| s.trim().parse::<u8>().ok())
+                    .collect();
+                if !bytes.is_empty() {
+                    peer["reserved"] = json!(bytes);
+                }
+            }
+            let keepalive = qp
+                .get("keepalive")
+                .or_else(|| qp.get("persistent_keepalive"))
+                .or_else(|| qp.get("persistent_keepalive_interval"))
+                .and_then(|v| v.parse::<u32>().ok())
+                .unwrap_or(25);
+            peer["persistent_keepalive_interval"] = json!(keepalive);
+
+            let mtu = qp
+                .get("mtu")
+                .and_then(|v| v.parse::<u32>().ok())
+                .unwrap_or(1280);
 
             endpoints.push(json!({
                 "type": "wireguard",
                 "tag": "proxy",
                 "address": [local_ip],
                 "private_key": parsed_key.uuid,
-                "peers": [{
-                    "address": parsed_key.host,
-                    "port": parsed_key.port,
-                    "public_key": peer_pub,
-                    "allowed_ips": ["0.0.0.0/0", "::/0"]
-                }]
+                "mtu": mtu,
+                "peers": [peer]
             }));
             json!({
                 "type": "direct",
                 "tag": "proxy-dummy"
             })
+        }
+        "socks" | "socks5" => {
+            let mut outbound = json!({
+                "type": "socks",
+                "tag": "proxy",
+                "server": parsed_key.host,
+                "server_port": parsed_key.port,
+                "version": "5",
+                "network": "tcp",
+                "udp_over_tcp": false
+            });
+            if let Some(user) = qp.get("user").or_else(|| qp.get("username")) {
+                if !user.is_empty() {
+                    outbound["username"] = json!(user);
+                }
+            }
+            if !parsed_key.uuid.is_empty() {
+                outbound["password"] = json!(parsed_key.uuid);
+            }
+            outbound
+        }
+        "http" | "https" => {
+            let mut outbound = json!({
+                "type": "http",
+                "tag": "proxy",
+                "server": parsed_key.host,
+                "server_port": parsed_key.port,
+            });
+            if let Some(user) = qp.get("user").or_else(|| qp.get("username")) {
+                if !user.is_empty() {
+                    outbound["username"] = json!(user);
+                }
+            }
+            if !parsed_key.uuid.is_empty() {
+                outbound["password"] = json!(parsed_key.uuid);
+            }
+            if proto_lower == "https"
+                || qp
+                    .get("tls")
+                    .map(|v| v == "1" || v == "true")
+                    .unwrap_or(false)
+            {
+                outbound["tls"] = json!({
+                    "enabled": true,
+                    "server_name": qp.get("sni").unwrap_or(&parsed_key.host)
+                });
+            }
+            outbound
         }
         _ => json!({
             "type": "direct",
@@ -185,6 +279,12 @@ pub fn build_proxy_outbound_and_endpoints(
             "enabled": true,
             "fingerprint": fp
         });
+
+        if enable_fragment {
+            tls["fragment"] = json!(true);
+            tls["record_fragment"] = json!(false);
+            tls["fragment_fallback_delay"] = json!("500ms");
+        }
 
         if security == "reality" {
             let mut reality = json!({
@@ -231,8 +331,12 @@ pub fn build_proxy_outbound_and_endpoints(
         _ => {}
     }
 
-    // Мультиплексирование (Mux)
-    if enable_mux && proto_lower != "wireguard" && proto_lower != "wg" {
+    // Мультиплексирование (Mux) только для совместимых протоколов
+    let is_mux_supported = matches!(
+        proto_lower.as_str(),
+        "vless" | "vmess" | "trojan" | "shadowsocks" | "ss"
+    );
+    if enable_mux && is_mux_supported {
         proxy_outbound["multiplex"] = json!({
             "enabled": true,
             "protocol": "h2mux",
@@ -292,6 +396,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         parsed_key,
         settings.enable_mux,
         settings.mux_concurrency,
+        settings.enable_fragment,
     );
 
     let mut outbounds = vec![
@@ -734,7 +839,8 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
 /// Генерирует ультра-легковесный JSON-конфиг для изолированной L7 проверки (Sandbox Probe) отдельного ключа.
 pub fn build_singbox_probe_config(parsed_key: &ParsedKey, probe_port: u16) -> String {
     let proto_lower = parsed_key.protocol.to_lowercase();
-    let (proxy_outbound, endpoints) = build_proxy_outbound_and_endpoints(parsed_key, false, 8);
+    let (proxy_outbound, endpoints) =
+        build_proxy_outbound_and_endpoints(parsed_key, false, 8, false);
 
     let mut outbounds = vec![
         proxy_outbound,
@@ -1026,9 +1132,13 @@ mod tests {
             "vmess://eyJ2IjoiMiIsInBzIjoiVk1lc3MiLCJhZGQiOiIxLjEuMS4xIiwicG9ydCI6NDQzLCJpZCI6ImEwYTBhMGEwLWEwYTAtYTBhMC1hMGEwLWEwYTBhMGEwYTBhMCIsIm5ldCI6IndzIn0=",
             "trojan://pass@1.1.1.1:443#Trojan",
             "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@1.1.1.1:8388#SS",
+            "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@1.1.1.1:8388?plugin=obfs-local%3Bobfs%3Dhttp%3Bobfs-host%3Dexample.com#SSPlugin",
             "hy2://pass@1.1.1.1:8443?up=100&down=500&obfs=salamander&obfs-password=123#HY2",
             "tuic://a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0:pass@1.1.1.1:8443?congestion_control=bbr#TUIC",
-            "wg://AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=@1.1.1.1:51820?public_key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=&ip=10.0.0.2/32#WG",
+            "wg://AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=@1.1.1.1:51820?public_key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=&ip=10.0.0.2/32&psk=BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=&reserved=1,2,3&mtu=1280#WG",
+            "socks5://user:pass@1.1.1.1:1080#SOCKS",
+            "http://user:pass@1.1.1.1:8080#HTTP",
+            "https://user:pass@1.1.1.1:8443#HTTPS",
         ];
 
         let settings = AppSettings::new();
@@ -1047,6 +1157,21 @@ mod tests {
     }
 
     #[test]
+    fn test_build_config_tls_fragmentation() {
+        let key = parse_vpn_key("vless://a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0@1.1.1.1:443?security=tls&sni=example.com#FragmentTest").unwrap();
+        let mut settings = AppSettings::new();
+        settings.enable_fragment = true;
+
+        let config_json = build_singbox_config(&key, &settings);
+        let val: serde_json::Value = serde_json::from_str(&config_json).unwrap();
+        let outbounds = val["outbounds"].as_array().unwrap();
+        let proxy_out = outbounds.iter().find(|o| o["tag"] == "proxy").unwrap();
+
+        assert_eq!(proxy_out["tls"]["fragment"], true);
+        assert_eq!(proxy_out["tls"]["fragment_fallback_delay"], "500ms");
+    }
+
+    #[test]
     fn test_singbox_check_with_binary_if_present() {
         if let Some(bin_path) = crate::daemon::updater::find_singbox_binary() {
             let protocols = vec![
@@ -1054,9 +1179,13 @@ mod tests {
                 "vless://a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0@1.1.1.1:443?security=reality&pbk=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&sid=abcd&sni=google.com&flow=xtls-rprx-vision#TestVLESS",
                 "vmess://eyJ2IjoiMiIsInBzIjoiVk1lc3MiLCJhZGQiOiIxLjEuMS4xIiwicG9ydCI6NDQzLCJpZCI6ImEwYTBhMGEwLWEwYTAtYTBhMC1hMGEwLWEwYTBhMGEwYTBhMCIsIm5ldCI6IndzIn0=",
                 "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@1.1.1.1:8388#SS",
+                "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNzd29yZA@1.1.1.1:8388?plugin=obfs-local%3Bobfs%3Dhttp%3Bobfs-host%3Dexample.com#SSPlugin",
                 "hy2://pass@1.1.1.1:8443?up=100&down=500&obfs=salamander&obfs-password=123#HY2",
                 "tuic://a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0:pass@1.1.1.1:8443?congestion_control=bbr#TUIC",
-                "wg://AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=@1.1.1.1:51820?public_key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=&ip=10.0.0.2/32#WG",
+                "wg://AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=@1.1.1.1:51820?public_key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=&ip=10.0.0.2/32&psk=BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=&reserved=1,2,3&mtu=1280#WG",
+                "socks5://user:pass@1.1.1.1:1080#SOCKS",
+                "http://user:pass@1.1.1.1:8080#HTTP",
+                "https://user:pass@1.1.1.1:8443#HTTPS",
             ];
 
             let temp_dir = std::env::temp_dir();

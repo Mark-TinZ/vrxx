@@ -158,8 +158,8 @@
                 <child>
                   <object class="AdwSwitchRow" id="tun_mode_row">
                     <property name="title" translatable="yes">Enable TUN Mode</property>
-                    <property name="subtitle" translatable="yes">Route all system traffic through virtual adapter (requires root)</property>
-                    <property name="tooltip-text" translatable="yes">Creates a virtual network card (vrxx-tun) to route all system traffic transparently, without needing proxy settings in individual apps.</property>
+                    <property name="subtitle" translatable="yes">Route all system traffic through virtual adapter (TCP/UDP, root required)</property>
+                    <property name="tooltip-text" translatable="yes">Creates a virtual network card (vrxx-tun) to route system traffic transparently. Note: HTTP proxies and certain Shadowsocks plugins only tunnel TCP, while WireGuard, Hysteria2, TUIC, VLESS, VMess, Trojan, and plain Shadowsocks support both TCP and UDP.</property>
                   </object>
                 </child>
 
@@ -177,7 +177,7 @@
                   <object class="AdwSwitchRow" id="block_quic_row">
                     <property name="title" translatable="yes">Block QUIC (UDP 443)</property>
                     <property name="subtitle" translatable="yes">Force browsers to use TCP to prevent connection drops</property>
-                    <property name="tooltip-text" translatable="yes">Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and Firefox to use TCP. Prevents streaming buffering and connection stalls on restricted networks.</property>
+                    <property name="tooltip-text" translatable="yes">Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and Firefox to use TCP. Recommended for all protocols, especially HTTP proxies and restricted networks.</property>
                   </object>
                 </child>
 
@@ -207,14 +207,14 @@
             <child>
               <object class="AdwPreferencesGroup">
                 <property name="title" translatable="yes">Advanced Connection</property>
-                <property name="description" translatable="yes">TCP stream multiplexing and connection optimization</property>
+                <property name="description" translatable="yes">Stream multiplexing, TLS anti-censorship fragmentation, and connection optimization</property>
 
                 <!-- Мультиплексирование соединений (Mux) -->
                 <child>
                   <object class="AdwExpanderRow" id="mux_row">
                     <property name="title" translatable="yes">Multiplexing (Mux)</property>
                     <property name="subtitle" translatable="yes">Combine multiple TCP streams into a single connection (h2mux)</property>
-                    <property name="tooltip-text" translatable="yes">Reuses a single persistent TCP connection for multiple streams, reducing latency when opening many connections simultaneously. May cause jitter on high-packet-loss networks.</property>
+                    <property name="tooltip-text" translatable="yes">Reuses a single persistent TCP connection for multiple streams. Supported on VLESS, VMess, Trojan, and Shadowsocks. Automatically bypassed for WireGuard, Hysteria2, TUIC, and HTTP proxies.</property>
                     <property name="show-enable-switch">True</property>
 
                     <!-- Количество параллельных потоков на соединение -->
@@ -234,6 +234,16 @@
                         </property>
                       </object>
                     </child>
+                  </object>
+                </child>
+
+                <!-- Фрагментация TLS пакетов (обход DPI / SNI блокировок) -->
+                <child>
+                  <object class="AdwSwitchRow" id="enable_fragment_row">
+                    <property name="title" translatable="yes">TLS Fragmentation</property>
+                    <property name="subtitle" translatable="yes">Split TLS ClientHello to bypass SNI filtering (TLS and Reality)</property>
+                    <property name="tooltip-text" translatable="yes">Fragments the initial TLS handshake packet across multiple segments to bypass SNI inspection and DPI censorship. Supported on TLS/Reality protocols (VLESS, VMess TLS, Trojan, Hysteria2, TUIC, HTTPS).</property>
+                    <property name="active">False</property>
                   </object>
                 </child>
               </object>
@@ -299,8 +309,8 @@
                 <child>
                   <object class="AdwComboRow" id="ping_algorithm_row">
                     <property name="title" translatable="yes">Ping Algorithm</property>
-                    <property name="subtitle" translatable="yes">Method used for measuring server response time</property>
-                    <property name="tooltip-text" translatable="yes">Choose measurement method: TCP Handshake (fast, connects to port), ICMP Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test through tunnel).</property>
+                    <property name="subtitle" translatable="yes">HTTP GET via Proxy (universal), TCP Handshake, or ICMP Ping</property>
+                    <property name="tooltip-text" translatable="yes">HTTP GET/HEAD via Proxy is recommended as it performs a real end-to-end test through the proxy tunnel for 100% of protocols. TCP Handshake directly connects to the port (may timeout on UDP-only protocols like WireGuard/TUIC). ICMP Ping sends echo packets to the host IP (may be blocked by firewalls).</property>
                     <property name="model">
                       <object class="GtkStringList">
                         <items>
@@ -311,7 +321,7 @@
                         </items>
                       </object>
                     </property>
-                    <property name="selected">0</property>
+                    <property name="selected">2</property>
                   </object>
                 </child>
 

@@ -49,10 +49,10 @@
 | `bypass_lan` | bool | `true` | Направлять трафик к локальной сети напрямую (`geoip-private.srs`) |
 | `enable_fake_dns` | bool | `true` | Включить Fake DNS (`198.18.0.0/15` для ускорения маршрутизации) |
 | `enable_local_dns` | bool | `false` | Использовать локальный DNS-сервер |
-| `enable_mux` | bool | `false` | Включить мультиплексирование соединений (`h2mux`) |
+| `enable_mux` | bool | `false` | Включить мультиплексирование TCP соединений (`h2mux`) для VLESS, VMess, Trojan, Shadowsocks |
 | `mux_concurrency` | i32 | `8` | Количество потоков мультиплексирования (1–128) |
-| `enable_fragment` | bool | `false` | Включить фрагментацию пакетов (в стадии реализации) |
-| `ping_algorithm` | String | `"tcp_handshake"` | Алгоритм пинга: `"tcp_handshake"`, `"icmp_ping"`, `"via_proxy_get"`, `"via_proxy_head"` |
+| `enable_fragment` | bool | `false` | Включить TLS-фрагментацию ClientHello для обхода блокировок DPI/SNI (TLS и Reality) |
+| `ping_algorithm` | String | `"via_proxy_get"` | Алгоритм пинга: `"via_proxy_get"` (дефолтный универсальный), `"via_proxy_head"`, `"tcp_handshake"`, `"icmp_ping"` |
 | `ping_target_url` | String | `"https://www.gstatic.com/generate_204"` | URL-адрес для HTTP проверки задержки через прокси |
 | `keys` | Vec<VpnKeyData>| `[]` | Список VPN-ключей (в памяти; сохраняется в зашифрованном `data.dat`) |
 | `whitelist` | Vec<String>| `[]` | Белый список доменов |

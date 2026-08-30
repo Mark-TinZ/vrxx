@@ -22,6 +22,43 @@
   <launchable type="desktop-id">ru.mark.vrxx.desktop</launchable>
   <content_rating type="oars-1.1" />
 
+  <categories>
+    <category>Network</category>
+    <category>Security</category>
+    <category>Utility</category>
+  </categories>
+
+  <keywords>
+    <keyword>vpn</keyword>
+    <keyword>proxy</keyword>
+    <keyword>sing-box</keyword>
+    <keyword>vless</keyword>
+    <keyword>wireguard</keyword>
+    <keyword>shadowsocks</keyword>
+    <keyword>trojan</keyword>
+    <keyword>hysteria2</keyword>
+    <keyword>tuic</keyword>
+    <keyword>socks5</keyword>
+    <keyword>gtk4</keyword>
+    <keyword>libadwaita</keyword>
+  </keywords>
+
+  <provides>
+    <binary>vrxx</binary>
+    <binary>vrxx-tui</binary>
+  </provides>
+
+  <screenshots>
+    <screenshot type="default">
+      <image type="source">https://raw.githubusercontent.com/Mark-TinZ/vrxx/main/data/screenshots/main-window.png</image>
+      <caption>VRXX Main Window with active VPN connection</caption>
+    </screenshot>
+    <screenshot>
+      <image type="source">https://raw.githubusercontent.com/Mark-TinZ/vrxx/main/data/screenshots/settings.png</image>
+      <caption>VRXX Advanced Routing and Network Core Settings</caption>
+    </screenshot>
+  </screenshots>
+
   <branding>
     <color type="primary" scheme_preference="light">#3584e4</color>
     <color type="primary" scheme_preference="dark">#1c71d8</color>

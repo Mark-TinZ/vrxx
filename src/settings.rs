@@ -291,7 +291,7 @@ fn default_mux_concurrency() -> i32 {
     8
 }
 fn default_ping_algorithm() -> String {
-    "tcp_handshake".to_string()
+    "via_proxy_get".to_string()
 }
 fn default_ping_target_url() -> String {
     "https://www.gstatic.com/generate_204".to_string()

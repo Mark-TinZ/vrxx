@@ -139,12 +139,13 @@ VRXX предназначен для удобного управления VPN-�
 ### ✅ Полностью реализовано
 
 **Управление подключениями:**
-- Импорт VPN-ключей из буфера обмена и URL-строки
-- Поддержка протоколов VLESS (Reality, TLS, uTLS), VMess (Base64 JSON), Trojan
+- Импорт и экспорт VPN-ключей из буфера обмена и URL-строки
+- Поддержка протоколов: VLESS (Reality, TLS, uTLS, Flow), VMess (Base64 JSON, gRPC, WS), Trojan, Shadowsocks (2022, AEAD, SIP003 плагины), WireGuard (endpoints 1.13.18+, PSK, reserved, MTU), SOCKS5 (auth/anon), HTTP/HTTPS (CONNECT)
 - Подключение/отключение через привилегированный демон
-- Живая статистика: трафик (↓/↑), время подключения, пинг
+- Живая статистика: трафик (↓/↑), время подключения, пинг (по умолчанию `via_proxy_get`)
 - Автоматическое определение геолокации и часового пояса сервера
 - Режим стримера: скрытие IP-адресов и SNI в интерфейсе
+- TLS-фрагментация ClientHello для обхода блокировок DPI/SNI (`enable_fragment`)
 
 **Сетевой стек:**
 - TUN-режим с автоматической настройкой маршрутов (gVisor стек, `auto_route`, `strict_route`)
@@ -156,44 +157,34 @@ VRXX предназначен для удобного управления VPN-�
 - Блокировка IPv6, обход LAN, пользовательские правила маршрутизации (домены, IP, SRS URL)
 
 **Конфигурация ядра:**
-- Генерация конфигурации Sing-box спецификации 1.13.18+ (DNS hijack, route sniff, endpoints)
+- Генерация конфигурации Sing-box спецификации 1.13.18+ (DNS hijack, route sniff, endpoints WireGuard)
 - TLS + Reality + uTLS fingerprinting (Chrome по умолчанию)
 - Транспорт: gRPC, WebSocket, HTTPUpgrade
 - DNS: удалённый (Cloudflare HTTPS через прокси) + локальный
-- Мультиплексирование (h2mux)
+- Мультиплексирование (h2mux) для VLESS, VMess, Trojan, Shadowsocks
+- TLS-фрагментация пакетов
 - Clash API для мониторинга статистики (127.0.0.1:9090)
 
 **Пользовательский интерфейс:**
 - Нативный GNOME-дизайн (Libadwaita 1.5+, соответствие HIG)
+- Терминальный интерфейс (TUI) на базе Ratatui (`vrxx tui` / `vrxx-tui`)
 - 4 основных страницы: VPN, Прокси, Белый список, Настройки
 - Переключение тем: светлая, тёмная, системная
 - Масштабирование интерфейса (Ctrl+/Ctrl-/Ctrl+0)
 - Отдельное окно логов с потоковым отображением (SSE + чтение файлов)
 - Автоматическое обнаружение и проверка версии ядра Sing-box в системе
-- Импорт и экспорт настроек через JSON-файлы
+- Импорт и экспорт настроек через защищенный JSON-файл / зашифрованный Keystore
 - Сброс настроек к значениям по умолчанию
-- Сочетания клавиш: Ctrl+Q (выход), Ctrl+D (отключение)
 
-**Инфраструктура:**
+**Инфраструктура и пакеты:**
 - Привилегированный демон с REST API (Axum, 127.0.0.1:13337)
-- SSE-стриминг событий (статус, логи) от демона к GUI
+- Пакеты для Linux: `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), `PKGBUILD` (Arch Linux / AUR), Универсальный `.tar.gz` (со встроенным ядром `sing-box 1.13.18` и скриптами `install.sh` / `uninstall.sh`)
+- Безопасное хранилище ключей с привязкой к хосту (Host-Bound AES-256-GCM Keystore)
 - SSD-friendly асинхронное логирование с разделением на потоки (`tracing` + `tracing-appender`)
 - Конфигурация ядра передаётся через stdin (никогда не записывается на диск)
-- Безопасное хранение настроек (permissions 0o600)
 - Фоновое обновление баз GeoIP/GeoSite (автоматически каждые 24 часа)
 - D-Bus конфигурация и PolicyKit для авторизации привилегированных операций
-- CI/CD: `cargo check` + `cargo test` + `cargo clippy` при каждом пуше
-- GitHub Actions Release: автоматическая сборка бинарника и публикация при создании тега
-- Локализация через gettext (русский, английский)
-- Скрипты установки, обновления и удаления
-
-### 🚧 В процессе / Частично реализовано
-
-- Поддержка Shadowsocks: парсинг ключей работает, генерация конфигурации частичная
-- Поддержка WireGuard, SOCKS и HTTP: типы определены в `protocol.rs`, интеграция с ядром не завершена
-- Flatpak: манифест (`ru.mark.vrxx.json`) присутствует, но сборка не автоматизирована в CI
-- AppStream метаданные (`metainfo.xml.in`): содержат placeholder-значения
-- Фрагментация пакетов (`enable_fragment`): настройка в UI есть, реализация в конфигурации ядра не завершена
+- CI/CD: сборка DEB, RPM, PKGBUILD, Universal tar.gz в GitHub Actions (тестирование через `act`)
 
 ## Технологический стек
 
@@ -342,23 +333,26 @@ sudo ./target/release/vrxx --daemon &
 
 ### `release.yml` — Релизная сборка при создании тега
 
-1. `cargo build --release` — сборка релизного бинарника `vrxx`
-2. Загрузка официального ядра `sing-box v1.13.18` (linux-amd64)
-3. Формирование полного дистрибутивного архива `vrxx-linux-x86_64.tar.gz` (бинарники `vrxx` + `sing-box`, иконка, `.desktop`, скрипты `install.sh` / `uninstall.sh`)
-4. Формирование отдельного исполняемого файла `vrxx-linux-x86_64`
-5. Генерация SHA-256 контрольных сумм и публикация релиза в GitHub Releases
+1. `cargo build --release` — сборка релизных бинарников `vrxx` (GUI) и `vrxx-tui` (TUI)
+2. Сборка пакета `.deb` (Debian/Ubuntu) через `cargo-deb`
+3. Сборка пакета `.rpm` (Fedora/RHEL) через `cargo-generate-rpm`
+4. Формирование универсального архива `vrxx-linux-x86_64.tar.gz` (бинарники `vrxx`, `vrxx-tui`, официальное ядро `sing-box 1.13.18`, иконки, `.desktop`, Polkit, D-Bus, скрипты `install.sh` / `uninstall.sh`)
+5. Подготовка `PKGBUILD` для Arch Linux / AUR
+6. Генерация SHA-256 контрольных сумм и публикация релизных артефактов в GitHub Releases
 
 ## Поддерживаемые протоколы
 
-| Протокол | Схема URI | Парсинг | Генерация конфигурации |
-| --- | --- | --- | --- |
-| VLESS | `vless://` | ✅ полный | ✅ полный (TLS, Reality, uTLS, Flow) |
-| VMess | `vmess://` (Base64 JSON) | ✅ полный | ✅ полный (XUDP, auto security) |
-| Trojan | `trojan://` | ✅ полный | ✅ полный |
-| Shadowsocks | `ss://` | ✅ базовый | 🚧 частичный |
-| WireGuard | — | 📋 тип определён | ❌ не реализовано |
-| SOCKS | — | 📋 тип определён | ❌ не реализовано |
-| HTTP | — | 📋 тип определён | ❌ не реализовано |
+| Протокол | Схема URI | Парсинг | Генерация конфигурации Sing-box 1.13.18+ | Особенности |
+| --- | --- | --- | --- | --- |
+| **VLESS** | `vless://` | ✅ полный | ✅ полный | Reality, Vision, uTLS, Mux, TLS Fragment |
+| **VMess** | `vmess://` (Base64 JSON) | ✅ полный | ✅ полный | XUDP, WebSocket, gRPC, Mux, TLS Fragment |
+| **Trojan** | `trojan://` | ✅ полный | ✅ полный | TLS, uTLS отпечаток, Mux, TLS Fragment |
+| **Shadowsocks** | `ss://` | ✅ полный | ✅ полный | 2022-blake3, AEAD, SIP003 плагины, `udp_over_tcp: true`, Mux |
+| **Hysteria2** | `hy2://` | ✅ полный | ✅ полный | `up`/`down` bandwidth, `obfs` (salamander), TLS Fragment |
+| **TUIC v5** | `tuic://` | ✅ полный | ✅ полный | `bbr`, `native`/`quic` relay mode, TLS Fragment |
+| **WireGuard** | `wg://` | ✅ полный | ✅ полный | Спецификация 1.13.18+ `endpoints` (PSK, reserved [u8; 3], MTU) |
+| **SOCKS5** | `socks5://`, `socks://` | ✅ полный | ✅ полный | Анонимный и с авторизацией (`user:pass`), TCP и UDP |
+| **HTTP / HTTPS** | `http://`, `https://` | ✅ полный | ✅ полный | CONNECT proxy, авторизация, опциональный TLS |
 
 ## REST API демона
 

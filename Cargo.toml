@@ -3,6 +3,14 @@ name = "vrxx"
 version = "26.1.0-beta.2"
 edition = "2021"
 default-run = "vrxx"
+description = "Fast, modern Linux GTK4/Libadwaita GUI and TUI client for sing-box"
+authors = ["Mark"]
+license = "MPL-2.0"
+repository = "https://github.com/Mark-TinZ/vrxx"
+homepage = "https://github.com/Mark-TinZ/vrxx"
+readme = "README.md"
+categories = ["network-programming", "gui"]
+keywords = ["vpn", "proxy", "sing-box", "gtk4", "libadwaita"]
 
 [dependencies]
 base64 = "0.22.1"
@@ -56,13 +64,37 @@ features = ["v1_5"]
 package = "gdk4"
 version = "0.9"
 
-[package.metadata.release]
-pre-release-commit-message = "chore(release): bump version to {{version}}"
-tag-message = "chore(release): {{version}}"
-tag-name = "v{{version}}"
-sign-commit = false
-sign-tag = false
-pre-release-replacements = [
-  {file = "meson.build", search = "version: '[0-9a-zA-Z.-]+'", replace = "version: '{{version}}'"},
-  {file = "data/ru.mark.vrxx.metainfo.xml.in", search = '<release version="[0-9a-zA-Z.-]+"', replace = '<release version="{{version}}"'}
+[package.metadata.deb]
+name = "vrxx"
+maintainer = "Mark <https://github.com/Mark-TinZ/vrxx>"
+copyright = "2026 Mark"
+license-file = ["COPYING", "0"]
+depends = "$auto, libgtk-4-1 (>= 4.14), libadwaita-1-0 (>= 1.5), polkitd | policykit-1"
+section = "net"
+priority = "optional"
+extended-description = """\
+VRXX is a modern, native Linux graphical interface and TUI for sing-box designed to simplify VPN and proxy configuration with support for VLESS, VMess, Shadowsocks, Trojan, WireGuard, Hysteria2, TUIC, and SOCKS5/HTTP."""
+assets = [
+    ["target/release/vrxx", "usr/bin/vrxx", "755"],
+    ["target/release/vrxx-tui", "usr/bin/vrxx-tui", "755"],
+    ["data/ru.mark.vrxx.desktop", "usr/share/applications/ru.mark.vrxx.desktop", "644"],
+    ["data/ru.mark.vrxx.metainfo.xml", "usr/share/metainfo/ru.mark.vrxx.metainfo.xml", "644"],
+    ["data/ru.mark.vrxx.gschema.xml", "usr/share/glib-2.0/schemas/ru.mark.vrxx.gschema.xml", "644"],
+    ["data/ru.mark.vrxx.policy", "usr/share/polkit-1/actions/ru.mark.vrxx.policy", "644"],
+    ["data/ru.mark.vrxx.daemon.conf", "usr/share/dbus-1/system.d/ru.mark.vrxx.daemon.conf", "644"],
+    ["data/icons/hicolor/scalable/apps/ru.mark.vrxx.svg", "usr/share/icons/hicolor/scalable/apps/ru.mark.vrxx.svg", "644"],
+    ["data/icons/hicolor/symbolic/apps/ru.mark.vrxx-symbolic.svg", "usr/share/icons/hicolor/symbolic/apps/ru.mark.vrxx-symbolic.svg", "644"],
+]
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/vrxx", dest = "/usr/bin/vrxx", mode = "755" },
+    { source = "target/release/vrxx-tui", dest = "/usr/bin/vrxx-tui", mode = "755" },
+    { source = "data/ru.mark.vrxx.desktop", dest = "/usr/share/applications/ru.mark.vrxx.desktop", mode = "644" },
+    { source = "data/ru.mark.vrxx.metainfo.xml", dest = "/usr/share/metainfo/ru.mark.vrxx.metainfo.xml", mode = "644" },
+    { source = "data/ru.mark.vrxx.gschema.xml", dest = "/usr/share/glib-2.0/schemas/ru.mark.vrxx.gschema.xml", mode = "644" },
+    { source = "data/ru.mark.vrxx.policy", dest = "/usr/share/polkit-1/actions/ru.mark.vrxx.policy", mode = "644" },
+    { source = "data/ru.mark.vrxx.daemon.conf", dest = "/usr/share/dbus-1/system.d/ru.mark.vrxx.daemon.conf", mode = "644" },
+    { source = "data/icons/hicolor/scalable/apps/ru.mark.vrxx.svg", dest = "/usr/share/icons/hicolor/scalable/apps/ru.mark.vrxx.svg", mode = "644" },
+    { source = "data/icons/hicolor/symbolic/apps/ru.mark.vrxx-symbolic.svg", dest = "/usr/share/icons/hicolor/symbolic/apps/ru.mark.vrxx-symbolic.svg", mode = "644" },
 ]
