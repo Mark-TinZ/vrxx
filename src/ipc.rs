@@ -19,6 +19,17 @@ use reqwest::Client;
 use reqwest_eventsource::{Event, EventSource};
 use tokio_stream::StreamExt;
 
+/// Состояние подключения графического интерфейса к системному демону vrxx-daemon.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DaemonConnectionState {
+    /// Демон не обнаружен или соединение не установлено
+    Disconnected,
+    /// Выполняется попытка подключения / повторное подключение
+    Connecting,
+    /// Соединение установлено и активно
+    Connected,
+}
+
 /// Клиент для взаимодействия с привилегированным демоном через REST API и SSE.
 #[derive(Clone, Debug)]
 pub struct DaemonClient {
@@ -48,16 +59,22 @@ impl DaemonClient {
         }
     }
 
-    /// Проверяет доступность демона (Health check).
+    /// Проверяет доступность демона (Health check) с быстрым таймаутом 1 сек.
     pub async fn ping(&self) -> anyhow::Result<String> {
         let res = self
             .client
             .get(format!("{}/api/ping", self.base_url))
+            .timeout(std::time::Duration::from_secs(1))
             .send()
             .await?
             .text()
             .await?;
         Ok(res)
+    }
+
+    /// Быстрая неблокирующая проверка, запущен ли демон и отвечает ли он на запросы.
+    pub async fn is_alive(&self) -> bool {
+        self.ping().await.is_ok()
     }
 
     /// Отправляет команду на запуск ядра прокси.
@@ -154,15 +171,20 @@ impl DaemonClient {
         let (sender, receiver) = async_channel::unbounded();
         let url = format!("{}/api/events", self.base_url);
 
-        tokio::spawn(async move {
+        let task = async move {
             let mut retry_count = 0;
+            let mut ever_connected = false;
+            let mut delay_secs = 2u64;
+
             loop {
                 let mut es = EventSource::get(&url);
                 while let Some(event) = es.next().await {
                     match event {
                         Ok(Event::Open) => {
-                            tracing::debug!("SSE connection established");
+                            tracing::info!("SSE connection to vrxx-daemon established");
+                            ever_connected = true;
                             retry_count = 0;
+                            delay_secs = 2;
                         }
                         Ok(Event::Message(message)) => {
                             if let Ok(daemon_event) =
@@ -174,10 +196,26 @@ impl DaemonClient {
                             }
                         }
                         Err(err) => {
-                            // Логируем периодически, чтобы не засорять журнал при первом подключении
-                            if retry_count % 10 == 0 {
-                                tracing::warn!(
-                                    "Lost SSE connection to daemon, retrying... (error: {})",
+                            if ever_connected {
+                                if retry_count == 0 {
+                                    tracing::warn!(
+                                        "Lost SSE connection to daemon, reconnecting in {}s... (error: {})",
+                                        delay_secs,
+                                        err
+                                    );
+                                } else {
+                                    tracing::debug!(
+                                        "Reconnecting to daemon (attempt {}, backoff {}s): {}",
+                                        retry_count,
+                                        delay_secs,
+                                        err
+                                    );
+                                }
+                            } else {
+                                // До первого подключения логируем на уровне debug, чтобы не спамить в терминал при старте без демона
+                                tracing::debug!(
+                                    "Awaiting vrxx-daemon connection (retry in {}s): {}",
+                                    delay_secs,
                                     err
                                 );
                             }
@@ -187,11 +225,37 @@ impl DaemonClient {
                         }
                     }
                 }
-                // Повторная попытка подключения при разрыве
-                tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+
+                tokio::time::sleep(std::time::Duration::from_secs(delay_secs)).await;
+                // Экспоненциальный backoff: 2 -> 4 -> 8 -> 16 -> 30 (макс)
+                delay_secs = (delay_secs * 2).min(30);
             }
-        });
+        };
+
+        if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            handle.spawn(task);
+        } else {
+            tracing::debug!("No active Tokio runtime reactor, SSE event subscription task skipped");
+        }
 
         receiver
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_daemon_connection_state_enum() {
+        assert_eq!(DaemonConnectionState::Disconnected, DaemonConnectionState::Disconnected);
+        assert_ne!(DaemonConnectionState::Disconnected, DaemonConnectionState::Connected);
+        assert_ne!(DaemonConnectionState::Connecting, DaemonConnectionState::Connected);
+    }
+
+    #[test]
+    fn test_daemon_client_initialization() {
+        let client = DaemonClient::new();
+        assert_eq!(client.base_url, "http://127.0.0.1:13337");
     }
 }
