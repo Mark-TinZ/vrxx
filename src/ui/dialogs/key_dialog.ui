@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- key_dialog.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
+<interface domain="vrxx">
+  <!--
+    ============================================================================
+    ДИАЛОГ СОЗДАНИЯ И РЕДАКТИРОВАНИЯ VPN-ПРОФИЛЯ (VrxxKeyDialog)
+    ============================================================================
+
+    СТРУКТУРА МАКЕТА (Libadwaita 1.5+ AdwDialog):
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ AdwDialog (Адаптивный размер: content-width: 560, content-height: 520):  │
+    │ ├─ AdwBreakpoint (max-width: 500sp - мобильный/компактный режим)         │
+    │ └─ AdwToolbarView:                                                       │
+    │    ├─ AdwHeaderBar (Шапка диалога по GNOME HIG):                         │
+    │    │  ├─ [Кнопка: Отмена (btn_cancel)]                                   │
+    │    │  ├─ AdwWindowTitle (dialog_title: "Add VPN Profile"): Центрирован  │
+    │    │  └─ [Кнопка: Добавить / Сохранить (btn_save)]                      │
+    │    └─ AdwPreferencesPage (Прокручиваемая страница настроек):             │
+    │       ├─ AdwPreferencesGroup (Быстрый импорт):                           │
+    │       │  └─ AdwEntryRow (entry_link): Ссылка vless://, vmess:// и др.    │
+    │       ├─ AdwPreferencesGroup (Основные параметры):                       │
+    │       │  ├─ AdwEntryRow (entry_name): Название профиля                   │
+    │       │  ├─ AdwComboRow (combo_proto): Протокол (VLESS, VMess, ...)      │
+    │       │  └─ AdwSwitchRow (switch_connect): Подключиться после добавления │
+    │       ├─ AdwPreferencesGroup (Параметры сервера):                        │
+    │       │  ├─ AdwEntryRow (entry_host): Адрес сервера / Хост               │
+    │       │  ├─ AdwEntryRow (entry_port): Порт                               │
+    │       │  ├─ AdwEntryRow (entry_uuid): UUID / Пароль / Приватный ключ     │
+    │       │  └─ AdwActionRow (row_latency): Замер пинга (spinner, btn_ping)  │
+    │       └─ AdwPreferencesGroup (Безопасность и TLS):                       │
+    │          ├─ AdwEntryRow (entry_sec): Режим безопасности                  │
+    │          ├─ AdwEntryRow (entry_sni): SNI / Имя сервера                   │
+    │          ├─ AdwEntryRow (entry_pbk): Публичный ключ Reality              │
+    │          ├─ AdwEntryRow (entry_fp): Отпечаток TLS (Fingerprint)          │
+    │          └─ AdwEntryRow (entry_flow): Flow (xtls-rprx-vision)            │
+    └──────────────────────────────────────────────────────────────────────────┘
+  -->
+
+  <template class="VrxxKeyDialog" parent="AdwDialog">
+    <property name="title" translatable="yes">Add VPN Profile</property>
+    <property name="content-width">560</property>
+    <property name="content-height">520</property>
+    <property name="width-request">360</property>
+    <property name="height-request">360</property>
+    <property name="presentation-mode">auto</property>
+
+    <!-- Адаптивная точка останова: мобильный/компактный режим -->
+    <child>
+      <object class="AdwBreakpoint">
+        <condition>max-width: 500sp</condition>
+        <setter object="toolbar_view" property="top-bar-style">raised</setter>
+      </object>
+    </child>
+
+    <property name="child">
+      <object class="AdwToolbarView" id="toolbar_view">
+
+        <!-- ================================================================= -->
+        <!-- 1. ВЕРХНЯЯ ПАНЕЛЬ ДИАЛОГА (HEADERBAR) ПО GNOME HIG                -->
+        <!-- ================================================================= -->
+        <child type="top">
+          <object class="AdwHeaderBar">
+            <property name="show-end-title-buttons">False</property>
+            <property name="show-start-title-buttons">False</property>
+
+            <!-- Центрированный заголовок диалогового окна -->
+            <property name="title-widget">
+              <object class="AdwWindowTitle" id="dialog_title">
+                <property name="title" translatable="yes">Add VPN Profile</property>
+              </object>
+            </property>
+
+            <!-- Кнопка закрытия / отмены (слева) -->
+            <child type="start">
+              <object class="GtkButton" id="btn_cancel">
+                <property name="label" translatable="yes">Cancel</property>
+              </object>
+            </child>
+
+            <!-- Основная кнопка подтверждения действия (справа) -->
+            <child type="end">
+              <object class="GtkButton" id="btn_save">
+                <property name="label" translatable="yes">Add</property>
+                <style>
+                  <class name="suggested-action"/>
+                </style>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <!-- ================================================================= -->
+        <!-- 2. СТРАНИЦА ПАРАМЕТРОВ VPN (PREFERENCES PAGE)                     -->
+        <!-- ================================================================= -->
+        <property name="content">
+          <object class="AdwPreferencesPage">
+
+            <!-- 2.1. Секция быстрого импорта по ссылке -->
+            <child>
+              <object class="AdwPreferencesGroup" id="group_quick">
+                <property name="title" translatable="yes">Quick Import from Link</property>
+                <property name="description" translatable="yes">Paste a VPN configuration link to automatically populate the parameters below.</property>
+                <child>
+                  <object class="AdwEntryRow" id="entry_link">
+                    <property name="title" translatable="yes">VPN Link (vless://, vmess://, etc.)</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- 2.2. Основные свойства профиля -->
+            <child>
+              <object class="AdwPreferencesGroup" id="group_general">
+                <property name="title" translatable="yes">General</property>
+
+                <!-- Имя профиля -->
+                <child>
+                  <object class="AdwEntryRow" id="entry_name">
+                    <property name="title" translatable="yes">Profile Name</property>
+                    <property name="text">New VPN Profile</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+
+                <!-- Выбор протокола -->
+                <child>
+                  <object class="AdwComboRow" id="combo_proto">
+                    <property name="title" translatable="yes">Protocol</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item>VLESS</item>
+                          <item>VMess</item>
+                          <item>Trojan</item>
+                          <item>Shadowsocks</item>
+                          <item>Hysteria2</item>
+                          <item>TUIC</item>
+                          <item>WireGuard</item>
+                          <item>SOCKS5</item>
+                          <item>HTTP</item>
+                        </items>
+                      </object>
+                    </property>
+                    <property name="selected">0</property>
+                  </object>
+                </child>
+
+                <!-- Переключатель: немедленное подключение после добавления -->
+                <child>
+                  <object class="AdwSwitchRow" id="switch_connect">
+                    <property name="title" translatable="yes">Connect after adding</property>
+                    <property name="subtitle" translatable="yes">Immediately activate VPN connection after saving</property>
+                    <property name="active">True</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- 2.3. Параметры подключения к серверу -->
+            <child>
+              <object class="AdwPreferencesGroup" id="group_conn">
+                <property name="title" translatable="yes">Server Connection</property>
+
+                <!-- Адрес сервера / Хост -->
+                <child>
+                  <object class="AdwEntryRow" id="entry_host">
+                    <property name="title" translatable="yes">Server address / Host</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+
+                <!-- Сетевой порт -->
+                <child>
+                  <object class="AdwEntryRow" id="entry_port">
+                    <property name="title" translatable="yes">Port</property>
+                    <property name="text">443</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+
+                <!-- UUID пользователя, пароль или приватный ключ -->
+                <child>
+                  <object class="AdwEntryRow" id="entry_uuid">
+                    <property name="title" translatable="yes">UUID / Password / Key</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+
+                <!-- Строка проверки задержки (TCP ping) до целевого сервера -->
+                <child>
+                  <object class="AdwActionRow" id="row_latency">
+                    <property name="title" translatable="yes">Latency Check</property>
+                    <property name="subtitle" translatable="yes">Ready</property>
+
+                    <!-- Индикатор процесса замера -->
+                    <child type="suffix">
+                      <object class="GtkSpinner" id="spinner_latency">
+                        <property name="spinning">False</property>
+                        <property name="visible">False</property>
+                        <property name="valign">center</property>
+                      </object>
+                    </child>
+
+                    <!-- Кнопка запуска замера соединения -->
+                    <child type="suffix">
+                      <object class="GtkButton" id="btn_ping">
+                        <property name="icon-name">network-transmit-receive-symbolic</property>
+                        <property name="valign">center</property>
+                        <property name="tooltip-text" translatable="yes">Test Connection</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- 2.4. Параметры безопасности и маскировки TLS -->
+            <child>
+              <object class="AdwPreferencesGroup" id="group_sec">
+                <property name="title" translatable="yes">Security and Parameters</property>
+
+                <!-- Режим безопасности: reality, tls, none -->
+                <child>
+                  <object class="AdwEntryRow" id="entry_sec">
+                    <property name="title" translatable="yes">Security Mode (reality/tls/none)</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+
+                <!-- Имя сервера SNI -->
+                <child>
+                  <object class="AdwEntryRow" id="entry_sni">
+                    <property name="title" translatable="yes">SNI / Server Name</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+
+                <!-- Публичный ключ Reality (pbk) -->
+                <child>
+                  <object class="AdwEntryRow" id="entry_pbk">
+                    <property name="title" translatable="yes">Reality Public Key (pbk)</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+
+                <!-- Отпечаток браузера uTLS (Fingerprint) -->
+                <child>
+                  <object class="AdwEntryRow" id="entry_fp">
+                    <property name="title" translatable="yes">Fingerprint (uTLS)</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+
+                <!-- Управление потоком (Flow: xtls-rprx-vision) -->
+                <child>
+                  <object class="AdwEntryRow" id="entry_flow">
+                    <property name="title" translatable="yes">Flow (e.g. xtls-rprx-vision)</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+          </object>
+        </property>
+
+      </object>
+    </property>
+  </template>
+</interface>

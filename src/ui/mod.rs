@@ -14,21 +14,16 @@
 //! Модуль содержит все визуальные компоненты GTK4/Libadwaita:
 //! - [`pages`]: Основные страницы навигации (`VrxxVpnPage`, `VrxxProxyPage`, `VrxxRoutingPage`, `VrxxSettingsPage`)
 //! - [`components`]: Вторичные виджеты (`VrxxVpnKeyRow`, `VrxxThemeSwitcher`, `VrxxLogWindow`)
-//! - [`models`]: Реактивные GObject модели данных (`VpnKeyObject`, `RoutingRuleObject`, `DomainObject`)
-//! - [`qr_dialog`]: Диалог QR-кода с эффектом размытия для приватности
-//! - [`rule_dialog`]: Диалог создания и настройки правил маршрутизации
-//! - [`import_dialog`]: Диалог интерактивного импорта ключей
-//! - [`error_dialog`]: Универсальное окно критических ошибок и диагностики
+//! - [`dialogs`]: Модальные диалоговые окна (`VrxxKeyDialog`, `VrxxRuleDialog`, `VrxxQrDialog`, `VrxxExportDialog`, `VrxxImportDialog`)
 
 pub mod change_tracker;
 pub mod components;
-pub mod error_dialog;
-pub mod export_dialog;
-pub mod import_dialog;
+pub mod dialogs;
 pub mod models;
 pub mod pages;
-pub mod qr_dialog;
-pub mod rule_dialog;
+
+// Re-export dialog modules for backward compatibility and clean access
+pub use dialogs::{error_dialog, export_dialog, import_dialog, key_dialog, qr_dialog, rule_dialog};
 
 use gtk::prelude::*;
 
@@ -54,4 +49,4 @@ pub fn setup_primary_menu(menu_button: &gtk::MenuButton) {
 #[cfg(test)]
 mod proxy_tests;
 #[cfg(test)]
-mod tests;
+pub mod tests;

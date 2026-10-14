@@ -13,7 +13,7 @@
 //!
 //! Отвечает за:
 //! - Генерацию векторного и растрового QR-кода в оперативной памяти без записи временных файлов
-//! - Защиту приватности: размытие (blur) QR-кода с возможностью снятия по клику или при наведении
+//! - Защиту приватности: сокрытие QR-кода с возможностью снятия по клику или при наведении
 //! - Копирование ссылки подключения и структурированного JSON профиля в буфер обмена
 //! - Экспорт QR-кода в форматы PNG и SVG через нативный диалог сохранения `gtk::FileDialog`
 
@@ -28,10 +28,12 @@ use crate::domain::exporter;
 mod imp {
     use super::*;
 
-    /// Структура CompositeTemplate для виджета содержимого диалога QR-кода
+    /// Структура CompositeTemplate для нативного диалога QR-кода
     #[derive(Debug, CompositeTemplate)]
-    #[template(resource = "/ru/mark/vrxx/ui/qr_dialog.ui")]
+    #[template(resource = "/ru/mark/vrxx/ui/dialogs/qr_dialog.ui")]
     pub struct VrxxQrDialog {
+        #[template_child]
+        pub dialog_title: TemplateChild<adw::WindowTitle>,
         #[template_child]
         pub qr_card: TemplateChild<gtk::Box>,
         #[template_child]
@@ -60,6 +62,7 @@ mod imp {
     impl Default for VrxxQrDialog {
         fn default() -> Self {
             Self {
+                dialog_title: TemplateChild::default(),
                 qr_card: TemplateChild::default(),
                 qr_picture: TemplateChild::default(),
                 btn_toggle_blur: TemplateChild::default(),
@@ -80,10 +83,14 @@ mod imp {
     impl ObjectSubclass for VrxxQrDialog {
         const NAME: &'static str = "VrxxQrDialog";
         type Type = super::VrxxQrDialog;
-        type ParentType = adw::Bin;
+        type ParentType = adw::Dialog;
 
         fn class_init(klass: &mut Self::Class) {
+            adw::ToolbarView::static_type();
+            adw::HeaderBar::static_type();
+            adw::WindowTitle::static_type();
             adw::Clamp::static_type();
+            adw::Breakpoint::static_type();
             gtk::Box::static_type();
             gtk::Picture::static_type();
             gtk::Overlay::static_type();
@@ -99,15 +106,21 @@ mod imp {
         }
     }
 
-    impl ObjectImpl for VrxxQrDialog {}
+    impl ObjectImpl for VrxxQrDialog {
+        fn constructed(&self) {
+            self.parent_constructed();
+            self.obj().set_width_request(360);
+            self.obj().set_height_request(360);
+        }
+    }
     impl WidgetImpl for VrxxQrDialog {}
-    impl BinImpl for VrxxQrDialog {}
+    impl adw::subclass::dialog::AdwDialogImpl for VrxxQrDialog {}
 }
 
 glib::wrapper! {
-    /// Обертка GObject для виджета содержимого диалога QR-кода
+    /// Обертка GObject для нативного диалога QR-кода
     pub struct VrxxQrDialog(ObjectSubclass<imp::VrxxQrDialog>)
-        @extends gtk::Widget, adw::Bin,
+        @extends gtk::Widget, adw::Dialog,
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
@@ -118,7 +131,7 @@ impl Default for VrxxQrDialog {
 }
 
 impl VrxxQrDialog {
-    /// Создает экземпляр виджета QR-диалога с начальным состоянием защиты приватности (размытие включено).
+    /// Создает экземпляр виджета QR-диалога с начальным состоянием защиты приватности (сокрытие включено).
     pub fn new() -> Self {
         let content: Self = glib::Object::builder().build();
         content.setup_blur_events();
@@ -126,11 +139,11 @@ impl VrxxQrDialog {
         content
     }
 
-    /// Настраивает контроллеры клика и наведения мыши для снятия/возврата размытия.
+    /// Настраивает контроллеры клика и наведения мыши для снятия/возврата сокрытия.
     fn setup_blur_events(&self) {
         let imp = self.imp();
 
-        // 1. Клик в любой точке карточки QR-кода переключает состояние размытия
+        // 1. Клик в любой точке карточки QR-кода переключает состояние сокрытия
         let gesture_click = gtk::GestureClick::new();
         let content_weak_click = self.downgrade();
         gesture_click.connect_pressed(move |_, _, _, _| {
@@ -164,7 +177,7 @@ impl VrxxQrDialog {
         imp.qr_card.add_controller(motion_controller);
     }
 
-    /// Обновляет визуальные стили размытия и видимость плавающей кнопки-глазика.
+    /// Обновляет визуальные стили сокрытия и видимость плавающей кнопки-глазика.
     fn update_blur_ui(&self) {
         let imp = self.imp();
         let is_blurred = *imp.is_blurred.borrow();
@@ -175,14 +188,12 @@ impl VrxxQrDialog {
             imp.img_blur_icon
                 .set_icon_name(Some("view-reveal-symbolic"));
             imp.lbl_blur_status.set_label(&gettext("Show QR Code"));
-            // Когда изображение размыто — кнопка видна всегда
             imp.btn_toggle_blur.set_visible(true);
         } else {
             imp.qr_picture.remove_css_class("blurred-qr");
             imp.img_blur_icon
                 .set_icon_name(Some("view-conceal-symbolic"));
             imp.lbl_blur_status.set_label(&gettext("Hide QR Code"));
-            // Когда изображение открыто — кнопка видна только при наведении мыши
             imp.btn_toggle_blur.set_visible(is_hovered);
         }
     }
@@ -195,21 +206,11 @@ fn add_parent_toast(parent: &gtk::Window, message: &str) {
     }
 }
 
-/// Отображает интерактивный модальный диалог `AdwAlertDialog` с QR-кодом и опциями шеринга.
-///
-/// Возможности:
-/// - Декларативная разметка в `src/ui/qr_dialog.ui`
-/// - Защита приватности с эффектом размытия (Privacy Blur)
-/// - Кнопка «Ссылка»: копирование URI в буфер обмена
-/// - Кнопка «JSON»: парсинг и копирование JSON-конфигурации
-/// - Кнопка «Сохранить QR»: экспорт в файлы PNG или SVG через `gtk::FileDialog`
+/// Отображает интерактивный нативный модальный диалог `AdwDialog` с QR-кодом и опциями шеринга.
 pub fn show_qr_dialog(parent: &gtk::Window, profile_name: &str, uri: &str) {
-    let alert_dialog = adw::AlertDialog::new(Some(&gettext("Share Profile")), Some(profile_name));
-    alert_dialog.add_response("close", &gettext("Close"));
-    alert_dialog.set_close_response("close");
-
-    let content = VrxxQrDialog::new();
-    let imp = content.imp();
+    let dialog = VrxxQrDialog::new();
+    let imp = dialog.imp();
+    imp.dialog_title.set_subtitle(profile_name);
     imp.lbl_uri.set_text(uri);
 
     // Рендеринг текстуры QR-кода в оперативной памяти (300x300 px)
@@ -341,6 +342,5 @@ pub fn show_qr_dialog(parent: &gtk::Window, profile_name: &str, uri: &str) {
         });
     });
 
-    alert_dialog.set_extra_child(Some(&content));
-    alert_dialog.present(Some(parent));
+    dialog.present(Some(parent));
 }

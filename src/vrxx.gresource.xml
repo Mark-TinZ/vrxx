@@ -19,8 +19,12 @@
     <file preprocess="xml-stripblanks">ui/components/routing_rule_row.ui</file>
     <file preprocess="xml-stripblanks">ui/components/theme_switcher.ui</file>
     <file preprocess="xml-stripblanks">ui/components/log_window.ui</file>
-    <file preprocess="xml-stripblanks">ui/qr_dialog.ui</file>
-    <file preprocess="xml-stripblanks">ui/rule_dialog.ui</file>
+    <!-- Диалоги -->
+    <file preprocess="xml-stripblanks">ui/dialogs/key_dialog.ui</file>
+    <file preprocess="xml-stripblanks">ui/dialogs/qr_dialog.ui</file>
+    <file preprocess="xml-stripblanks">ui/dialogs/rule_dialog.ui</file>
+    <file preprocess="xml-stripblanks">ui/dialogs/export_dialog.ui</file>
+    <file preprocess="xml-stripblanks">ui/dialogs/import_dialog.ui</file>
 
      <!-- Иконки -->
     <file alias="icons/scalable/apps/ru.mark.vrxx.svg">../data/icons/hicolor/scalable/apps/ru.mark.vrxx.svg</file>

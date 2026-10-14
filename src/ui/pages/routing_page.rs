@@ -134,6 +134,8 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
+            obj.set_width_request(360);
+            obj.set_height_request(200);
             obj.setup_menu();
             obj.setup_rules_list();
             obj.setup_settings();
@@ -411,150 +413,30 @@ impl VrxxRoutingPage {
 
     /// Отображает модальный диалог добавления нового пользовательского правила.
     fn show_add_rule_dialog(&self) {
-        if let Some(window) = self.root().and_downcast::<gtk::Window>() {
-            let dialog = adw::AlertDialog::builder()
-                .heading(gettextrs::gettext("Add Custom Rule"))
-                .body(gettextrs::gettext(
-                    "Configure domain detour, IP subnet, or remote rule-set",
-                ))
-                .build();
-
-            dialog.add_response("cancel", &gettextrs::gettext("Cancel"));
-            dialog.add_response("add", &gettextrs::gettext("Add"));
-            dialog.set_response_appearance("add", adw::ResponseAppearance::Suggested);
-            dialog.set_default_response(Some("add"));
-            dialog.set_close_response("cancel");
-
-            let content = VrxxRuleDialog::new();
-            dialog.set_extra_child(Some(&content));
-
-            // По умолчанию кнопка добавления неактивна до ввода валидного значения
-            dialog.set_response_enabled("add", false);
-
-            let content_weak = glib::SendWeakRef::from(content.downgrade());
-            let dialog_weak = glib::SendWeakRef::from(dialog.downgrade());
-
-            let validate = move || {
-                if let (Some(c), Some(d)) = (content_weak.upgrade(), dialog_weak.upgrade()) {
-                    match c.validate_input() {
-                        Ok(()) => {
-                            c.set_error(None);
-                            d.set_response_enabled("add", true);
-                        }
-                        Err(e) => {
-                            if !c.value().is_empty() {
-                                c.set_error(Some(&e));
-                            } else {
-                                c.set_error(None);
-                            }
-                            d.set_response_enabled("add", false);
-                        }
-                    }
+        let page_weak = self.downgrade();
+        VrxxRuleDialog::present_add(self, move |new_rule| {
+            if let Some(page) = page_weak.upgrade() {
+                if let Some(store) = page.imp().model.borrow().clone() {
+                    store.append(&new_rule);
+                    page.check_changes();
                 }
-            };
-
-            let v1 = validate.clone();
-            content.imp().entry_value.connect_changed(move |_| {
-                v1();
-            });
-
-            let v2 = validate;
-            content.imp().combo_type.connect_selected_notify(move |_| {
-                v2();
-            });
-
-            let page_weak = self.downgrade();
-            glib::MainContext::default().spawn_local(async move {
-                let response = dialog.choose_future(&window).await;
-                if response == "add" {
-                    if let Some(page) = page_weak.upgrade() {
-                        if content.validate_input().is_ok() {
-                            let name = content.name();
-                            let val = content.value();
-                            let r_type = content.rule_type();
-                            let act = content.action();
-
-                            let obj = RoutingRuleObject::new(&name, &r_type, &val, &act);
-                            if let Some(store) = page.imp().model.borrow().clone() {
-                                store.append(&obj);
-                                page.check_changes();
-                            }
-                        }
-                    }
-                }
-            });
-        }
+            }
+        });
     }
 
     /// Отображает модальный диалог редактирования существующего правила.
     fn show_edit_rule_dialog(&self, obj: &RoutingRuleObject) {
-        if let Some(window) = self.root().and_downcast::<gtk::Window>() {
-            let dialog = adw::AlertDialog::builder()
-                .heading(gettextrs::gettext("Edit Custom Rule"))
-                .body(gettextrs::gettext(
-                    "Modify domain, IP subnet, or detour action",
-                ))
-                .build();
-
-            dialog.add_response("cancel", &gettextrs::gettext("Cancel"));
-            dialog.add_response("save", &gettextrs::gettext("Save"));
-            dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
-            dialog.set_default_response(Some("save"));
-            dialog.set_close_response("cancel");
-
-            let content = VrxxRuleDialog::new();
-            content.set_rule(&obj.name(), &obj.rule_type(), &obj.value(), &obj.action());
-            dialog.set_extra_child(Some(&content));
-
-            let content_weak = glib::SendWeakRef::from(content.downgrade());
-            let dialog_weak = glib::SendWeakRef::from(dialog.downgrade());
-
-            let validate = move || {
-                if let (Some(c), Some(d)) = (content_weak.upgrade(), dialog_weak.upgrade()) {
-                    match c.validate_input() {
-                        Ok(()) => {
-                            c.set_error(None);
-                            d.set_response_enabled("save", true);
-                        }
-                        Err(e) => {
-                            if !c.value().is_empty() {
-                                c.set_error(Some(&e));
-                            } else {
-                                c.set_error(None);
-                            }
-                            d.set_response_enabled("save", false);
-                        }
-                    }
-                }
-            };
-
-            let v1 = validate.clone();
-            content.imp().entry_value.connect_changed(move |_| {
-                v1();
-            });
-
-            let v2 = validate;
-            content.imp().combo_type.connect_selected_notify(move |_| {
-                v2();
-            });
-
-            let page_weak = self.downgrade();
-            let obj_clone = obj.clone();
-            glib::MainContext::default().spawn_local(async move {
-                let response = dialog.choose_future(&window).await;
-                if response == "save" {
-                    if let Some(page) = page_weak.upgrade() {
-                        if content.validate_input().is_ok() {
-                            obj_clone.set_name(content.name());
-                            obj_clone.set_value(content.value());
-                            obj_clone.set_rule_type(content.rule_type());
-                            obj_clone.set_action(content.action());
-                            page.check_changes();
-                        }
-                    }
-                }
-            });
-        }
+        let page_weak = self.downgrade();
+        let obj_clone = obj.clone();
+        VrxxRuleDialog::present_edit(self, obj, move |name, r_type, val, act| {
+            if let Some(page) = page_weak.upgrade() {
+                obj_clone.set_name(name);
+                obj_clone.set_rule_type(r_type);
+                obj_clone.set_value(val);
+                obj_clone.set_action(act);
+                page.check_changes();
+            }
+        });
     }
 
     /// Инициализирует сохраненные настройки, делает снимок состояния и привязывает сигналы.

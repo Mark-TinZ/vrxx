@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- rule_dialog.ui
+  -
+  - Copyright 2026 Mark
+  -
+  - This Source Code Form is subject to the terms of the Mozilla Public
+  - License, v. 2.0. If a copy of the MPL was not distributed with this
+  - file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  -
+  - SPDX-License-Identifier: MPL-2.0
+  -->
+<interface domain="vrxx">
+  <!--
+    ============================================================================
+    ДИАЛОГ ДОБАВЛЕНИЯ И НАСТРОЙКИ ПРАВИЛА МАРШРУТИЗАЦИИ (VrxxRuleDialog)
+    ============================================================================
+
+    СТРУКТУРА МАКЕТА (Libadwaita 1.5+ AdwDialog):
+    ┌──────────────────────────────────────────────────────────────────────────┐
+    │ AdwDialog (Адаптивный размер: content-width: 560, content-height: 520):  │
+    │ ├─ AdwBreakpoint (max-width: 500sp - мобильный/компактный режим)         │
+    │ └─ AdwToolbarView:                                                       │
+    │    ├─ AdwHeaderBar (Шапка диалога по GNOME HIG):                         │
+    │    │  ├─ [Кнопка: Отмена (btn_cancel)]                                   │
+    │    │  ├─ AdwWindowTitle (dialog_title: "Add Custom Rule"): Центрирован  │
+    │    │  └─ [Кнопка: Добавить / Сохранить (btn_save)]                      │
+    │    └─ AdwPreferencesPage (Прокручиваемая страница настроек):             │
+    │       ├─ AdwPreferencesGroup (Справочный блок: Help Expander):           │
+    │       │  └─ AdwExpanderRow (help_expander): "Как работают правила"      │
+    │       │     ├─ Прямой обход (Прямое подключение)                         │
+    │       │     └─ Проксирование (VPN-туннель)                               │
+    │       ├─ AdwPreferencesGroup (Параметры правила):                        │
+    │       │  ├─ AdwEntryRow (entry_name): Описание (необязательно)           │
+    │       │  ├─ AdwComboRow (combo_type): Тип правила (Домен, IP, Rule-Set)  │
+    │       │  ├─ AdwEntryRow (entry_value): Значение правила                  │
+    │       │  └─ AdwComboRow (combo_action): Действие (Direct, Proxy, Block)  │
+    │       └─ AdwPreferencesGroup (Подсказки и ошибки):                       │
+    │          ├─ GtkLabel (lbl_hint): Контекстная подсказка по формату        │
+    │          └─ GtkLabel (lbl_error): Сообщение валидации                    │
+    └──────────────────────────────────────────────────────────────────────────┘
+  -->
+
+  <template class="VrxxRuleDialog" parent="AdwDialog">
+    <property name="title" translatable="yes">Add Custom Rule</property>
+    <property name="content-width">560</property>
+    <property name="content-height">520</property>
+    <property name="width-request">360</property>
+    <property name="height-request">360</property>
+    <property name="presentation-mode">auto</property>
+
+    <!-- Адаптивная точка останова: мобильный/компактный режим -->
+    <child>
+      <object class="AdwBreakpoint">
+        <condition>max-width: 500sp</condition>
+        <setter object="toolbar_view" property="top-bar-style">raised</setter>
+      </object>
+    </child>
+
+    <property name="child">
+      <object class="AdwToolbarView" id="toolbar_view">
+
+        <!-- ================================================================= -->
+        <!-- 1. ВЕРХНЯЯ ПАНЕЛЬ ДИАЛОГА (HEADERBAR) ПО GNOME HIG                -->
+        <!-- ================================================================= -->
+        <child type="top">
+          <object class="AdwHeaderBar">
+            <property name="show-end-title-buttons">False</property>
+            <property name="show-start-title-buttons">False</property>
+
+            <!-- Центрированный заголовок диалогового окна -->
+            <property name="title-widget">
+              <object class="AdwWindowTitle" id="dialog_title">
+                <property name="title" translatable="yes">Add Custom Rule</property>
+                <property name="subtitle" translatable="yes">Configure domain, IP, or rule-set detour</property>
+              </object>
+            </property>
+
+            <!-- Кнопка закрытия / отмены (слева) -->
+            <child type="start">
+              <object class="GtkButton" id="btn_cancel">
+                <property name="label" translatable="yes">Cancel</property>
+              </object>
+            </child>
+
+            <!-- Основная кнопка подтверждения действия (справа) -->
+            <child type="end">
+              <object class="GtkButton" id="btn_save">
+                <property name="label" translatable="yes">Add</property>
+                <property name="sensitive">False</property>
+                <style>
+                  <class name="suggested-action"/>
+                </style>
+              </object>
+            </child>
+          </object>
+        </child>
+
+        <!-- ================================================================= -->
+        <!-- 2. СТРАНИЦА ПАРАМЕТРОВ ПРАВИЛА (PREFERENCES PAGE)                 -->
+        <!-- ================================================================= -->
+        <property name="content">
+          <object class="AdwPreferencesPage">
+
+            <!-- 2.1. Справочный блок с пояснениями и примерами применения -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <child>
+                  <object class="AdwExpanderRow" id="help_expander">
+                    <property name="title" translatable="yes">How routing rules work</property>
+                    <property name="subtitle" translatable="yes">Examples and instructions for custom routing</property>
+                    <child type="prefix">
+                      <object class="GtkImage">
+                        <property name="icon-name">help-about-symbolic</property>
+                        <property name="valign">center</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="AdwActionRow">
+                        <property name="title" translatable="yes">Direct Bypass (Direct Connection)</property>
+                        <property name="subtitle" translatable="yes">Useful for domestic or trusted services to connect directly without exposing VPN IP.</property>
+                        <property name="subtitle-lines">3</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="AdwActionRow">
+                        <property name="title" translatable="yes">VPN Tunnel (Proxy)</property>
+                        <property name="subtitle" translatable="yes">Routes specific websites or IP ranges through your active encrypted VPN tunnel.</property>
+                        <property name="subtitle-lines">2</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+            <!-- 2.2. Группа настроек параметров правила маршрутизации -->
+            <child>
+              <object class="AdwPreferencesGroup">
+
+                <!-- 1. Описание / Название правила (Опциональное) -->
+                <child>
+                  <object class="AdwEntryRow" id="entry_name">
+                    <property name="title" translatable="yes">Description (Optional)</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+
+                <!-- 2. Тип правила (Домен, IP, Набор правил SRS) -->
+                <child>
+                  <object class="AdwComboRow" id="combo_type">
+                    <property name="title" translatable="yes">Rule Type</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">Domain / Subdomains (e.g. example.com, .org)</item>
+                          <item translatable="yes">IP Address / CIDR (e.g. 192.168.1.1, 10.0.0.0/24)</item>
+                          <item translatable="yes">Rule-Set (.srs URL)</item>
+                        </items>
+                      </object>
+                    </property>
+                    <property name="selected">0</property>
+                  </object>
+                </child>
+
+                <!-- 3. Значение правила (доменное имя, IP или URL) -->
+                <child>
+                  <object class="AdwEntryRow" id="entry_value">
+                    <property name="title" translatable="yes">Value (Domain, IP, or URL)</property>
+                    <property name="show-apply-button">False</property>
+                  </object>
+                </child>
+
+                <!-- 4. Действие маршрутизации (Напрямую, Прокси, Блокировка) -->
+                <child>
+                  <object class="AdwComboRow" id="combo_action">
+                    <property name="title" translatable="yes">Action</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">Direct (Bypass VPN)</item>
+                          <item translatable="yes">Proxy (Route via VPN)</item>
+                          <item translatable="yes">Block (Reject Connection)</item>
+                        </items>
+                      </object>
+                    </property>
+                    <property name="selected">0</property>
+                  </object>
+                </child>
+
+              </object>
+            </child>
+
+            <!-- 2.3. Информационные подсказки и статус валидации -->
+            <child>
+              <object class="AdwPreferencesGroup">
+                <child>
+                  <!-- Информационная подсказка по выбранному типу правила -->
+                  <object class="GtkLabel" id="lbl_hint">
+                    <property name="wrap">True</property>
+                    <property name="xalign">0.0</property>
+                    <property name="margin-start">12</property>
+                    <property name="margin-end">12</property>
+                    <property name="margin-top">4</property>
+                    <property name="margin-bottom">4</property>
+                    <style>
+                      <class name="caption"/>
+                      <class name="dim-label"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <!-- Текстовое сообщение об ошибке валидации -->
+                  <object class="GtkLabel" id="lbl_error">
+                    <property name="visible">False</property>
+                    <property name="wrap">True</property>
+                    <property name="xalign">0.0</property>
+                    <property name="margin-start">12</property>
+                    <property name="margin-end">12</property>
+                    <property name="margin-top">4</property>
+                    <property name="margin-bottom">4</property>
+                    <style>
+                      <class name="error"/>
+                      <class name="caption"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+
+          </object>
+        </property>
+
+      </object>
+    </property>
+  </template>
+</interface>
