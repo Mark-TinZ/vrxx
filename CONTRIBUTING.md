@@ -131,9 +131,11 @@ cargo test
 - Использование `.unwrap()` или `.expect()` в основном коде приложения, демоне и модулях IPC **категорически запрещено** (допускается только в модульных тестах `#[cfg(test)]`).
 - Ошибки должны заворачиваться через `anyhow::Result` или пользовательские enum-типы `thiserror` с понятными сообщениями.
 
-### 4.3. Логирование
+### 4.3. Логирование и виртуальная консоль UI
 - Логирование осуществляется **только** через макросы крейта `tracing`: `tracing::info!`, `tracing::warn!`, `tracing::error!`, `tracing::debug!`.
 - Запрещено использовать прямой вывод `println!` в коде приложения.
+- Перехват консольных логов в графическом интерфейсе реализован через локальный слой `ConsoleUiTracingLayer` и кольцевой буфер `UiLogBroadcaster` (`src/logger.rs`). Все события автоматически транслируются в защищенную read-only виртуальную консоль (`src/ui/components/log_window.rs`).
+- Логи сетевого ядра Sing-box и фонового демона транслируются через SSE (`SseTracingLayer` / `/api/events`).
 
 ---
 
@@ -156,9 +158,9 @@ cargo test
 
 **Примеры жизненного цикла:**
 ```
-26.1.0-beta.1  → 26.1.0-beta.2  → 26.1.0       (стабильный релиз)
-26.1.0         → 26.1.1                          (хотфикс)
-26.1.1         → 26.2.0-beta.1  → 26.2.0        (следующее обновление)
+26.1.0-beta.1  → 26.1.0-beta.2  → 26.1.0-beta.3  → 26.1.0 (стабильный релиз)
+26.1.0         → 26.1.1                                   (хотфикс)
+26.1.1         → 26.2.0-beta.1  → 26.2.0                  (следующее обновление)
 ```
 
 ### 5.2. Файлы, содержащие версию
@@ -167,9 +169,9 @@ cargo test
 
 | Файл | Поле | Пример |
 | :--- | :--- | :--- |
-| `Cargo.toml` | `[package] version` | `version = "26.1.0-beta.2"` |
-| `meson.build` | `project(..., version:)` | `version: '26.1.0-beta.2'` |
-| `data/ru.mark.vrxx.metainfo.xml.in` | `<release version=...>` | `<release version="26.1.0-beta.2" date="...">` |
+| `Cargo.toml` | `[package] version` | `version = "26.1.0-beta.3"` |
+| `meson.build` | `project(..., version:)` | `version: '26.1.0-beta.3'` |
+| `data/ru.mark.vrxx.metainfo.xml.in` | `<release version=...>` | `<release version="26.1.0-beta.3" date="...">` |
 
 При сборке через `cargo build`, версия автоматически подтягивается из `Cargo.toml` через макрос `env!("CARGO_PKG_VERSION")` в `src/config.rs` и используется в CLI (`clap`) и окне «О программе» (`Libadwaita AboutDialog`).
 

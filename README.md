@@ -458,8 +458,9 @@ sudo ./target/release/vrxx --daemon &
 │  ├─ services/
 │  │  ├─ mod.rs                     # Реэкспорт модулей
 │  │  └─ geo_updater.rs             # Фоновое обновление GeoIP/GeoSite баз (каждые 24ч)
+│  ├─ logger.rs                     # Enterprise tracing: динамический reload, PII-маскирование, ротация
 │  └─ ui/
-│     ├─ mod.rs                     # Реэкспорт страниц и компонентов
+│     ├─ mod.rs                     # Реэкспорт страниц, диалогов и компонентов
 │     ├─ models.rs                  # GLib Object Model: VpnKeyObject, DomainObject, RoutingRuleObject
 │     ├─ tests.rs                   # UI тесты
 │     ├─ proxy_tests.rs             # Тесты прокси-логики
@@ -468,8 +469,16 @@ sudo ./target/release/vrxx --daemon &
 │     │  ├─ mod.rs                  # Реэкспорт страниц
 │     │  ├─ vpn_page.rs / .ui       # Страница VPN: список ключей, подключение, статистика
 │     │  ├─ proxy_page.rs / .ui     # Страница настроек прокси
-│     │  ├─ whitelist_page.rs / .ui # Страница белого списка и правил маршрутизации
+│     │  ├─ routing_page.rs / .ui   # Страница правил маршрутизации и списков
 │     │  └─ settings_page.rs / .ui  # Страница настроек приложения
+│     ├─ dialogs/
+│     │  ├─ mod.rs                  # Реэкспорт модальных диалогов
+│     │  ├─ key_dialog.rs / .ui     # Создание и редактирование VPN-профилей (динамические поля)
+│     │  ├─ rule_dialog.rs / .ui    # Добавление и настройка правил маршрутизации
+│     │  ├─ qr_dialog.rs / .ui      # Шеринг профиля и генерация QR-кода с эффектом приватности
+│     │  ├─ export_dialog.rs / .ui  # Мастер выборочного экспорта конфигураций
+│     │  ├─ import_dialog.rs / .ui  # Интерактивный импорт профилей
+│     │  └─ error_dialog.rs         # Универсальное окно системных ошибок и диагностики
 │     └─ components/
 │        ├─ mod.rs                  # Реэкспорт компонентов
 │        ├─ vpn_key_row.rs / .ui    # Виджет строки VPN-ключа

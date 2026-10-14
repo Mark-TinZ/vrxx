@@ -65,6 +65,20 @@
   </branding>
 
   <releases>
+    <release version="26.1.0-beta.3" date="2026-09-23">
+      <description translate="no">
+        <p>Release 26.1.0-beta.3</p>
+        <ul>
+          <li>Enterprise-grade structured tracing with runtime log level reload, PII sanitization, and 7-day retention</li>
+          <li>Fix GNOME system proxy bug: automatic deactivation on disconnect and in TUN mode with startup self-healing</li>
+          <li>Full keyboard shortcuts and window accelerators (Disconnect, Ping, Zoom, Settings)</li>
+          <li>Declarative dialog architecture (.ui templates under src/ui/dialogs/)</li>
+          <li>Mobile adaptivity for small screens with bottom-sheet presentation and responsive clamping</li>
+          <li>Dynamic protocol form adaptation in KeyDialog (WireGuard, Shadowsocks, TUIC, Hysteria2, SOCKS5, HTTP)</li>
+          <li>Ping All Keys action, startup auto-ping, and configurable background cooldown timer</li>
+        </ul>
+      </description>
+    </release>
     <release version="26.1.0-beta.2" date="2026-08-30">
       <description translate="no">
         <p>Release 26.1.0-beta.2</p>

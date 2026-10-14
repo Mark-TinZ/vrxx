@@ -2,6 +2,23 @@
 
 Все изменения проекта документируются в соответствии с [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [26.1.0-beta.3] - 2026-09-23
+
+### 🚀 Новые возможности
+
+- *(logging)* **Enterprise Tracing Standard**: Production-grade structured logging with `tracing`, hot-reload of log level without restarts (`tracing_subscriber::reload::Handle`), automatic PII/token masking (`mask_secret`), 10MB file rotation, and 7-day retention cleanup
+- *(ui)* **Declarative Dialogs**: Moved and converted all modal dialogs to declarative Libadwaita `.ui` templates under `src/ui/dialogs/` (`VrxxKeyDialog`, `VrxxRuleDialog`, `VrxxQrDialog`, `VrxxExportDialog`, `VrxxImportDialog`)
+- *(ui)* **Mobile Adaptivity**: Adaptive presentation mode (`bottom-sheet`) and responsive `AdwClamp` sizing for narrow screen geometries (< 500px)
+- *(ui)* **Dynamic Protocol Fields**: Adaptive form field toggling in `VrxxKeyDialog` supporting VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard, SOCKS5, and HTTP
+- *(ui)* **Batch Ping & Cooldown**: Added "Ping All Keys" header action (`<Primary><Shift>P`), startup auto-ping option, and configurable background cooldown timer (5m, 10m, 15m, 30m, 1h)
+- *(shortcuts)* **Complete Hotkey Coverage**: Implemented and registered standard GTK4 accelerators (`<Primary>D` disconnect, `<Primary>P` ping selected, `<Primary><Shift>P` ping all, `<Primary>comma` settings, zoom and navigation)
+
+### 🐛 Исправления ошибок
+
+- *(proxy)* **GNOME System Proxy Fix**: Guaranteed proxy reset to `'none'` on VPN disconnection and in TUN mode, preventing network loss; added startup self-healing
+- *(ui)* **VPN Key Row Subtitle**: Removed IP address from subtitle, displaying protocol only for cleaner HIG appearance
+- *(ui)* **QR Dialog Privacy**: Converted to native `AdwDialog` with hardware-accelerated CSS opacity blur shroud, eliminating GTK CSS errors
+
 ## [26.1.0-beta.2] - 2026-08-30
 
 ### 🚀 Новые возможности

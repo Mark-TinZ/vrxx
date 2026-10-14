@@ -14,3 +14,4 @@ jsconfig.json
 compiled_javascript/
 *.mo
 locale/**/*.mo
+*.node
