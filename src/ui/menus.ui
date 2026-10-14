@@ -22,7 +22,9 @@
     │ Секция 2:                                                                │
     │ ├─ Preferences        (app.preferences: Перейти в настройки)            │
     │ ├─ Keyboard Shortcuts (app.shortcuts: Диалог горячих клавиш)             │
-    │ ├─ About Vrxx         (app.about: Диалог сведений о программе)          │
+    │ └─ About Vrxx         (app.about: Диалог сведений о программе)          │
+    ├──────────────────────────────────────────────────────────────────────────┤
+    │ Секция 3:                                                                │
     │ ├─ Close Window       (app.close_window: Закрыть только окно интерфейса) │
     │ └─ Quit               (app.quit: Полный выход с подтверждением и стопом) │
     └──────────────────────────────────────────────────────────────────────────┘
@@ -38,6 +40,11 @@
 
     <!-- Секция 2: Стандартные действия приложения -->
     <section>
+      <!-- Общий пинг -->
+      <item>
+        <attribute name="label" translatable="yes">_Ping</attribute>
+        <attribute name="action">app.pingall</attribute>
+      </item>
       <!-- Настройки -->
       <item>
         <attribute name="label" translatable="yes">_Preferences</attribute>
@@ -53,6 +60,10 @@
         <attribute name="label" translatable="yes">_About Vrxx</attribute>
         <attribute name="action">app.about</attribute>
       </item>
+    </section>
+
+    <!-- Секция 3: Закрытие приложения -->
+    <section>
       <!-- Закрыть окно (GUI) -->
       <item>
         <attribute name="label" translatable="yes">_Close Window</attribute>

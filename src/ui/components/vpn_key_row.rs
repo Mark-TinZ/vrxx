@@ -45,6 +45,8 @@ mod imp {
         #[template_child]
         pub lbl_ping: TemplateChild<gtk::Label>,
         #[template_child]
+        pub lbl_row_ping: TemplateChild<gtk::Label>,
+        #[template_child]
         pub btn_refresh_ping: TemplateChild<gtk::Button>,
 
         pub item: RefCell<Option<VpnKeyObject>>,
@@ -80,6 +82,7 @@ mod imp {
                     glib::subclass::Signal::builder("request-share").build(),
                     glib::subclass::Signal::builder("request-ping").build(),
                     glib::subclass::Signal::builder("request-activate").build(),
+                    glib::subclass::Signal::builder("request-move-group").build(),
                 ]
             })
         }
@@ -155,6 +158,15 @@ impl VrxxVpnKeyRow {
             .sync_create()
             .build();
 
+        // Отслеживание изменений задержки для отображения пинга в заголовке строки (GNOME HIG)
+        let row_weak_ping = self.downgrade();
+        item.connect_ping_notify(move |item| {
+            if let Some(r) = row_weak_ping.upgrade() {
+                r.update_row_ping(&item.ping());
+            }
+        });
+        self.update_row_ping(&item.ping());
+
         // Отслеживание изменений статуса активности ключа
         let row_weak = self.downgrade();
         item.connect_is_active_notify(move |item| {
@@ -193,14 +205,47 @@ impl VrxxVpnKeyRow {
 
     /// Подключение сигналов клика по строке и кнопки замера пинга.
     fn setup_callbacks(&self) {
-        let row_weak = self.downgrade();
-        self.imp().header_row.set_activatable(true);
-        self.imp().header_row.connect_activated(move |_| {
-            if let Some(row) = row_weak.upgrade() {
+        // 1. Активация строки через клавиатуру (Enter / Пробел)
+        let row_weak_act = self.downgrade();
+        self.connect_activate(move |_| {
+            if let Some(row) = row_weak_act.upgrade() {
                 row.emit_by_name::<()>("request-activate", &[]);
             }
         });
 
+        // 2. Активация кликом мыши по заголовку строки
+        let click = gtk::GestureClick::new();
+        click.set_button(gtk::gdk::BUTTON_PRIMARY);
+        let row_weak_click = self.downgrade();
+        click.connect_pressed(move |gesture, _n_press, x, y| {
+            // Если клик пришелся на контекстное меню (GtkMenuButton) или его дочерние элементы,
+            // не активируем профиль, давая меню открыться
+            if let Some(widget) = gesture.widget() {
+                if let Some(picked) = widget.pick(x, y, gtk::PickFlags::DEFAULT) {
+                    if picked.ancestor(gtk::MenuButton::static_type()).is_some() {
+                        gesture.set_state(gtk::EventSequenceState::Denied);
+                        return;
+                    }
+                }
+            }
+
+            gesture.set_state(gtk::EventSequenceState::Claimed);
+            if let Some(row) = row_weak_click.upgrade() {
+                row.emit_by_name::<()>("request-activate", &[]);
+            }
+        });
+        self.imp().header_row.add_controller(click);
+
+        // 3. Поддержка штатного activated AdwActionRow для стилей ховера и совместимости
+        self.imp().header_row.set_activatable(true);
+        let row_weak_hdr = self.downgrade();
+        self.imp().header_row.connect_activated(move |_| {
+            if let Some(row) = row_weak_hdr.upgrade() {
+                row.emit_by_name::<()>("request-activate", &[]);
+            }
+        });
+
+        // 4. Кнопка ручного обновления пинга
         let row_weak_ping = self.downgrade();
         self.imp().btn_refresh_ping.connect_clicked(move |_| {
             if let Some(row) = row_weak_ping.upgrade() {
@@ -209,22 +254,54 @@ impl VrxxVpnKeyRow {
         });
     }
 
-    /// Обновляет подзаголовок строки: выводит протокол и хост/IP (с учетом режима стримера).
+    /// Обновляет подзаголовок строки: выводит только наименование протокола по стандартам GNOME HIG.
     fn update_subtitle(&self, item: &VpnKeyObject) {
         let proto = item.protocol();
-        let subtitle = if item.hide_ip() {
-            format!("{proto} • ***.***.***.***")
-        } else {
-            let s_info = item.server_info();
-            if !s_info.is_empty() && s_info != "0.0.0.0" {
-                format!("{proto} • {s_info}")
-            } else if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&item.url()) {
-                format!("{proto} • {}:{}", parsed.host, parsed.port)
+        self.imp().header_row.set_subtitle(&proto);
+    }
+
+    /// Обновляет отображение индикатора задержки (пинга) в заголовке строки по стандарту GNOME HIG.
+    fn update_row_ping(&self, ping: &str) {
+        let imp = self.imp();
+        let trimmed = ping.trim();
+
+        if trimmed.is_empty() || trimmed == "0 ms" || trimmed == "-" {
+            imp.lbl_row_ping.set_visible(false);
+            return;
+        }
+
+        // Очищаем предыдущие цветовые классы
+        imp.lbl_row_ping.remove_css_class("success");
+        imp.lbl_row_ping.remove_css_class("warning");
+        imp.lbl_row_ping.remove_css_class("error");
+        imp.lbl_row_ping.remove_css_class("dim-label");
+
+        // Применяем семантические цвета по правилам GNOME HIG
+        if let Some(ms_str) = trimmed.strip_suffix(" ms") {
+            if let Ok(ms) = ms_str.trim().parse::<u64>() {
+                if ms < 150 {
+                    imp.lbl_row_ping.add_css_class("success");
+                } else if ms < 300 {
+                    imp.lbl_row_ping.add_css_class("warning");
+                } else {
+                    imp.lbl_row_ping.add_css_class("error");
+                }
             } else {
-                proto
+                imp.lbl_row_ping.add_css_class("dim-label");
             }
-        };
-        self.imp().header_row.set_subtitle(&subtitle);
+        } else if trimmed.eq_ignore_ascii_case("timeout")
+            || trimmed.eq_ignore_ascii_case("error")
+            || trimmed.contains("error")
+            || trimmed.contains("ошибка")
+            || trimmed.contains("таймаут")
+        {
+            imp.lbl_row_ping.add_css_class("error");
+        } else {
+            imp.lbl_row_ping.add_css_class("dim-label");
+        }
+
+        imp.lbl_row_ping.set_label(trimmed);
+        imp.lbl_row_ping.set_visible(true);
     }
 
     /// Обновляет визуальное состояние строки: разворачивание блока деталей и иконку статуса.
@@ -256,6 +333,16 @@ impl VrxxVpnKeyRow {
             }
         });
         action_group.add_action(&info_action);
+
+        // Действие: Замерить пинг профиля
+        let ping_action = gio::SimpleAction::new("key_ping", None);
+        let row_weak_ping = self.downgrade();
+        ping_action.connect_activate(move |_, _| {
+            if let Some(row) = row_weak_ping.upgrade() {
+                row.emit_by_name::<()>("request-ping", &[]);
+            }
+        });
+        action_group.add_action(&ping_action);
 
         // Действие: Удалить профиль
         let delete_action = gio::SimpleAction::new("delete", None);
@@ -316,6 +403,16 @@ impl VrxxVpnKeyRow {
             }
         });
         action_group.add_action(&share_action);
+
+        // Действие: Переместить в группу
+        let move_group_action = gio::SimpleAction::new("key_move_group", None);
+        let row_weak_move = self.downgrade();
+        move_group_action.connect_activate(move |_, _| {
+            if let Some(row) = row_weak_move.upgrade() {
+                row.emit_by_name::<()>("request-move-group", &[]);
+            }
+        });
+        action_group.add_action(&move_group_action);
 
         self.insert_action_group("row", Some(&action_group));
     }

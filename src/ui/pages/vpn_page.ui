@@ -12,24 +12,76 @@
 <interface domain="vrxx">
   <!--
     ============================================================================
-    СТРАНИЦА УПРАВЛЕНИЯ VPN-КЛЮЧАМИ (VrxxVpnPage)
+    СТРАНИЦА УПРАВЛЕНИЯ VPN-КЛЮЧАМИ, ГРУППАМИ И ПОДПИСКАМИ (VrxxVpnPage)
     ============================================================================
 
-    СТРУКТУРА МАКЕТА:
+    СТРУКТУРА МАКЕТА (GNOME HIG / Libadwaita 1.5+):
     ┌──────────────────────────────────────────────────────────────────────────┐
     │ AdwHeaderBar (Шапка страницы):                                           │
-    │ ├─ [Кнопка +: Добавить по ссылке] [Кнопка Вставить: Из буфера]          │
+    │ ├─ [Кнопка +: Добавить ключ] [Кнопка Вставить: Из буфера]                │
+    │ │  [Кнопка Новая группа: folder-new] [Кнопка Подписка: cloud-download]   │
     │ ├─ AdwWindowTitle: "VPN"                                                 │
     │ └─ [Кнопка Меню: primary_menu_btn] [Кнопка Стоп: Отключить VPN]          │
     ├──────────────────────────────────────────────────────────────────────────┤
     │ AdwPreferencesPage (Контентная область):                                 │
     │ └─ AdwPreferencesGroup ("Connection list" / "Список подключений"):      │
-    │    └─ GtkListBox (keys_list: boxed-list строк VrxxVpnKeyRow)             │
-    │       └─ Строки ключей генерируются динамически в Rust-коде              │
+    │    └─ GtkListBox (keys_list: boxed-list):                                │
+    │       ├─ AdwExpanderRow (Сворачиваемая подписка):                        │
+    │       │  ├─ Префикс: иконка облака (cloud-download-symbolic)             │
+    │       │  ├─ Имя, URL, время обновления, кол-во ключей                    │
+    │       │  ├─ Действия: обновить ключи, контекстное меню подписки          │
+    │       │  └─ Вложенные строки ключей (VrxxVpnKeyRow)                      │
+    │       ├─ AdwExpanderRow (Сворачиваемая группа):                          │
+    │       │  ├─ Префикс: иконка папки (folder-symbolic)                      │
+    │       │  ├─ Имя группы, количество ключей                                │
+    │       │  ├─ Действия: добавить ключ в группу, меню группы                │
+    │       │  └─ Вложенные строки ключей (VrxxVpnKeyRow)                      │
+    │       └─ Строки ключей без группы (VrxxVpnKeyRow)                        │
     └──────────────────────────────────────────────────────────────────────────┘
   -->
 
-  <template class="VrxxVpnPage" parent="AdwBin">
+  <!-- Меню быстрого добавления для мобильного вида (<= 450sp) -->
+  <menu id="vpn_add_menu">
+    <section>
+      <item>
+        <attribute name="label" translatable="yes">Add Key…</attribute>
+        <attribute name="action">vpn.add_key</attribute>
+        <attribute name="icon">list-add-symbolic</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Import from Clipboard</attribute>
+        <attribute name="action">vpn.import_clipboard</attribute>
+        <attribute name="icon">edit-paste-symbolic</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Add Group…</attribute>
+        <attribute name="action">vpn.add_group</attribute>
+        <attribute name="icon">folder-new-symbolic</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Add Subscription…</attribute>
+        <attribute name="action">vpn.add_subscription</attribute>
+        <attribute name="icon">cloud-download-symbolic</attribute>
+      </item>
+    </section>
+  </menu>
+
+  <template class="VrxxVpnPage" parent="AdwBreakpointBin">
+    <!-- Минимальные размеры для AdwBreakpointBin во избежание предупреждений Libadwaita и глитчей ресайза -->
+    <property name="width-request">360</property>
+    <property name="height-request">200</property>
+
+    <!-- Адаптивная точка останова: при ширине <= 500sp скрывать панель из 4 кнопок и показывать выпадающее меню.
+         Порог 500sp предотвращает переполнение шапки тулбара (мин. 459px на десктопе и 499px в мобильном виде
+         с системной кнопкой Назад), полностью устраняя коллизии геометрии, предупреждения Libadwaita и фризы. -->
+    <child>
+      <object class="AdwBreakpoint">
+        <condition>max-width: 500sp</condition>
+        <setter object="header_actions_box" property="visible">False</setter>
+        <setter object="btn_add_compact_menu" property="visible">True</setter>
+      </object>
+    </child>
+
     <property name="child">
       <object class="AdwToolbarView">
 
@@ -46,29 +98,63 @@
               </object>
             </property>
 
-            <!-- Кнопки добавления и импорта VPN-ключей (в начале панели) -->
+            <!-- Кнопки управления профилями, группами и подписками (в начале панели) -->
             <child type="start">
               <object class="GtkBox">
-                <property name="spacing">6</property>
-
-                <!-- Добавить ключ по ссылке вручную -->
+                <!-- Десктопный вид: 4 кнопки в ряд -->
                 <child>
-                  <object class="GtkButton" id="btn_import_link">
+                  <object class="GtkBox" id="header_actions_box">
+                    <style>
+                      <class name="linked"/>
+                    </style>
+
+                    <!-- Добавить ключ по ссылке вручную -->
+                    <child>
+                      <object class="GtkButton" id="btn_import_link">
+                        <property name="icon-name">list-add-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Add key</property>
+                        <property name="action-name">vpn.add_key</property>
+                      </object>
+                    </child>
+
+                    <!-- Вставить ключ из системного буфера обмена -->
+                    <child>
+                      <object class="GtkButton" id="btn_import_clipboard">
+                        <property name="icon-name">edit-paste-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Import from clipboard</property>
+                        <property name="action-name">vpn.import_clipboard</property>
+                      </object>
+                    </child>
+
+                    <!-- Создать новую группу для организации ключей -->
+                    <child>
+                      <object class="GtkButton" id="btn_add_group">
+                        <property name="icon-name">folder-new-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Add group</property>
+                        <property name="action-name">vpn.add_group</property>
+                      </object>
+                    </child>
+
+                    <!-- Добавить подписку (удаленный список ключей по URL) -->
+                    <child>
+                      <object class="GtkButton" id="btn_add_subscription">
+                        <property name="icon-name">cloud-download-symbolic</property>
+                        <property name="tooltip-text" translatable="yes">Add subscription</property>
+                        <property name="action-name">vpn.add_subscription</property>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <!-- Мобильный вид: компактная кнопка добавления с выпадающим меню -->
+                <child>
+                  <object class="GtkMenuButton" id="btn_add_compact_menu">
+                    <property name="visible">False</property>
                     <property name="icon-name">list-add-symbolic</property>
-                    <property name="tooltip-text" translatable="yes">Import from link</property>
-                    <property name="action-name">vpn.add_key</property>
+                    <property name="tooltip-text" translatable="yes">Add…</property>
+                    <property name="menu-model">vpn_add_menu</property>
                   </object>
                 </child>
-
-                <!-- Вставить ключ из системного буфера обмена -->
-                <child>
-                  <object class="GtkButton" id="btn_import_clipboard">
-                    <property name="icon-name">edit-paste-symbolic</property>
-                    <property name="tooltip-text" translatable="yes">Import from clipboard</property>
-                    <property name="action-name">vpn.import_clipboard</property>
-                  </object>
-                </child>
-
               </object>
             </child>
 
@@ -95,7 +181,7 @@
         </child>
 
         <!-- ================================================================= -->
-        <!-- 2. ОСНОВНОЙ СПИСОК VPN-ПОДКЛЮЧЕНИЙ (PREFERENCES PAGE)             -->
+        <!-- 2. ОСНОВНОЙ СПИСОК VPN-ПОДКЛЮЧЕНИЙ, ГРУПП И ПОДПИСОК              -->
         <!-- ================================================================= -->
         <property name="content">
           <object class="AdwPreferencesPage">
@@ -104,7 +190,7 @@
               <object class="AdwPreferencesGroup">
                 <property name="title" translatable="yes">Connection list</property>
                 <child>
-                  <!-- Контейнер строк ключей (каждая строка — компонент VrxxVpnKeyRow) -->
+                  <!-- Контейнер строк ключей, сворачиваемых групп и подписок -->
                   <object class="GtkListBox" id="keys_list">
                     <property name="selection-mode">none</property>
                     <property name="show-separators">True</property>

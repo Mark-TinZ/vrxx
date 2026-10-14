@@ -35,15 +35,24 @@
   -->
   <template class="VrxxVpnKeyRow" parent="GtkListBoxRow">
     <property name="activatable">True</property>
+    <property name="overflow">hidden</property>
+    <style>
+      <class name="vpn-key-row"/>
+    </style>
     <property name="child">
       <object class="GtkBox">
         <property name="orientation">vertical</property>
+        <property name="overflow">hidden</property>
 
         <!-- Шапка строки ключа -->
         <child>
           <object class="AdwActionRow" id="header_row">
             <property name="title-lines">1</property>
             <property name="subtitle-lines">1</property>
+            <property name="activatable">True</property>
+            <style>
+              <class name="vpn-header-row"/>
+            </style>
             <!-- Префикс: Индикатор состояния подключения (Стек иконок/спиннера) -->
             <child type="prefix">
               <object class="GtkStack" id="icon_stack">
@@ -105,6 +114,23 @@
               </object>
             </child>
 
+            <!-- Суффикс: Индикатор задержки / пинга (GNOME HIG: .caption .numeric) -->
+            <child type="suffix">
+              <object class="GtkLabel" id="lbl_row_ping">
+                <property name="can-target">False</property>
+                <property name="valign">center</property>
+                <property name="halign">end</property>
+                <property name="visible">False</property>
+                <property name="ellipsize">end</property>
+                <property name="max-width-chars">10</property>
+                <style>
+                  <class name="caption"/>
+                  <class name="numeric"/>
+                  <class name="dim-label"/>
+                </style>
+              </object>
+            </child>
+
             <!-- Суффикс: Кнопка открытия контекстного меню ключа -->
             <child type="suffix">
               <object class="GtkMenuButton">
@@ -136,12 +162,14 @@
 
                 <child>
                   <object class="GtkGrid">
-                    <property name="margin-top">12</property>
-                    <property name="margin-bottom">12</property>
-                    <property name="margin-start">16</property>
-                    <property name="margin-end">16</property>
-                    <property name="column-spacing">12</property>
-                    <property name="row-spacing">8</property>
+                    <property name="margin-top">10</property>
+                    <property name="margin-bottom">10</property>
+                    <property name="margin-start">12</property>
+                    <property name="margin-end">12</property>
+                    <property name="column-spacing">8</property>
+                    <property name="row-spacing">6</property>
+                    <property name="column-homogeneous">True</property>
+                    <property name="hexpand">True</property>
 
                     <!-- Метрика: Загрузка (Входящий трафик) -->
                     <child>
@@ -208,6 +236,10 @@
         <attribute name="action">row.key_info</attribute>
       </item>
       <item>
+        <attribute name="label" translatable="yes">_Ping</attribute>
+        <attribute name="action">row.key_ping</attribute>
+      </item>
+      <item>
         <attribute name="label" translatable="yes">_Edit</attribute>
         <attribute name="action">row.key_edit</attribute>
       </item>
@@ -215,6 +247,10 @@
       <item>
         <attribute name="label" translatable="yes">_Share</attribute>
         <attribute name="action">row.key_share</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Move to _Group…</attribute>
+        <attribute name="action">row.key_move_group</attribute>
       </item>
       <item>
         <attribute name="label" translatable="yes">_Delete</attribute>

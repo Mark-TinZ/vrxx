@@ -24,7 +24,7 @@ use adw::subclass::prelude::*;
 use gettextrs::gettext;
 use gtk::{gio, glib, CompositeTemplate};
 
-use crate::settings::{SettingsManager, VpnKeyData};
+use crate::settings::{SettingsManager, VpnGroupData, VpnKeyData, VpnSubscriptionData};
 use crate::ui::components::vpn_key_row::VrxxVpnKeyRow;
 use crate::ui::models::VpnKeyObject;
 use crate::ui::setup_primary_menu;
@@ -44,6 +44,10 @@ mod imp {
 
         #[template_child]
         pub primary_menu_btn: TemplateChild<gtk::MenuButton>,
+        #[template_child]
+        pub header_actions_box: TemplateChild<gtk::Box>,
+        #[template_child]
+        pub btn_add_compact_menu: TemplateChild<gtk::MenuButton>,
 
         pub model: RefCell<Option<gio::ListStore>>,
         pub backend: RefCell<crate::backend::CoreBackend>,
@@ -64,11 +68,14 @@ mod imp {
     impl ObjectSubclass for VrxxVpnPage {
         const NAME: &'static str = "VrxxVpnPage";
         type Type = super::VrxxVpnPage;
-        type ParentType = adw::Bin;
+        type ParentType = adw::BreakpointBin;
 
         fn class_init(klass: &mut Self::Class) {
             VrxxVpnKeyRow::static_type();
             adw::WindowTitle::static_type();
+            adw::ExpanderRow::static_type();
+            adw::Breakpoint::static_type();
+            adw::BreakpointBin::static_type();
             klass.bind_template();
         }
 
@@ -81,6 +88,10 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
+            // Явное задание минимальных размеров для AdwBreakpointBin во избежание предупреждений Libadwaita
+            self.obj().set_width_request(360);
+            self.obj().set_height_request(200);
+
             // Инициализация бэкенда ядра
             self.backend.replace(crate::backend::CoreBackend::new());
 
@@ -90,19 +101,20 @@ mod imp {
             self.obj().start_metrics_timer();
             self.obj().setup_dbus_listener();
             self.obj().setup_daemon_listener();
+            self.obj().setup_auto_ping();
 
             setup_primary_menu(&self.primary_menu_btn.get());
         }
     }
 
     impl WidgetImpl for VrxxVpnPage {}
-    impl BinImpl for VrxxVpnPage {}
+    impl adw::subclass::prelude::BreakpointBinImpl for VrxxVpnPage {}
 }
 
 glib::wrapper! {
     /// Обертка GObject для страницы VPN
     pub struct VrxxVpnPage(ObjectSubclass<imp::VrxxVpnPage>)
-        @extends gtk::Widget, adw::Bin,
+        @extends gtk::Widget, adw::BreakpointBin,
         @implements gio::ActionGroup, gio::ActionMap,
                    gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
@@ -114,6 +126,11 @@ impl Default for VrxxVpnPage {
 }
 
 impl VrxxVpnPage {
+    /// Возвращает статус активности текущего VPN подключения.
+    pub fn is_connected(&self) -> bool {
+        self.imp().is_connected.get()
+    }
+
     /// Создает новый экземпляр страницы VPN.
     pub fn new() -> Self {
         glib::Object::builder().build()
@@ -141,7 +158,8 @@ impl VrxxVpnPage {
                 false
             };
 
-            let key_obj = VpnKeyObject::new(&k.name, &k.protocol, is_key_active, &k.url);
+            let key_obj =
+                VpnKeyObject::new_with_group(&k.name, &k.protocol, is_key_active, &k.url, &k.group);
             if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&k.url) {
                 key_obj.set_server_info(parsed.host);
             }
@@ -184,120 +202,447 @@ impl VrxxVpnPage {
             .build();
         self.imp().keys_list.set_placeholder(Some(&status_page));
 
-        // Привязываем модель к ListBox
-        let page_weak = self.downgrade();
-        self.imp().keys_list.bind_model(Some(&model), move |item| {
-            let Some(key_obj) = item.downcast_ref::<VpnKeyObject>() else {
-                return gtk::ListBoxRow::new().upcast::<gtk::Widget>();
-            };
-            let row = VrxxVpnKeyRow::new();
-            row.bind(key_obj);
+        // Первичное построение дерева ключей, групп и подписок
+        self.rebuild_ui();
+    }
 
-            // Обработчики сигналов из строки ключа:
+    /// Создает виджет строки ключа [`VrxxVpnKeyRow`] и привязывает обработчики сигналов.
+    fn create_key_row(&self, key_obj: &VpnKeyObject) -> VrxxVpnKeyRow {
+        let row = VrxxVpnKeyRow::new();
+        row.bind(key_obj);
 
-            // Действие: Редактировать
-            let page_weak_edit = page_weak.clone();
-            let key_obj_edit = key_obj.clone();
-            row.connect_local("request-edit", false, move |_| {
-                if let Some(page) = page_weak_edit.upgrade() {
-                    page.handle_edit_key(&key_obj_edit);
-                }
-                None
-            });
+        // Обработчики сигналов из строки ключа:
 
-            // Действие: Информация
-            let page_weak_info = page_weak.clone();
-            let key_obj_info = key_obj.clone();
-            row.connect_local("request-info", false, move |_| {
-                if let Some(page) = page_weak_info.upgrade() {
-                    page.handle_info_key(&key_obj_info);
-                }
-                None
-            });
-
-            // Действие: Скопировать ссылку
-            let page_weak_cl = page_weak.clone();
-            let key_obj_cl = key_obj.clone();
-            row.connect_local("request-copy-link", false, move |_| {
-                if let Some(page) = page_weak_cl.upgrade() {
-                    let clipboard = page.clipboard();
-                    clipboard.set_text(&key_obj_cl.url());
-                }
-                None
-            });
-
-            // Действие: Скопировать JSON
-            let page_weak_cj = page_weak.clone();
-            let key_obj_cj = key_obj.clone();
-            row.connect_local("request-copy-json", false, move |_| {
-                if let Some(page) = page_weak_cj.upgrade() {
-                    let url = key_obj_cj.url();
-                    if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&url) {
-                        if let Ok(json_str) = serde_json::to_string_pretty(&parsed) {
-                            let clipboard = page.clipboard();
-                            clipboard.set_text(&json_str);
-                        }
-                    }
-                }
-                None
-            });
-
-            // Действие: Удалить
-            let page_weak_del = page_weak.clone();
-            let key_obj_del = key_obj.clone();
-            row.connect_local("request-delete", false, move |_| {
-                if let Some(page) = page_weak_del.upgrade() {
-                    page.handle_delete_key(&key_obj_del);
-                }
-                None
-            });
-
-            // Действие: QR Код и Поделиться
-            let page_weak_qr = page_weak.clone();
-            let key_obj_qr = key_obj.clone();
-            row.connect_local("request-qr-code", false, move |_| {
-                if let Some(page) = page_weak_qr.upgrade() {
-                    page.handle_qr_code_key(&key_obj_qr);
-                }
-                None
-            });
-
-            let page_weak_share = page_weak.clone();
-            let key_obj_share = key_obj.clone();
-            row.connect_local("request-share", false, move |_| {
-                if let Some(page) = page_weak_share.upgrade() {
-                    page.handle_qr_code_key(&key_obj_share);
-                }
-                None
-            });
-
-            // Действие: Ручной замер пинга
-            let key_obj_ping = key_obj.clone();
-            let page_weak_ping = page_weak.clone();
-            row.connect_local("request-ping", false, move |_| {
-                if key_obj_ping.is_loading() {
-                    return None;
-                }
-                if let Some(page) = page_weak_ping.upgrade() {
-                    if let Some(last) = *page.imp().last_ping.borrow() {
-                        if last.elapsed() < std::time::Duration::from_millis(1500) {
-                            page.show_toast(&gettext("Please wait before pinging again"));
-                            return None;
-                        }
-                    }
-                    page.imp()
-                        .last_ping
-                        .replace(Some(std::time::Instant::now()));
-
-                    key_obj_ping.set_ping(gettext("pinging..."));
-                    key_obj_ping.set_is_loading(true);
-                    page.trigger_ping_key(&key_obj_ping);
-                }
-                None
-            });
-
-            row.upcast::<gtk::Widget>()
+        // Действие: Клик по строке для активации
+        let page_weak_act = self.downgrade();
+        let key_obj_act = key_obj.clone();
+        row.connect_local("request-activate", false, move |_| {
+            if let Some(page) = page_weak_act.upgrade() {
+                page.set_active_key(&key_obj_act);
+            }
+            None
         });
+
+        // Действие: Редактировать
+        let page_weak_edit = self.downgrade();
+        let key_obj_edit = key_obj.clone();
+        row.connect_local("request-edit", false, move |_| {
+            if let Some(page) = page_weak_edit.upgrade() {
+                page.handle_edit_key(&key_obj_edit);
+            }
+            None
+        });
+
+        // Действие: Информация
+        let page_weak_info = self.downgrade();
+        let key_obj_info = key_obj.clone();
+        row.connect_local("request-info", false, move |_| {
+            if let Some(page) = page_weak_info.upgrade() {
+                page.handle_info_key(&key_obj_info);
+            }
+            None
+        });
+
+        // Действие: Скопировать ссылку
+        let page_weak_cl = self.downgrade();
+        let key_obj_cl = key_obj.clone();
+        row.connect_local("request-copy-link", false, move |_| {
+            if let Some(page) = page_weak_cl.upgrade() {
+                let clipboard = page.clipboard();
+                clipboard.set_text(&key_obj_cl.url());
+            }
+            None
+        });
+
+        // Действие: Скопировать JSON
+        let page_weak_cj = self.downgrade();
+        let key_obj_cj = key_obj.clone();
+        row.connect_local("request-copy-json", false, move |_| {
+            if let Some(page) = page_weak_cj.upgrade() {
+                let url = key_obj_cj.url();
+                if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&url) {
+                    if let Ok(json_str) = serde_json::to_string_pretty(&parsed) {
+                        let clipboard = page.clipboard();
+                        clipboard.set_text(&json_str);
+                    }
+                }
+            }
+            None
+        });
+
+        // Действие: Удалить
+        let page_weak_del = self.downgrade();
+        let key_obj_del = key_obj.clone();
+        row.connect_local("request-delete", false, move |_| {
+            if let Some(page) = page_weak_del.upgrade() {
+                page.handle_delete_key(&key_obj_del);
+            }
+            None
+        });
+
+        // Действие: QR Код и Поделиться
+        let page_weak_qr = self.downgrade();
+        let key_obj_qr = key_obj.clone();
+        row.connect_local("request-qr-code", false, move |_| {
+            if let Some(page) = page_weak_qr.upgrade() {
+                page.handle_qr_code_key(&key_obj_qr);
+            }
+            None
+        });
+
+        let page_weak_share = self.downgrade();
+        let key_obj_share = key_obj.clone();
+        row.connect_local("request-share", false, move |_| {
+            if let Some(page) = page_weak_share.upgrade() {
+                page.handle_qr_code_key(&key_obj_share);
+            }
+            None
+        });
+
+        // Действие: Ручной замер пинга
+        let key_obj_ping = key_obj.clone();
+        let page_weak_ping = self.downgrade();
+        row.connect_local("request-ping", false, move |_| {
+            if key_obj_ping.is_loading() {
+                return None;
+            }
+            if let Some(page) = page_weak_ping.upgrade() {
+                if let Some(last) = *page.imp().last_ping.borrow() {
+                    if last.elapsed() < std::time::Duration::from_millis(1500) {
+                        page.show_toast(&gettext("Please wait before pinging again"));
+                        return None;
+                    }
+                }
+                page.imp()
+                    .last_ping
+                    .replace(Some(std::time::Instant::now()));
+
+                key_obj_ping.set_ping(gettext("pinging..."));
+                key_obj_ping.set_is_loading(true);
+                page.trigger_ping_key(&key_obj_ping);
+            }
+            None
+        });
+
+        // Действие: Переместить в группу
+        let key_obj_move = key_obj.clone();
+        let page_weak_move = self.downgrade();
+        row.connect_local("request-move-group", false, move |_| {
+            if let Some(page) = page_weak_move.upgrade() {
+                page.handle_move_key_to_group(&key_obj_move);
+            }
+            None
+        });
+
+        row
+    }
+
+    /// Перестраивает иерархический интерфейс списка ключей, групп и подписок.
+    pub fn rebuild_ui(&self) {
+        let imp = self.imp();
+
+        // Очищаем текущие элементы в ListBox
+        while let Some(child) = imp.keys_list.first_child() {
+            imp.keys_list.remove(&child);
+        }
+
+        let model = match imp.model.borrow().as_ref() {
+            Some(m) => m.clone(),
+            None => return,
+        };
+
+        let total_items = model.n_items();
+        let settings_mgr = SettingsManager::new();
+        let groups = settings_mgr.load_groups();
+        let subscriptions = settings_mgr.load_subscriptions();
+
+        // Собираем все объекты ключей из модели
+        let mut all_keys: Vec<VpnKeyObject> = Vec::with_capacity(total_items as usize);
+        for i in 0..total_items {
+            if let Some(item) = model
+                .item(i)
+                .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+            {
+                all_keys.push(item);
+            }
+        }
+
+        let has_groups = !groups.is_empty() || !subscriptions.is_empty();
+
+        // 1. Отображение подписок (Subscriptions)
+        for sub in &subscriptions {
+            let expander = adw::ExpanderRow::builder()
+                .title(&sub.name)
+                .expanded(sub.is_expanded)
+                .build();
+
+            let icon = gtk::Image::from_icon_name("cloud-download-symbolic");
+            expander.add_prefix(&icon);
+
+            let sub_keys: Vec<&VpnKeyObject> =
+                all_keys.iter().filter(|k| k.group() == sub.id).collect();
+            let count = sub_keys.len();
+
+            let subtitle = if sub.last_updated.is_empty() {
+                format!(
+                    "{} • {} {}",
+                    gettext("Subscription"),
+                    count,
+                    gettext("keys")
+                )
+            } else {
+                format!("{} • {} {}", sub.last_updated, count, gettext("keys"))
+            };
+            expander.set_subtitle(&subtitle);
+
+            // Кнопка обновления подписки
+            let btn_refresh = gtk::Button::builder()
+                .icon_name("view-refresh-symbolic")
+                .valign(gtk::Align::Center)
+                .tooltip_text(gettext("Update subscription keys"))
+                .css_classes(["flat", "circular"])
+                .build();
+            let page_weak_ref = self.downgrade();
+            let sub_id_ref = sub.id.clone();
+            btn_refresh.connect_clicked(move |_| {
+                if let Some(page) = page_weak_ref.upgrade() {
+                    page.update_subscription(&sub_id_ref);
+                }
+            });
+            expander.add_suffix(&btn_refresh);
+
+            // Меню подписки
+            let btn_menu = gtk::MenuButton::builder()
+                .icon_name("view-more-symbolic")
+                .valign(gtk::Align::Center)
+                .css_classes(["flat", "circular"])
+                .build();
+
+            let popover = gtk::Popover::new();
+            let vbox = gtk::Box::new(gtk::Orientation::Vertical, 4);
+            vbox.set_margin_top(6);
+            vbox.set_margin_bottom(6);
+            vbox.set_margin_start(6);
+            vbox.set_margin_end(6);
+
+            let btn_pop_update = gtk::Button::builder()
+                .label(gettext("Update"))
+                .has_frame(false)
+                .build();
+            let p_ref2 = self.downgrade();
+            let s_id2 = sub.id.clone();
+            let pop_weak1 = popover.downgrade();
+            btn_pop_update.connect_clicked(move |_| {
+                if let Some(pop) = pop_weak1.upgrade() {
+                    pop.popdown();
+                }
+                if let Some(page) = p_ref2.upgrade() {
+                    page.update_subscription(&s_id2);
+                }
+            });
+            vbox.append(&btn_pop_update);
+
+            let btn_pop_edit = gtk::Button::builder()
+                .label(gettext("Edit"))
+                .has_frame(false)
+                .build();
+            let p_edit = self.downgrade();
+            let s_id_edit = sub.id.clone();
+            let pop_weak2 = popover.downgrade();
+            btn_pop_edit.connect_clicked(move |_| {
+                if let Some(pop) = pop_weak2.upgrade() {
+                    pop.popdown();
+                }
+                if let Some(page) = p_edit.upgrade() {
+                    page.prompt_edit_subscription(&s_id_edit);
+                }
+            });
+            vbox.append(&btn_pop_edit);
+
+            let btn_pop_del = gtk::Button::builder()
+                .label(gettext("Delete"))
+                .has_frame(false)
+                .css_classes(["destructive-action"])
+                .build();
+            let p_del = self.downgrade();
+            let s_id_del = sub.id.clone();
+            let pop_weak3 = popover.downgrade();
+            btn_pop_del.connect_clicked(move |_| {
+                if let Some(pop) = pop_weak3.upgrade() {
+                    pop.popdown();
+                }
+                if let Some(page) = p_del.upgrade() {
+                    page.delete_subscription(&s_id_del);
+                }
+            });
+            vbox.append(&btn_pop_del);
+
+            popover.set_child(Some(&vbox));
+            btn_menu.set_popover(Some(&popover));
+            expander.add_suffix(&btn_menu);
+
+            // Вложенные строки ключей
+            for key_obj in sub_keys {
+                let row = self.create_key_row(key_obj);
+                expander.add_row(&row);
+            }
+
+            // Отслеживание сворачивания
+            let s_id_exp = sub.id.clone();
+            expander.connect_expanded_notify(move |exp| {
+                let is_exp = exp.is_expanded();
+                let mgr = SettingsManager::new();
+                let mut all_s = mgr.load_subscriptions();
+                if let Some(s) = all_s.iter_mut().find(|s| s.id == s_id_exp) {
+                    s.is_expanded = is_exp;
+                }
+                mgr.save_subscriptions(&all_s);
+            });
+
+            imp.keys_list.append(&expander);
+        }
+
+        // 2. Отображение пользовательских групп (Groups)
+        for group in &groups {
+            let expander = adw::ExpanderRow::builder()
+                .title(&group.name)
+                .expanded(group.is_expanded)
+                .build();
+
+            let icon = gtk::Image::from_icon_name("folder-symbolic");
+            expander.add_prefix(&icon);
+
+            let group_keys: Vec<&VpnKeyObject> =
+                all_keys.iter().filter(|k| k.group() == group.id).collect();
+            let count = group_keys.len();
+            expander.set_subtitle(&format!("{} {}", count, gettext("keys")));
+
+            // Кнопка быстрого добавления ключа в группу
+            let btn_add_key = gtk::Button::builder()
+                .icon_name("list-add-symbolic")
+                .valign(gtk::Align::Center)
+                .tooltip_text(gettext("Add key to this group"))
+                .css_classes(["flat", "circular"])
+                .build();
+            let page_weak_add = self.downgrade();
+            let g_id_add = group.id.clone();
+            btn_add_key.connect_clicked(move |_| {
+                if let Some(page) = page_weak_add.upgrade() {
+                    page.add_key_to_group(&g_id_add);
+                }
+            });
+            expander.add_suffix(&btn_add_key);
+
+            // Меню группы: Переименовать, Удалить
+            let btn_menu = gtk::MenuButton::builder()
+                .icon_name("view-more-symbolic")
+                .valign(gtk::Align::Center)
+                .css_classes(["flat", "circular"])
+                .build();
+
+            let popover = gtk::Popover::new();
+            let vbox = gtk::Box::new(gtk::Orientation::Vertical, 4);
+            vbox.set_margin_top(6);
+            vbox.set_margin_bottom(6);
+            vbox.set_margin_start(6);
+            vbox.set_margin_end(6);
+
+            let btn_pop_rename = gtk::Button::builder()
+                .label(gettext("Rename"))
+                .has_frame(false)
+                .build();
+            let p_ren = self.downgrade();
+            let g_id_ren = group.id.clone();
+            let pop_weak1 = popover.downgrade();
+            btn_pop_rename.connect_clicked(move |_| {
+                if let Some(pop) = pop_weak1.upgrade() {
+                    pop.popdown();
+                }
+                if let Some(page) = p_ren.upgrade() {
+                    page.prompt_rename_group(&g_id_ren);
+                }
+            });
+            vbox.append(&btn_pop_rename);
+
+            let btn_pop_del = gtk::Button::builder()
+                .label(gettext("Delete"))
+                .has_frame(false)
+                .css_classes(["destructive-action"])
+                .build();
+            let p_del = self.downgrade();
+            let g_id_del = group.id.clone();
+            let pop_weak2 = popover.downgrade();
+            btn_pop_del.connect_clicked(move |_| {
+                if let Some(pop) = pop_weak2.upgrade() {
+                    pop.popdown();
+                }
+                if let Some(page) = p_del.upgrade() {
+                    page.delete_group(&g_id_del);
+                }
+            });
+            vbox.append(&btn_pop_del);
+
+            popover.set_child(Some(&vbox));
+            btn_menu.set_popover(Some(&popover));
+            expander.add_suffix(&btn_menu);
+
+            // Вложенные строки ключей
+            for key_obj in group_keys {
+                let row = self.create_key_row(key_obj);
+                expander.add_row(&row);
+            }
+
+            // Отслеживание сворачивания
+            let g_id_exp = group.id.clone();
+            expander.connect_expanded_notify(move |exp| {
+                let is_exp = exp.is_expanded();
+                let mgr = SettingsManager::new();
+                let mut all_g = mgr.load_groups();
+                if let Some(g) = all_g.iter_mut().find(|g| g.id == g_id_exp) {
+                    g.is_expanded = is_exp;
+                }
+                mgr.save_groups(&all_g);
+            });
+
+            imp.keys_list.append(&expander);
+        }
+
+        // 3. Отображение ключей без группы (Ungrouped)
+        let group_ids: Vec<String> = groups.iter().map(|g| g.id.clone()).collect();
+        let sub_ids: Vec<String> = subscriptions.iter().map(|s| s.id.clone()).collect();
+
+        let ungrouped_keys: Vec<&VpnKeyObject> = all_keys
+            .iter()
+            .filter(|k| {
+                let g = k.group();
+                g.is_empty() || (!group_ids.contains(&g) && !sub_ids.contains(&g))
+            })
+            .collect();
+
+        if !ungrouped_keys.is_empty() {
+            if has_groups {
+                let expander = adw::ExpanderRow::builder()
+                    .title(gettext("Ungrouped"))
+                    .subtitle(format!("{} {}", ungrouped_keys.len(), gettext("keys")))
+                    .expanded(true)
+                    .build();
+
+                let icon = gtk::Image::from_icon_name("network-vpn-symbolic");
+                expander.add_prefix(&icon);
+
+                for key_obj in ungrouped_keys {
+                    let row = self.create_key_row(key_obj);
+                    expander.add_row(&row);
+                }
+
+                imp.keys_list.append(&expander);
+            } else {
+                for key_obj in ungrouped_keys {
+                    let row = self.create_key_row(key_obj);
+                    imp.keys_list.append(&row);
+                }
+            }
+        }
     }
 
     // =========================================================================
@@ -311,8 +656,12 @@ impl VrxxVpnPage {
                 None => return,
             };
 
-            // Выбор строки и переключение активного профиля
-            if let Some(key_row) = row.downcast_ref::<VrxxVpnKeyRow>() {
+            // Выбор строки и переключение активного профиля (поддерживаем как прямой VrxxVpnKeyRow, так и вложенный AdwActionRow)
+            let key_row_opt = row.downcast_ref::<VrxxVpnKeyRow>().cloned().or_else(|| {
+                row.ancestor(VrxxVpnKeyRow::static_type())
+                    .and_then(|w| w.downcast::<VrxxVpnKeyRow>().ok())
+            });
+            if let Some(key_row) = key_row_opt {
                 if let Some(selected_item) = key_row.item() {
                     page.set_active_key(&selected_item);
                 }
@@ -832,6 +1181,44 @@ impl VrxxVpnPage {
 
             glib::spawn_future_local(async move {
                 let proxy = crate::ipc::DaemonClient::new();
+
+                // Проверяем доступность системного демона перед попыткой подключения
+                if !proxy.is_alive().await {
+                    tracing::warn!("Cannot connect to VPN: vrxx-daemon is not running");
+                    if let Some(page) = page_weak.upgrade() {
+                        if page.imp().connecting_target_url.borrow().as_deref()
+                            != Some(&item_clone.url())
+                        {
+                            return;
+                        }
+                        page.imp().connecting_target_url.replace(None);
+                        item_clone.set_is_active(false);
+                        item_clone.set_is_loading(false);
+                        item_clone.set_is_error(false);
+                        page.imp().start_time.replace(None);
+                        page.update_disconnect_action_state();
+
+                        // Показываем предупреждение и раскрываем баннер в главном окне
+                        if let Some(w) = page.root().and_downcast::<crate::window::VrxxWindow>() {
+                            w.set_daemon_banner_revealed(true);
+                            w.add_toast(adw::Toast::new(&gettext(
+                                "VRXX system service is not running. Please start vrxx-daemon.",
+                            )));
+                        } else {
+                            let root_widget = page.root();
+                            crate::ui::error_dialog::show_error_dialog(
+                                root_widget.as_ref(),
+                                Some(&gettext("Service Unavailable")),
+                                &gettext(
+                                    "VRXX system daemon is not running. Please start vrxx-daemon to enable VPN.",
+                                ),
+                                "vrxx-daemon not reachable at http://127.0.0.1:13337",
+                            );
+                        }
+                    }
+                    return;
+                }
+
                 tracing::info!("Connecting to VPN key via REST API: {}", item_clone.name());
                 if let Err(e) = proxy.start_proxy(core_type, config_json, tun_mode).await {
                     tracing::error!("Failed to start core via REST API: {}", e);
@@ -891,7 +1278,7 @@ impl VrxxVpnPage {
                                 latency_ms
                             );
 
-                            // Автоматически включаем системный прокси GNOME, если не используется TUN
+                            // Управление системным прокси GNOME: включаем только если не используется TUN
                             if !tun_mode {
                                 let current_settings =
                                     crate::settings::SettingsManager::new().load();
@@ -899,6 +1286,11 @@ impl VrxxVpnPage {
                                     tracing::info!("Auto-activating GNOME system proxy...");
                                     crate::backend::CoreBackend::update_system_proxy(true);
                                 }
+                            } else {
+                                tracing::info!(
+                                    "TUN mode active: ensuring GNOME system proxy is set to 'none'"
+                                );
+                                crate::backend::CoreBackend::update_system_proxy(false);
                             }
 
                             if let Some(page) = page_weak.upgrade() {
@@ -990,6 +1382,107 @@ impl VrxxVpnPage {
                             }
                         }
                     }
+                }
+            });
+        }
+    }
+
+    /// Инициирует замер задержки (ping) для всех сохраненных профилей в списке.
+    pub fn ping_all(&self) {
+        if let Some(model) = self.imp().model.borrow().as_ref() {
+            let n = model.n_items();
+            if n == 0 {
+                return;
+            }
+            tracing::info!(target: "vrxx::ping", total_keys = n, "Initiating ping for all VPN profiles");
+            for i in 0..n {
+                if let Some(item) = model
+                    .item(i)
+                    .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                {
+                    if !item.is_loading() {
+                        item.set_ping(gettext("pinging..."));
+                        item.set_is_loading(true);
+                        self.trigger_ping_key(&item);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Инициирует замер задержки для выбранного или первого активного профиля.
+    pub fn ping_selected(&self) {
+        let imp = self.imp();
+        if let Some(row) = imp.keys_list.selected_row() {
+            let idx = row.index();
+            if idx >= 0 {
+                if let Some(model) = imp.model.borrow().as_ref() {
+                    if let Some(item) = model
+                        .item(idx as u32)
+                        .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                    {
+                        if !item.is_loading() {
+                            item.set_ping(gettext("pinging..."));
+                            item.set_is_loading(true);
+                            self.trigger_ping_key(&item);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Если строка не выбрана явно в ListBox, пингуем активный профиль
+        if let Some(model) = imp.model.borrow().as_ref() {
+            for i in 0..model.n_items() {
+                if let Some(item) = model
+                    .item(i)
+                    .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                {
+                    if item.is_active() && !item.is_loading() {
+                        item.set_ping(gettext("pinging..."));
+                        item.set_is_loading(true);
+                        self.trigger_ping_key(&item);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    /// Настраивает автопинг при запуске и периодический опрос по кулдауну.
+    fn setup_auto_ping(&self) {
+        let settings = SettingsManager::new().load();
+
+        if settings.auto_ping_on_startup {
+            let page_weak = self.downgrade();
+            glib::timeout_add_local_once(std::time::Duration::from_millis(600), move || {
+                if let Some(page) = page_weak.upgrade() {
+                    tracing::info!(target: "vrxx::ping", "Running startup latency check");
+                    page.ping_all();
+                }
+            });
+        }
+
+        if settings.auto_ping_interval > 0 {
+            let page_weak = self.downgrade();
+            let interval = std::time::Duration::from_secs(settings.auto_ping_interval);
+            glib::timeout_add_local(interval, move || {
+                if let Some(page) = page_weak.upgrade() {
+                    let cur_settings = SettingsManager::new().load();
+                    if cur_settings.auto_ping_interval > 0 {
+                        tracing::info!(
+                            target: "vrxx::ping",
+                            interval_secs = cur_settings.auto_ping_interval,
+                            "Running periodic background latency check"
+                        );
+                        page.ping_all();
+                        glib::ControlFlow::Continue
+                    } else {
+                        glib::ControlFlow::Break
+                    }
+                } else {
+                    glib::ControlFlow::Break
                 }
             });
         }
@@ -1099,6 +1592,7 @@ impl VrxxVpnPage {
                         location: item.location(),
                         timezone: item.timezone(),
                         url: item.url(),
+                        group: item.group(),
                     });
                 }
             }
@@ -1108,6 +1602,16 @@ impl VrxxVpnPage {
 
     /// Добавляет распарсенный ключ в модель и при необходимости инициирует подключение.
     pub fn import_key(&self, parsed: crate::domain::key_parser::ParsedKey, connect: bool) {
+        self.import_key_with_group(parsed, connect, String::new());
+    }
+
+    /// Добавляет распарсенный ключ в модель с привязкой к группе и при необходимости инициирует подключение.
+    pub fn import_key_with_group(
+        &self,
+        parsed: crate::domain::key_parser::ParsedKey,
+        connect: bool,
+        group: String,
+    ) {
         if let Some(model) = self.imp().model.borrow().as_ref() {
             let new_url = crate::domain::key_parser::build_vpn_key(&parsed);
             let raw_url = if new_url.is_empty() {
@@ -1115,9 +1619,16 @@ impl VrxxVpnPage {
             } else {
                 new_url
             };
-            let new_key = VpnKeyObject::new(&parsed.name, &parsed.protocol, false, &raw_url);
+            let new_key = VpnKeyObject::new_with_group(
+                &parsed.name,
+                &parsed.protocol,
+                false,
+                &raw_url,
+                &group,
+            );
             model.append(&new_key);
             self.save_current_keys();
+            self.rebuild_ui();
 
             if connect {
                 self.set_active_key_internal(&new_key, true);
@@ -1253,99 +1764,20 @@ impl VrxxVpnPage {
             Err(_) => return,
         };
 
-        let dialog = adw::AlertDialog::builder()
-            .heading(gettext("Edit VPN key"))
-            .build();
-
-        let name_row = adw::EntryRow::builder()
-            .title(gettext("Name"))
-            .text(&parsed.name)
-            .build();
-        let protocol_row = adw::EntryRow::builder()
-            .title(gettext("Protocol"))
-            .text(&parsed.protocol)
-            .build();
-        let host_row = adw::EntryRow::builder()
-            .title(gettext("Server address"))
-            .text(&parsed.host)
-            .build();
-        let port_row = adw::EntryRow::builder()
-            .title(gettext("Port"))
-            .text(parsed.port.to_string())
-            .build();
-        let uuid_row = adw::EntryRow::builder()
-            .title(gettext("UUID / Password"))
-            .text(&parsed.uuid)
-            .build();
-
-        let group_general = adw::PreferencesGroup::builder()
-            .title(gettext("General"))
-            .build();
-        group_general.add(&name_row);
-
-        let group_connection = adw::PreferencesGroup::builder()
-            .title(gettext("Connection"))
-            .build();
-        group_connection.add(&protocol_row);
-        group_connection.add(&host_row);
-        group_connection.add(&port_row);
-        group_connection.add(&uuid_row);
-
-        let pref_page = gtk::Box::builder()
-            .orientation(gtk::Orientation::Vertical)
-            .spacing(18)
-            .build();
-        pref_page.append(&group_general);
-        pref_page.append(&group_connection);
-
-        let clamp = adw::Clamp::builder()
-            .maximum_size(580)
-            .tightening_threshold(460)
-            .child(&pref_page)
-            .build();
-
-        clamp.set_margin_top(18);
-        clamp.set_margin_bottom(18);
-        clamp.set_margin_start(12);
-        clamp.set_margin_end(12);
-
-        dialog.set_extra_child(Some(&clamp));
-        dialog.add_response("cancel", &gettext("Cancel"));
-        dialog.add_response("save", &gettext("Save"));
-        dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
-        dialog.set_default_response(Some("save"));
-        dialog.set_close_response("cancel");
-
-        let parsed_clone = parsed.clone();
-        let name_row_clone = name_row.clone();
-        let protocol_row_clone = protocol_row.clone();
-        let host_row_clone = host_row.clone();
-        let port_row_clone = port_row.clone();
-        let uuid_row_clone = uuid_row.clone();
-
-        dialog.connect_response(None, move |_, response| {
-            if response == "save" {
-                if let Some(page) = page_weak.upgrade() {
-                    let mut p = parsed_clone.clone();
-                    p.name = name_row_clone.text().to_string();
-                    p.protocol = protocol_row_clone.text().to_string();
-                    p.host = host_row_clone.text().to_string();
-                    p.port = port_row_clone.text().parse().unwrap_or(p.port);
-                    p.uuid = uuid_row_clone.text().to_string();
-
-                    let new_url = crate::domain::key_parser::build_vpn_key(&p);
-                    key_obj_clone.set_name(p.name);
-                    key_obj_clone.set_protocol(p.protocol);
-                    key_obj_clone.set_url(new_url);
-                    page.save_current_keys();
-                }
+        crate::ui::key_dialog::VrxxKeyDialog::present_edit(self, &parsed, move |updated_key| {
+            if let Some(page) = page_weak.upgrade() {
+                let new_url = if !updated_key.raw_url.is_empty() {
+                    updated_key.raw_url.clone()
+                } else {
+                    crate::domain::key_parser::build_vpn_key(&updated_key)
+                };
+                key_obj_clone.set_name(updated_key.name);
+                key_obj_clone.set_protocol(updated_key.protocol);
+                key_obj_clone.set_url(new_url);
+                page.save_current_keys();
+                page.rebuild_ui();
             }
         });
-
-        if let Some(root) = self.root() {
-            dialog.present(Some(&root));
-            name_row.grab_focus();
-        }
     }
 
     /// Диалог подтверждения удаления VPN-ключа
@@ -1390,6 +1822,7 @@ impl VrxxVpnPage {
                             let was_active = item.is_some_and(|it| it.is_active());
                             model.remove(index);
                             page.save_current_keys();
+                            page.rebuild_ui();
                             if was_active {
                                 page.update_disconnect_action_state();
                             }
@@ -1443,354 +1876,23 @@ impl VrxxVpnPage {
         let add_action = gio::SimpleAction::new("add_key", None);
         let page_weak = self.downgrade();
         add_action.connect_activate(move |_, _| {
-            let page = match page_weak.upgrade() {
-                Some(p) => p,
-                None => return,
-            };
+            if let Some(page) = page_weak.upgrade() {
+                let page_weak_add = page.downgrade();
+                let page_weak_conn = page.downgrade();
 
-            let dialog = adw::AlertDialog::builder()
-                .heading(gettext("Add VPN Profile"))
-                .build();
-
-            // Группа: Быстрый импорт по ссылке
-            let group_quick = adw::PreferencesGroup::builder()
-                .title(gettext("Quick Import from Link"))
-                .build();
-
-            let link_entry = adw::EntryRow::builder()
-                .title(gettext("VPN Link (vless://, vmess://, etc.)"))
-                .build();
-            group_quick.add(&link_entry);
-
-            // Группа: Основные параметры
-            let group_general = adw::PreferencesGroup::builder()
-                .title(gettext("General"))
-                .build();
-
-            let name_row = adw::EntryRow::builder()
-                .title(gettext("Profile Name"))
-                .text("New VPN Profile")
-                .build();
-            group_general.add(&name_row);
-
-            let proto_dropdown = gtk::DropDown::from_strings(&[
-                "VLESS",
-                "VMess",
-                "Trojan",
-                "Shadowsocks",
-                "Hysteria2",
-                "TUIC",
-                "WireGuard",
-            ]);
-            proto_dropdown.set_valign(gtk::Align::Center);
-
-            let proto_row = adw::ActionRow::builder().title(gettext("Protocol")).build();
-            proto_row.add_suffix(&proto_dropdown);
-            group_general.add(&proto_row);
-
-            // Группа: Параметры сервера
-            let group_conn = adw::PreferencesGroup::builder()
-                .title(gettext("Server Connection"))
-                .build();
-
-            let host_row = adw::EntryRow::builder()
-                .title(gettext("Server address / Host"))
-                .build();
-            let port_row = adw::EntryRow::builder()
-                .title(gettext("Port"))
-                .text("443")
-                .build();
-            let uuid_row = adw::EntryRow::builder()
-                .title(gettext("UUID / Password / Key"))
-                .build();
-
-            group_conn.add(&host_row);
-            group_conn.add(&port_row);
-            group_conn.add(&uuid_row);
-
-            // Строка предварительного замера задержки (TCP ping)
-            let latency_spinner = gtk::Spinner::builder()
-                .spinning(false)
-                .visible(false)
-                .valign(gtk::Align::Center)
-                .build();
-
-            let btn_ping = gtk::Button::builder()
-                .icon_name("network-transmit-receive-symbolic")
-                .valign(gtk::Align::Center)
-                .tooltip_text(gettext("Test Connection"))
-                .build();
-
-            let latency_row = adw::ActionRow::builder()
-                .title(gettext("Latency Check"))
-                .subtitle(gettext("Ready"))
-                .build();
-            latency_row.add_suffix(&latency_spinner);
-            latency_row.add_suffix(&btn_ping);
-            group_conn.add(&latency_row);
-
-            // Группа: Параметры безопасности и TLS
-            let group_sec = adw::PreferencesGroup::builder()
-                .title(gettext("Security & Parameters"))
-                .build();
-
-            let sec_row = adw::EntryRow::builder()
-                .title(gettext("Security Mode (reality/tls/none)"))
-                .build();
-            let sni_row = adw::EntryRow::builder()
-                .title(gettext("SNI / Server Name"))
-                .build();
-            let pbk_row = adw::EntryRow::builder()
-                .title(gettext("Reality Public Key (pbk)"))
-                .build();
-            let fp_row = adw::EntryRow::builder()
-                .title(gettext("Fingerprint (uTLS)"))
-                .build();
-            let flow_row = adw::EntryRow::builder()
-                .title(gettext("Flow (e.g. xtls-rprx-vision)"))
-                .build();
-
-            group_sec.add(&sec_row);
-            group_sec.add(&sni_row);
-            group_sec.add(&pbk_row);
-            group_sec.add(&fp_row);
-            group_sec.add(&flow_row);
-
-            // Сборка контейнера
-            let content_box = gtk::Box::builder()
-                .orientation(gtk::Orientation::Vertical)
-                .spacing(12)
-                .build();
-            content_box.append(&group_quick);
-            content_box.append(&group_general);
-            content_box.append(&group_conn);
-            content_box.append(&group_sec);
-
-            let clamp = adw::Clamp::builder()
-                .maximum_size(580)
-                .tightening_threshold(460)
-                .child(&content_box)
-                .build();
-            clamp.set_margin_top(12);
-            clamp.set_margin_bottom(12);
-            clamp.set_margin_start(12);
-            clamp.set_margin_end(12);
-
-            dialog.set_extra_child(Some(&clamp));
-
-            // Автозаполнение формы при вставке ссылки
-            let name_r = name_row.clone();
-            let proto_d = proto_dropdown.clone();
-            let host_r = host_row.clone();
-            let port_r = port_row.clone();
-            let uuid_r = uuid_row.clone();
-            let sec_r = sec_row.clone();
-            let sni_r = sni_row.clone();
-            let pbk_r = pbk_row.clone();
-            let fp_r = fp_row.clone();
-            let flow_r = flow_row.clone();
-
-            link_entry.connect_changed(move |entry| {
-                let text = entry.text();
-                if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&text) {
-                    name_r.set_text(&parsed.name);
-                    let proto_idx = match parsed.protocol.to_uppercase().as_str() {
-                        "VLESS" => 0,
-                        "VMESS" => 1,
-                        "TROJAN" => 2,
-                        "SHADOWSOCKS" | "SS" => 3,
-                        "HYSTERIA2" | "HY2" => 4,
-                        "TUIC" => 5,
-                        "WIREGUARD" | "WG" => 6,
-                        _ => 0,
-                    };
-                    proto_d.set_selected(proto_idx);
-                    host_r.set_text(&parsed.host);
-                    port_r.set_text(&parsed.port.to_string());
-                    uuid_r.set_text(&parsed.uuid);
-                    sec_r.set_text(
-                        parsed
-                            .query_params
-                            .get("security")
-                            .map(|s| s.as_str())
-                            .unwrap_or(""),
-                    );
-                    sni_r.set_text(
-                        parsed
-                            .query_params
-                            .get("sni")
-                            .map(|s| s.as_str())
-                            .unwrap_or(""),
-                    );
-                    pbk_r.set_text(
-                        parsed
-                            .query_params
-                            .get("pbk")
-                            .map(|s| s.as_str())
-                            .unwrap_or(""),
-                    );
-                    fp_r.set_text(
-                        parsed
-                            .query_params
-                            .get("fp")
-                            .map(|s| s.as_str())
-                            .unwrap_or(""),
-                    );
-                    flow_r.set_text(
-                        parsed
-                            .query_params
-                            .get("flow")
-                            .map(|s| s.as_str())
-                            .unwrap_or(""),
-                    );
-                }
-            });
-
-            // Обработчик кнопки пинга
-            let host_r_p = host_row.clone();
-            let port_r_p = port_row.clone();
-            let latency_r_p = latency_row.clone();
-            let latency_sp_p = latency_spinner.clone();
-
-            btn_ping.connect_clicked(move |_| {
-                let host = host_r_p.text().to_string();
-                let port = port_r_p.text().parse::<u16>().unwrap_or(443);
-                if host.trim().is_empty() {
-                    latency_r_p.set_subtitle(&gettext("Enter host address first"));
-                    return;
-                }
-                latency_sp_p.set_visible(true);
-                latency_sp_p.set_spinning(true);
-                latency_r_p.set_subtitle(&gettext("Measuring ping..."));
-
-                let (tx, rx) = async_channel::unbounded::<(bool, u128)>();
-                let lat_r = latency_r_p.clone();
-                let lat_sp = latency_sp_p.clone();
-
-                glib::spawn_future_local(async move {
-                    if let Ok((success, ms)) = rx.recv().await {
-                        lat_sp.set_spinning(false);
-                        lat_sp.set_visible(false);
-                        if success {
-                            lat_r.set_subtitle(&format!("{ms} ms"));
-                        } else {
-                            lat_r.set_subtitle(&gettext("Connection timeout"));
+                crate::ui::key_dialog::VrxxKeyDialog::present_add(
+                    &page,
+                    move |parsed| {
+                        if let Some(p) = page_weak_add.upgrade() {
+                            p.import_key(parsed, false);
                         }
-                    }
-                });
-
-                std::thread::spawn(move || {
-                    use std::net::{TcpStream, ToSocketAddrs};
-                    use std::time::{Duration, Instant};
-                    let start = Instant::now();
-                    let mut ok = false;
-                    let addr = format!("{host}:{port}");
-                    if let Ok(mut addrs) = addr.to_socket_addrs() {
-                        if let Some(sock) = addrs.next() {
-                            if let Ok(stream) =
-                                TcpStream::connect_timeout(&sock, Duration::from_secs(3))
-                            {
-                                ok = true;
-                                let _ = stream.shutdown(std::net::Shutdown::Both);
-                            }
+                    },
+                    move |parsed| {
+                        if let Some(p) = page_weak_conn.upgrade() {
+                            p.import_key(parsed, true);
                         }
-                    }
-                    let elapsed = start.elapsed().as_millis();
-                    let _ = tx.send_blocking((ok, elapsed));
-                });
-            });
-
-            // Кнопки действий
-            dialog.add_response("cancel", &gettext("Cancel"));
-            dialog.add_response("add", &gettext("Add Profile"));
-            dialog.add_response("connect", &gettext("Add and Connect"));
-            dialog.set_response_appearance("connect", adw::ResponseAppearance::Suggested);
-            dialog.set_default_response(Some("connect"));
-            dialog.set_close_response("cancel");
-
-            let page_weak_dialog = page_weak.clone();
-            let name_r_save = name_row.clone();
-            let proto_d_save = proto_dropdown.clone();
-            let host_r_save = host_row.clone();
-            let port_r_save = port_row.clone();
-            let uuid_r_save = uuid_row.clone();
-            let sec_r_save = sec_row.clone();
-            let sni_r_save = sni_row.clone();
-            let pbk_r_save = pbk_row.clone();
-            let fp_r_save = fp_row.clone();
-            let flow_r_save = flow_row.clone();
-            let link_e_save = link_entry.clone();
-
-            dialog.connect_response(None, move |_, response| {
-                if response == "add" || response == "connect" {
-                    if let Some(page) = page_weak_dialog.upgrade() {
-                        let proto_str = match proto_d_save.selected() {
-                            0 => "VLESS",
-                            1 => "VMess",
-                            2 => "Trojan",
-                            3 => "Shadowsocks",
-                            4 => "Hysteria2",
-                            5 => "TUIC",
-                            6 => "WireGuard",
-                            _ => "VLESS",
-                        };
-
-                        let mut query_params = std::collections::HashMap::new();
-                        let sec = sec_r_save.text().trim().to_string();
-                        if !sec.is_empty() {
-                            query_params.insert("security".to_string(), sec);
-                        }
-                        let sni = sni_r_save.text().trim().to_string();
-                        if !sni.is_empty() {
-                            query_params.insert("sni".to_string(), sni);
-                        }
-                        let pbk = pbk_r_save.text().trim().to_string();
-                        if !pbk.is_empty() {
-                            query_params.insert("pbk".to_string(), pbk);
-                        }
-                        let fp = fp_r_save.text().trim().to_string();
-                        if !fp.is_empty() {
-                            query_params.insert("fp".to_string(), fp);
-                        }
-                        let flow = flow_r_save.text().trim().to_string();
-                        if !flow.is_empty() {
-                            query_params.insert("flow".to_string(), flow);
-                        }
-
-                        let host = host_r_save.text().trim().to_string();
-                        let port = port_r_save.text().trim().parse::<u16>().unwrap_or(443);
-                        let uuid = uuid_r_save.text().trim().to_string();
-                        let name = {
-                            let t = name_r_save.text().trim().to_string();
-                            if t.is_empty() {
-                                format!("{host}:{port}")
-                            } else {
-                                t
-                            }
-                        };
-
-                        let mut parsed = crate::domain::key_parser::ParsedKey {
-                            protocol: proto_str.to_string(),
-                            name,
-                            host,
-                            port,
-                            uuid,
-                            query_params,
-                            raw_url: String::new(),
-                        };
-                        let built = crate::domain::key_parser::build_vpn_key(&parsed);
-                        let raw = link_e_save.text().trim().to_string();
-                        parsed.raw_url = if !raw.is_empty() { raw } else { built };
-
-                        let connect_now = response == "connect";
-                        page.import_key(parsed, connect_now);
-                    }
-                }
-            });
-
-            if let Some(root) = page.root() {
-                dialog.present(Some(&root));
-                link_entry.grab_focus();
+                    },
+                );
             }
         });
         action_group.add_action(&add_action);
@@ -1821,6 +1923,7 @@ impl VrxxVpnPage {
                                         );
                                         model.append(&new_key);
                                         p.save_current_keys();
+                                        p.rebuild_ui();
                                     }
                                 }
                                 Err(e) => {
@@ -1834,6 +1937,26 @@ impl VrxxVpnPage {
         });
         action_group.add_action(&import_clip_action);
 
+        // Действие: Добавить группу
+        let add_group_action = gio::SimpleAction::new("add_group", None);
+        let page_weak_group = self.downgrade();
+        add_group_action.connect_activate(move |_, _| {
+            if let Some(page) = page_weak_group.upgrade() {
+                page.prompt_add_group();
+            }
+        });
+        action_group.add_action(&add_group_action);
+
+        // Действие: Добавить подписку
+        let add_sub_action = gio::SimpleAction::new("add_subscription", None);
+        let page_weak_sub = self.downgrade();
+        add_sub_action.connect_activate(move |_, _| {
+            if let Some(page) = page_weak_sub.upgrade() {
+                page.prompt_add_subscription();
+            }
+        });
+        action_group.add_action(&add_sub_action);
+
         // Действие: Отключение
         let disconnect_action = gio::SimpleAction::new("disconnect", None);
         let page_weak_disconnect = self.downgrade();
@@ -1843,6 +1966,16 @@ impl VrxxVpnPage {
             }
         });
         action_group.add_action(&disconnect_action);
+
+        // Действие: Пинговать выбранный ключ
+        let ping_selected_action = gio::SimpleAction::new("ping_selected", None);
+        let page_weak_selected = self.downgrade();
+        ping_selected_action.connect_activate(move |_, _| {
+            if let Some(page) = page_weak_selected.upgrade() {
+                page.ping_selected();
+            }
+        });
+        action_group.add_action(&ping_selected_action);
 
         self.insert_action_group("vpn", Some(&action_group));
 
@@ -1876,5 +2009,589 @@ impl VrxxVpnPage {
                 crate::backend::CoreBackend::update_system_proxy(false);
             }
         });
+    }
+
+    // =========================================================================
+    // 7. УПРАВЛЕНИЕ ГРУППАМИ И ПОДПИСКАМИ (GROUPS & SUBSCRIPTIONS)
+    // =========================================================================
+
+    /// Добавление ключа напрямую в указанную группу.
+    pub fn add_key_to_group(&self, group_id: &str) {
+        let page_weak_add = self.downgrade();
+        let page_weak_conn = self.downgrade();
+        let g_id = group_id.to_string();
+        let g_id2 = group_id.to_string();
+
+        crate::ui::key_dialog::VrxxKeyDialog::present_add(
+            self,
+            move |parsed| {
+                if let Some(p) = page_weak_add.upgrade() {
+                    p.import_key_with_group(parsed, false, g_id.clone());
+                }
+            },
+            move |parsed| {
+                if let Some(p) = page_weak_conn.upgrade() {
+                    p.import_key_with_group(parsed, true, g_id2.clone());
+                }
+            },
+        );
+    }
+
+    /// Отображает диалог создания новой группы ключей.
+    pub fn prompt_add_group(&self) {
+        let page_weak = self.downgrade();
+
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        vbox.set_margin_start(12);
+        vbox.set_margin_end(12);
+
+        let entry = gtk::Entry::builder()
+            .placeholder_text(gettext("Group Name"))
+            .hexpand(true)
+            .activates_default(true)
+            .build();
+        vbox.append(&entry);
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Add Group"))
+            .body(gettext("Enter a name for the new key group:"))
+            .extra_child(&vbox)
+            .build();
+
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("add", &gettext("Add"));
+        dialog.set_response_appearance("add", adw::ResponseAppearance::Suggested);
+        dialog.set_default_response(Some("add"));
+        dialog.set_close_response("cancel");
+
+        let entry_clone = entry.clone();
+        dialog.connect_response(None, move |_, response| {
+            if response == "add" {
+                let name = entry_clone.text().trim().to_string();
+                if !name.is_empty() {
+                    if let Some(page) = page_weak.upgrade() {
+                        let new_id = format!("grp-{}", glib::uuid_string_random());
+                        let mgr = SettingsManager::new();
+                        let mut groups = mgr.load_groups();
+                        groups.push(VpnGroupData {
+                            id: new_id,
+                            name,
+                            is_expanded: true,
+                        });
+                        mgr.save_groups(&groups);
+                        page.rebuild_ui();
+                    }
+                }
+            }
+        });
+
+        if let Some(root) = self.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
+            dialog.present(Some(&root));
+        }
+    }
+
+    /// Отображает диалог переименования группы.
+    pub fn prompt_rename_group(&self, group_id: &str) {
+        let mgr = SettingsManager::new();
+        let groups = mgr.load_groups();
+        let current_name = groups
+            .iter()
+            .find(|g| g.id == group_id)
+            .map(|g| g.name.clone())
+            .unwrap_or_default();
+
+        let page_weak = self.downgrade();
+        let g_id = group_id.to_string();
+
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        vbox.set_margin_start(12);
+        vbox.set_margin_end(12);
+
+        let entry = gtk::Entry::builder()
+            .text(&current_name)
+            .hexpand(true)
+            .activates_default(true)
+            .build();
+        vbox.append(&entry);
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Rename Group"))
+            .body(gettext("Enter a new name for the group:"))
+            .extra_child(&vbox)
+            .build();
+
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("rename", &gettext("Rename"));
+        dialog.set_response_appearance("rename", adw::ResponseAppearance::Suggested);
+        dialog.set_default_response(Some("rename"));
+        dialog.set_close_response("cancel");
+
+        let entry_clone = entry.clone();
+        dialog.connect_response(None, move |_, response| {
+            if response == "rename" {
+                let new_name = entry_clone.text().trim().to_string();
+                if !new_name.is_empty() {
+                    if let Some(page) = page_weak.upgrade() {
+                        let mgr = SettingsManager::new();
+                        let mut groups = mgr.load_groups();
+                        if let Some(g) = groups.iter_mut().find(|g| g.id == g_id) {
+                            g.name = new_name;
+                        }
+                        mgr.save_groups(&groups);
+                        page.rebuild_ui();
+                    }
+                }
+            }
+        });
+
+        if let Some(root) = self.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
+            dialog.present(Some(&root));
+        }
+    }
+
+    /// Удаление группы. Ключи внутри группы не удаляются, а переводятся в состояние без группы.
+    pub fn delete_group(&self, group_id: &str) {
+        let mgr = SettingsManager::new();
+        let groups = mgr.load_groups();
+        let group_name = groups
+            .iter()
+            .find(|g| g.id == group_id)
+            .map(|g| g.name.clone())
+            .unwrap_or_else(|| gettext("Group"));
+
+        let page_weak = self.downgrade();
+        let g_id = group_id.to_string();
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Delete Group"))
+            .body(format!(
+                "{} '{}'? {}",
+                gettext("Are you sure you want to delete"),
+                group_name,
+                gettext("Keys in this group will not be deleted, but moved to ungrouped.")
+            ))
+            .build();
+
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("delete", &gettext("Delete"));
+        dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+        dialog.set_close_response("cancel");
+
+        dialog.connect_response(None, move |_, response| {
+            if response == "delete" {
+                if let Some(page) = page_weak.upgrade() {
+                    // Удаляем группу из настроек
+                    let mgr = SettingsManager::new();
+                    let mut groups = mgr.load_groups();
+                    groups.retain(|g| g.id != g_id);
+                    mgr.save_groups(&groups);
+
+                    // Сбрасываем group для ключей, которые были в этой группе
+                    if let Some(model) = page.imp().model.borrow().as_ref() {
+                        for i in 0..model.n_items() {
+                            if let Some(item) = model
+                                .item(i)
+                                .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                            {
+                                if item.group() == g_id {
+                                    item.set_group(String::new());
+                                }
+                            }
+                        }
+                    }
+                    page.save_current_keys();
+                    page.rebuild_ui();
+                }
+            }
+        });
+
+        if let Some(root) = self.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
+            dialog.present(Some(&root));
+        }
+    }
+
+    /// Отображает диалог добавления новой подписки по URL.
+    pub fn prompt_add_subscription(&self) {
+        let page_weak = self.downgrade();
+
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 10);
+        vbox.set_margin_start(12);
+        vbox.set_margin_end(12);
+
+        let name_entry = gtk::Entry::builder()
+            .placeholder_text(gettext("Subscription Name"))
+            .hexpand(true)
+            .build();
+        vbox.append(&name_entry);
+
+        let url_entry = gtk::Entry::builder()
+            .placeholder_text("https://example.com/sub/...")
+            .hexpand(true)
+            .activates_default(true)
+            .build();
+        vbox.append(&url_entry);
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Add Subscription"))
+            .body(gettext("Enter a subscription name and URL:"))
+            .extra_child(&vbox)
+            .build();
+
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("add", &gettext("Add"));
+        dialog.set_response_appearance("add", adw::ResponseAppearance::Suggested);
+        dialog.set_default_response(Some("add"));
+        dialog.set_close_response("cancel");
+
+        let name_clone = name_entry.clone();
+        let url_clone = url_entry.clone();
+        dialog.connect_response(None, move |_, response| {
+            if response == "add" {
+                let name = name_clone.text().trim().to_string();
+                let url = url_clone.text().trim().to_string();
+                if !name.is_empty() && !url.is_empty() {
+                    if let Some(page) = page_weak.upgrade() {
+                        let new_id = format!("sub-{}", glib::uuid_string_random());
+                        let mgr = SettingsManager::new();
+                        let mut subs = mgr.load_subscriptions();
+                        subs.push(VpnSubscriptionData {
+                            id: new_id.clone(),
+                            name,
+                            url,
+                            last_updated: String::new(),
+                            is_expanded: true,
+                        });
+                        mgr.save_subscriptions(&subs);
+                        page.rebuild_ui();
+                        page.update_subscription(&new_id);
+                    }
+                }
+            }
+        });
+
+        if let Some(root) = self.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
+            dialog.present(Some(&root));
+        }
+    }
+
+    /// Отображает диалог редактирования параметров подписки.
+    pub fn prompt_edit_subscription(&self, sub_id: &str) {
+        let mgr = SettingsManager::new();
+        let subs = mgr.load_subscriptions();
+        let Some(existing_sub) = subs.iter().find(|s| s.id == sub_id).cloned() else {
+            return;
+        };
+
+        let page_weak = self.downgrade();
+        let s_id = sub_id.to_string();
+
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 10);
+        vbox.set_margin_start(12);
+        vbox.set_margin_end(12);
+
+        let name_entry = gtk::Entry::builder()
+            .text(&existing_sub.name)
+            .placeholder_text(gettext("Subscription Name"))
+            .hexpand(true)
+            .build();
+        vbox.append(&name_entry);
+
+        let url_entry = gtk::Entry::builder()
+            .text(&existing_sub.url)
+            .placeholder_text("https://example.com/sub/...")
+            .hexpand(true)
+            .activates_default(true)
+            .build();
+        vbox.append(&url_entry);
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Edit Subscription"))
+            .body(gettext("Modify the subscription parameters:"))
+            .extra_child(&vbox)
+            .build();
+
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("save", &gettext("Save"));
+        dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
+        dialog.set_default_response(Some("save"));
+        dialog.set_close_response("cancel");
+
+        let name_clone = name_entry.clone();
+        let url_clone = url_entry.clone();
+        dialog.connect_response(None, move |_, response| {
+            if response == "save" {
+                let name = name_clone.text().trim().to_string();
+                let url = url_clone.text().trim().to_string();
+                if !name.is_empty() && !url.is_empty() {
+                    if let Some(page) = page_weak.upgrade() {
+                        let mgr = SettingsManager::new();
+                        let mut subs = mgr.load_subscriptions();
+                        if let Some(sub) = subs.iter_mut().find(|s| s.id == s_id) {
+                            sub.name = name;
+                            sub.url = url;
+                        }
+                        mgr.save_subscriptions(&subs);
+                        page.rebuild_ui();
+                    }
+                }
+            }
+        });
+
+        if let Some(root) = self.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
+            dialog.present(Some(&root));
+        }
+    }
+
+    /// Загружает и обновляет ключи подписки по сети.
+    pub fn update_subscription(&self, sub_id: &str) {
+        let mgr = SettingsManager::new();
+        let subs = mgr.load_subscriptions();
+        let Some(sub) = subs.iter().find(|s| s.id == sub_id).cloned() else {
+            return;
+        };
+
+        self.show_toast(&format!(
+            "{} '{}'...",
+            gettext("Updating subscription"),
+            sub.name
+        ));
+
+        let page_weak = self.downgrade();
+        let s_id = sub_id.to_string();
+        let sub_name = sub.name.clone();
+        let sub_url = sub.url.clone();
+
+        glib::spawn_future_local(async move {
+            match crate::domain::subscription::fetch_subscription(&sub_url).await {
+                Ok(keys) => {
+                    let count = keys.len();
+                    tracing::info!("Fetched {} keys for subscription '{}'", count, sub_name);
+
+                    if let Some(page) = page_weak.upgrade() {
+                        if let Some(model) = page.imp().model.borrow().as_ref() {
+                            // 1. Удаляем старые ключи этой подписки из модели
+                            let mut i = model.n_items();
+                            while i > 0 {
+                                i -= 1;
+                                if let Some(item) = model
+                                    .item(i)
+                                    .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                                {
+                                    if item.group() == s_id {
+                                        model.remove(i);
+                                    }
+                                }
+                            }
+
+                            // 2. Добавляем новые ключи
+                            for k in keys {
+                                let new_key = VpnKeyObject::new_with_group(
+                                    &k.name,
+                                    &k.protocol,
+                                    false,
+                                    &k.raw_url,
+                                    &s_id,
+                                );
+                                model.append(&new_key);
+                            }
+                        }
+
+                        // 3. Обновляем время последней синхронизации подписки
+                        let mgr = SettingsManager::new();
+                        let mut all_subs = mgr.load_subscriptions();
+                        if let Some(sub_entry) = all_subs.iter_mut().find(|s| s.id == s_id) {
+                            sub_entry.last_updated =
+                                chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
+                        }
+                        mgr.save_subscriptions(&all_subs);
+
+                        page.save_current_keys();
+                        page.rebuild_ui();
+                        page.show_toast(&format!(
+                            "{}: {} {} {}",
+                            sub_name,
+                            gettext("updated"),
+                            count,
+                            gettext("keys")
+                        ));
+                    }
+                }
+                Err(err) => {
+                    tracing::error!("Failed to update subscription '{}': {}", sub_name, err);
+                    if let Some(page) = page_weak.upgrade() {
+                        page.show_toast(&format!(
+                            "{}: {} ({})",
+                            sub_name,
+                            gettext("failed to update subscription"),
+                            err
+                        ));
+                    }
+                }
+            }
+        });
+    }
+
+    /// Удаление подписки и связанных с ней ключей.
+    pub fn delete_subscription(&self, sub_id: &str) {
+        let mgr = SettingsManager::new();
+        let subs = mgr.load_subscriptions();
+        let sub_name = subs
+            .iter()
+            .find(|s| s.id == sub_id)
+            .map(|s| s.name.clone())
+            .unwrap_or_else(|| gettext("Subscription"));
+
+        let page_weak = self.downgrade();
+        let s_id = sub_id.to_string();
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Delete Subscription"))
+            .body(format!(
+                "{} '{}'? {}",
+                gettext("Are you sure you want to delete"),
+                sub_name,
+                gettext("All keys imported from this subscription will also be deleted.")
+            ))
+            .build();
+
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.add_response("delete", &gettext("Delete"));
+        dialog.set_response_appearance("delete", adw::ResponseAppearance::Destructive);
+        dialog.set_close_response("cancel");
+
+        dialog.connect_response(None, move |_, response| {
+            if response == "delete" {
+                if let Some(page) = page_weak.upgrade() {
+                    // Удаляем саму подписку из настроек
+                    let mgr = SettingsManager::new();
+                    let mut subs = mgr.load_subscriptions();
+                    subs.retain(|s| s.id != s_id);
+                    mgr.save_subscriptions(&subs);
+
+                    // Удаляем все ключи этой подписки из модели
+                    let mut was_active = false;
+                    if let Some(model) = page.imp().model.borrow().as_ref() {
+                        let mut i = model.n_items();
+                        while i > 0 {
+                            i -= 1;
+                            if let Some(item) = model
+                                .item(i)
+                                .and_then(|obj| obj.downcast::<VpnKeyObject>().ok())
+                            {
+                                if item.group() == s_id {
+                                    if item.is_active() {
+                                        was_active = true;
+                                    }
+                                    model.remove(i);
+                                }
+                            }
+                        }
+                    }
+
+                    page.save_current_keys();
+                    page.rebuild_ui();
+                    if was_active {
+                        page.update_disconnect_action_state();
+                    }
+                }
+            }
+        });
+
+        if let Some(root) = self.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
+            dialog.present(Some(&root));
+        }
+    }
+
+    /// Перемещение ключа в другую группу или удаление из группы.
+    pub fn handle_move_key_to_group(&self, key: &VpnKeyObject) {
+        let mgr = SettingsManager::new();
+        let groups = mgr.load_groups();
+
+        let page_weak = self.downgrade();
+        let key_clone = key.clone();
+
+        let vbox = gtk::Box::new(gtk::Orientation::Vertical, 6);
+        vbox.set_margin_start(12);
+        vbox.set_margin_end(12);
+        vbox.set_margin_top(6);
+        vbox.set_margin_bottom(6);
+
+        let list_box = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::None)
+            .css_classes(["boxed-list"])
+            .build();
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(gettext("Move to Group"))
+            .body(format!(
+                "{}: '{}'",
+                gettext("Select a group for key"),
+                key.name()
+            ))
+            .extra_child(&vbox)
+            .build();
+
+        dialog.add_response("cancel", &gettext("Cancel"));
+        dialog.set_close_response("cancel");
+
+        // Опция 1: Без группы (Ungrouped)
+        let row_none = adw::ActionRow::builder()
+            .title(gettext("None (Ungrouped)"))
+            .activatable(true)
+            .build();
+        if key.group().is_empty() {
+            let check = gtk::Image::from_icon_name("object-select-symbolic");
+            row_none.add_suffix(&check);
+        }
+
+        let p_weak = page_weak.clone();
+        let k_c = key_clone.clone();
+        let d_weak = dialog.downgrade();
+        row_none.connect_activated(move |_| {
+            k_c.set_group(String::new());
+            if let Some(p) = p_weak.upgrade() {
+                p.save_current_keys();
+                p.rebuild_ui();
+            }
+            if let Some(d) = d_weak.upgrade() {
+                d.force_close();
+            }
+        });
+        list_box.append(&row_none);
+
+        // Пользовательские группы
+        for g in &groups {
+            let row = adw::ActionRow::builder()
+                .title(&g.name)
+                .activatable(true)
+                .build();
+
+            if key.group() == g.id {
+                let check = gtk::Image::from_icon_name("object-select-symbolic");
+                row.add_suffix(&check);
+            }
+
+            let p_w = page_weak.clone();
+            let k_c2 = key_clone.clone();
+            let d_w = dialog.downgrade();
+            let g_id = g.id.clone();
+            row.connect_activated(move |_| {
+                k_c2.set_group(g_id.clone());
+                if let Some(p) = p_w.upgrade() {
+                    p.save_current_keys();
+                    p.rebuild_ui();
+                }
+                if let Some(d) = d_w.upgrade() {
+                    d.force_close();
+                }
+            });
+            list_box.append(&row);
+        }
+
+        vbox.append(&list_box);
+
+        if let Some(root) = self.root().and_then(|r| r.downcast::<gtk::Window>().ok()) {
+            dialog.present(Some(&root));
+        }
     }
 }
