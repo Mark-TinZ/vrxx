@@ -1,19 +1,8 @@
-/* main.rs
- *
- * Copyright 2026 Mark
- *
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- *
- * SPDX-License-Identifier: MPL-2.0
- */
-
 //! # Точка входа в приложение VRXX
 //!
 //! Отвечает за:
 //! - Разбор аргументов командной строки (`--daemon`, `--tui`, GUI по умолчанию)
-//! - Ротацию и настройку подсистемы логирования `tracing` (`~/.local/share/vrxx/logs/`)
+//! - Ротацию и настройку промышленной подсистемы логирования `tracing` (`~/.local/share/vrxx/logs/`)
 //! - Инициализацию подсистемы интернационализации `gettext` и локалей
 //! - Регистрацию скомпилированных ресурсов GResource (`vrxx.gresource`)
 //! - Перенаправление системных логов GLib/GTK в `tracing`
@@ -25,6 +14,7 @@ pub mod crypto;
 pub mod daemon;
 pub mod domain;
 pub mod ipc;
+pub mod logger;
 mod protocol;
 pub mod services;
 pub mod settings;
@@ -65,29 +55,6 @@ enum Commands {
     Daemon,
 }
 
-/// Очищает файлы логов старше 3 дней для предотвращения раздувания дискового пространства.
-fn cleanup_old_logs(log_dir: &std::path::Path) {
-    if let Ok(entries) = std::fs::read_dir(log_dir) {
-        let max_age = std::time::Duration::from_secs(3 * 24 * 3600); // 3 дня
-        let now = std::time::SystemTime::now();
-
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_file() {
-                if let Ok(metadata) = entry.metadata() {
-                    if let Ok(modified) = metadata.modified() {
-                        if let Ok(age) = now.duration_since(modified) {
-                            if age > max_age {
-                                let _ = std::fs::remove_file(&path);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 fn main() -> glib::ExitCode {
     // Разбор аргументов командной строки
     let cli = Cli::parse();
@@ -95,38 +62,19 @@ fn main() -> glib::ExitCode {
     let is_daemon = cli.daemon || matches!(cli.command, Some(Commands::Daemon));
     let is_tui = cli.tui || matches!(cli.command, Some(Commands::Tui));
 
-    // Настройка каталога и ротации логов в ~/.local/share/vrxx/logs/
-    let log_dir = dirs::data_local_dir()
-        .unwrap_or_else(|| {
-            dirs::home_dir()
-                .map(|h| h.join(".local/share"))
-                .unwrap_or_else(|| std::path::PathBuf::from("."))
-        })
-        .join("vrxx")
-        .join("logs");
-    std::fs::create_dir_all(&log_dir).ok();
-    cleanup_old_logs(&log_dir);
+    // Загрузка настроек приложения для конфигурации локали и уровня логирования
+    let manager = settings::SettingsManager::new();
+    let app_settings = manager.load();
 
-    let log_prefix = if is_tui {
-        "tui.log"
-    } else if is_daemon {
-        "daemon.log"
-    } else {
-        "app.log"
+    let logger_config = logger::LoggerConfig {
+        is_tui,
+        is_daemon,
+        initial_level: app_settings.log_level.clone(),
     };
-
-    let log_file = tracing_appender::rolling::daily(&log_dir, log_prefix);
-    let (non_blocking, _guard) = tracing_appender::non_blocking(log_file);
-
-    // Архитектурная настройка слоев TracingSubscriber
-    use tracing_subscriber::prelude::*;
-    let fmt_layer = tracing_subscriber::fmt::layer()
-        .with_writer(non_blocking)
-        .with_ansi(false);
 
     if is_tui {
         // Инициализация Tracing для TUI: вывод направляется в файл, а не в stdout/stderr терминала
-        tracing_subscriber::registry().with(fmt_layer).init();
+        let _guard = logger::init_gui_logging(logger_config);
 
         let rt = match tokio::runtime::Runtime::new() {
             Ok(runtime) => runtime,
@@ -148,10 +96,7 @@ fn main() -> glib::ExitCode {
         let event_manager = std::sync::Arc::new(event_manager);
         let sse_layer = daemon::events::SseTracingLayer::new(event_manager.clone());
 
-        tracing_subscriber::registry()
-            .with(fmt_layer)
-            .with(sse_layer)
-            .init();
+        let _guard = logger::init_daemon_logging(logger_config, sse_layer);
 
         match tokio::runtime::Runtime::new() {
             Ok(rt) => {
@@ -166,9 +111,10 @@ fn main() -> glib::ExitCode {
                 std::process::exit(1);
             }
         }
-    } else {
-        tracing_subscriber::registry().with(fmt_layer).init();
     }
+
+    // Инициализация логирования для основного графического интерфейса
+    let _guard = logger::init_gui_logging(logger_config);
 
     // Фоновая проверка обновления баз GeoIP и GeoSite
     crate::services::geo_updater::spawn_background_updater();
@@ -191,8 +137,6 @@ fn main() -> glib::ExitCode {
     }
 
     // 2. Установка языка приложения (LANGUAGE)
-    let manager = settings::SettingsManager::new();
-    let app_settings = manager.load();
 
     match app_settings.language.as_str() {
         "ru" => {
