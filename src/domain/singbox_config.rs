@@ -593,7 +593,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         if settings.route_antifilter {
             add_rule_set(
                 "geosite-antifilter",
-                "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/antifilter.srs",
+                "https://github.com/savely-krasovsky/antizapret-sing-box/releases/latest/download/antizapret.srs",
                 "geosite-antifilter.srs",
             );
             rules.push(json!({

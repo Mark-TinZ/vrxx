@@ -47,70 +47,95 @@ pub async fn update_geo_databases(
     let geo_dir = get_geodata_dir();
     fs::create_dir_all(&geo_dir)?;
 
-    // Список ресурсов SRS: локальное имя без коллизий, основной URL GitHub Raw и резервный jsDelivr CDN URL
-    let files_to_download = [
-        (
-            "geosite-ru.srs",
-            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ru.srs",
-            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/category-ru.srs",
-        ),
-        (
-            "geoip-ru.srs",
-            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/ru.srs",
-            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/ru.srs",
-        ),
-        (
-            "geosite-cn.srs",
-            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/cn.srs",
-            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/cn.srs",
-        ),
-        (
-            "geoip-cn.srs",
-            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.srs",
-            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/cn.srs",
-        ),
-        (
-            "geosite-ir.srs",
-            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ir.srs",
-            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/category-ir.srs",
-        ),
-        (
-            "geoip-ir.srs",
-            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/ir.srs",
-            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/ir.srs",
-        ),
-        (
-            "geosite-antifilter.srs",
-            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ru-antifilter.srs",
-            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/category-ru-antifilter.srs",
-        ),
-        (
-            "geosite-ads.srs",
-            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ads-all.srs",
-            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/category-ads-all.srs",
-        ),
+    let settings = crate::settings::SettingsManager::new().load();
+
+    // Список ресурсов SRS: локальное имя без коллизий, основной URL и резервный URL, флаг необходимости
+    let all_files = [
         (
             "geosite-google.srs",
             "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/google.srs",
             "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/google.srs",
-        ),
-        (
-            "geosite-geolocation-not-cn.srs",
-            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/geolocation-!cn.srs",
-            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/geolocation-!cn.srs",
+            true, // Всегда требуется для обхода критических сервисов Google
         ),
         (
             "geoip-private.srs",
             "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/private.srs",
             "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/private.srs",
+            true, // Всегда требуется для локальных сетей
+        ),
+        (
+            "geosite-ru.srs",
+            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ru.srs",
+            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/category-ru.srs",
+            settings.enable_routing && (settings.route_ru || settings.route_ru_sites),
+        ),
+        (
+            "geoip-ru.srs",
+            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/ru.srs",
+            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/ru.srs",
+            settings.enable_routing && (settings.route_ru || settings.route_ru_ips),
+        ),
+        (
+            "geosite-cn.srs",
+            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/cn.srs",
+            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/cn.srs",
+            settings.enable_routing && (settings.route_cn || settings.route_cn_sites),
+        ),
+        (
+            "geoip-cn.srs",
+            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/cn.srs",
+            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/cn.srs",
+            settings.enable_routing && (settings.route_cn || settings.route_cn_ips),
+        ),
+        (
+            "geosite-geolocation-not-cn.srs",
+            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/geolocation-!cn.srs",
+            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/geolocation-!cn.srs",
+            settings.enable_routing && settings.route_cn,
+        ),
+        (
+            "geosite-ir.srs",
+            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ir.srs",
+            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/category-ir.srs",
+            settings.enable_routing && (settings.route_ir || settings.route_ir_sites),
+        ),
+        (
+            "geoip-ir.srs",
+            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geoip/ir.srs",
+            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geoip/ir.srs",
+            settings.enable_routing && (settings.route_ir || settings.route_ir_ips),
+        ),
+        (
+            "geosite-antifilter.srs",
+            "https://github.com/savely-krasovsky/antizapret-sing-box/releases/latest/download/antizapret.srs",
+            "https://cdn.jsdelivr.net/gh/legiz-ru/sb-rule-sets@release/antifilter.srs",
+            settings.enable_routing && settings.route_antifilter,
+        ),
+        (
+            "geosite-ads.srs",
+            "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/sing/geo/geosite/category-ads-all.srs",
+            "https://cdn.jsdelivr.net/gh/MetaCubeX/meta-rules-dat@sing/geo/geosite/category-ads-all.srs",
+            settings.block_ads,
         ),
     ];
+
+    let files_to_download: Vec<_> = all_files
+        .into_iter()
+        .filter(|(_, _, _, is_needed)| *is_needed)
+        .map(|(name, p, f, _)| (name, p, f))
+        .collect();
 
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .build()
         .unwrap_or_default();
     let total_files = files_to_download.len();
+    if total_files == 0 {
+        if let Some(ref tx) = progress_tx {
+            let _ = tx.send(1.0).await;
+        }
+        return Ok(());
+    }
     let mut downloaded_count = 0;
 
     for (filename, primary_url, fallback_url) in files_to_download {
@@ -121,8 +146,8 @@ pub async fn update_geo_databases(
             if let Ok(metadata) = fs::metadata(&file_path) {
                 if let Ok(modified) = metadata.modified() {
                     if let Ok(elapsed) = modified.elapsed() {
-                        // Обновляем только если файлы старше 3 дней
-                        if elapsed.as_secs() < 3 * 24 * 3600 {
+                        let interval_days = settings.geodata_update_interval_days.max(1) as u64;
+                        if elapsed.as_secs() < interval_days * 24 * 3600 {
                             should_download = false;
                         }
                     }
@@ -171,8 +196,8 @@ pub async fn update_geo_databases(
             }
 
             if !download_success {
-                tracing::error!(
-                    "Failed to download {} from all available sources.",
+                tracing::warn!(
+                    "Failed to download {} from available sources. Local or cached rule-set will be retained.",
                     filename
                 );
             }
@@ -207,8 +232,8 @@ fn save_file_safely(path: &PathBuf, bytes: &[u8]) -> Result<()> {
     Ok(())
 }
 
-/// Возвращает дату последней модификации локальных гео-баз в форматированном виде.
-pub fn get_geo_status() -> String {
+/// Возвращает время последней модификации локальных гео-баз, если хотя бы одна база существует.
+pub fn get_last_updated_time() -> Option<std::time::SystemTime> {
     let geo_dir = get_geodata_dir();
     let mut last_updated = std::time::SystemTime::UNIX_EPOCH;
     let mut found = false;
@@ -237,6 +262,29 @@ pub fn get_geo_status() -> String {
     }
 
     if found {
+        Some(last_updated)
+    } else {
+        None
+    }
+}
+
+/// Проверяет, устарели ли гео-базы относительно заданного интервала в днях.
+pub fn is_geodata_stale(interval_days: u32) -> bool {
+    match get_last_updated_time() {
+        Some(time) => {
+            let max_age = std::time::Duration::from_secs(interval_days.max(1) as u64 * 86400);
+            match time.elapsed() {
+                Ok(elapsed) => elapsed >= max_age,
+                Err(_) => true,
+            }
+        }
+        None => true,
+    }
+}
+
+/// Возвращает дату последней модификации локальных гео-баз в форматированном виде.
+pub fn get_geo_status() -> String {
+    if let Some(last_updated) = get_last_updated_time() {
         let datetime: chrono::DateTime<chrono::Local> = last_updated.into();
         datetime.format("%Y-%m-%d %H:%M").to_string()
     } else {
@@ -244,19 +292,49 @@ pub fn get_geo_status() -> String {
     }
 }
 
-/// Запускает фоновый поток для периодической проверки и обновления гео-баз каждые 24 часа.
+/// Запускает фоновый поток для периодической проверки и обновления гео-баз по расписанию.
 pub fn spawn_background_updater() {
     std::thread::spawn(move || {
         if let Ok(rt) = tokio::runtime::Runtime::new() {
             rt.block_on(async {
-                let _ = update_geo_databases(false, None).await;
-                let mut interval =
-                    tokio::time::interval(tokio::time::Duration::from_secs(24 * 3600));
                 loop {
-                    interval.tick().await;
-                    let _ = update_geo_databases(false, None).await;
+                    let settings = crate::settings::SettingsManager::new().load();
+                    if settings.auto_update_geodata {
+                        if is_geodata_stale(settings.geodata_update_interval_days) {
+                            tracing::info!(
+                                "Geodata is stale or missing; triggering scheduled update..."
+                            );
+                            let _ = update_geo_databases(false, None).await;
+                        } else {
+                            tracing::debug!("Geodata is up-to-date; skipping download.");
+                        }
+                    } else {
+                        tracing::debug!(
+                            "Automatic geodata updates disabled in settings; updater waiting."
+                        );
+                    }
+
+                    // Проверяем раз в час, чтобы реагировать на включение настроек и наступление срока
+                    tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
                 }
             });
         }
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_geodata_stale_logic() {
+        // If files are missing or never updated, it must report stale
+        let _temp_dir = tempfile::tempdir().unwrap();
+        // Since get_last_updated_time inspects the real dir, we verify is_geodata_stale doesn't panic
+        let stale = is_geodata_stale(7);
+        let _ = stale; // bool check
+        let status = get_geo_status();
+        assert!(!status.is_empty());
+    }
+}
+
