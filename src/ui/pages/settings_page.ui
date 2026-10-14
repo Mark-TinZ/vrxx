@@ -35,6 +35,8 @@
   -->
 
   <template class="VrxxSettingsPage" parent="AdwBin">
+    <property name="width-request">360</property>
+    <property name="height-request">200</property>
     <property name="child">
       <object class="AdwToolbarView">
 
@@ -257,6 +259,33 @@
                 <property name="title" translatable="yes">Geo Data</property>
                 <property name="description" translatable="yes">Precompiled binary rule-sets (GeoIP and GeoSite) for domain and IP routing</property>
 
+                <!-- Автоматическое обновление гео-баз -->
+                <child>
+                  <object class="AdwSwitchRow" id="auto_update_geo_row">
+                    <property name="title" translatable="yes">Auto-update Geo Data</property>
+                    <property name="subtitle" translatable="yes">Periodically check and download updated rule-sets</property>
+                    <property name="tooltip-text" translatable="yes">Enables periodic background checks and updates of compiled GeoIP and GeoSite database files.</property>
+                  </object>
+                </child>
+
+                <!-- Частота обновления -->
+                <child>
+                  <object class="AdwComboRow" id="geo_interval_row">
+                    <property name="title" translatable="yes">Update Frequency</property>
+                    <property name="subtitle" translatable="yes">How often to refresh databases</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">Daily (1 day)</item>
+                          <item translatable="yes">Weekly (7 days)</item>
+                          <item translatable="yes">Bi-weekly (14 days)</item>
+                          <item translatable="yes">Monthly (30 days)</item>
+                        </items>
+                      </object>
+                    </property>
+                  </object>
+                </child>
+
                 <!-- Обновление гео-баз GeoIP / GeoSite -->
                 <child>
                   <object class="AdwActionRow" id="update_geo_row">
@@ -331,6 +360,36 @@
                     <property name="title" translatable="yes">Ping Target URL</property>
                     <property name="tooltip-text" translatable="yes">The lightweight URL requested during HTTP proxy latency measurements (default is Google generate_204).</property>
                     <property name="text">https://www.gstatic.com/generate_204</property>
+                  </object>
+                </child>
+
+                <!-- Автопинг при запуске приложения -->
+                <child>
+                  <object class="AdwSwitchRow" id="auto_ping_on_startup_row">
+                    <property name="title" translatable="yes">Auto Ping on Startup</property>
+                    <property name="subtitle" translatable="yes">Measure latency of all profiles when application launches</property>
+                    <property name="active">True</property>
+                  </object>
+                </child>
+
+                <!-- Периодический замер пинга -->
+                <child>
+                  <object class="AdwComboRow" id="auto_ping_interval_row">
+                    <property name="title" translatable="yes">Auto Ping Interval</property>
+                    <property name="subtitle" translatable="yes">Periodically refresh connection latency in background</property>
+                    <property name="model">
+                      <object class="GtkStringList">
+                        <items>
+                          <item translatable="yes">Disabled</item>
+                          <item translatable="yes">5 minutes</item>
+                          <item translatable="yes">10 minutes</item>
+                          <item translatable="yes">15 minutes</item>
+                          <item translatable="yes">30 minutes</item>
+                          <item translatable="yes">1 hour</item>
+                        </items>
+                      </object>
+                    </property>
+                    <property name="selected">0</property>
                   </object>
                 </child>
               </object>

@@ -34,11 +34,13 @@ mod imp {
         #[template_child]
         pub toast_overlay: TemplateChild<adw::ToastOverlay>,
         #[template_child]
+        pub daemon_status_banner: TemplateChild<adw::Banner>,
+        #[template_child]
         pub split_view: TemplateChild<adw::NavigationSplitView>,
         #[template_child]
         pub navigation_list: TemplateChild<gtk::ListBox>,
         #[template_child]
-        pub view_stack: TemplateChild<gtk::Stack>,
+        pub view_stack: TemplateChild<adw::ViewStack>,
 
         // Виджеты плашки активного соединения внизу сайдбара
         #[template_child]
@@ -84,8 +86,18 @@ mod imp {
         type ParentType = adw::ApplicationWindow;
 
         fn class_init(klass: &mut Self::Class) {
+            adw::Breakpoint::static_type();
             adw::ToastOverlay::static_type();
+            adw::Banner::static_type();
             adw::NavigationSplitView::static_type();
+            adw::NavigationPage::static_type();
+            adw::ToolbarView::static_type();
+            adw::HeaderBar::static_type();
+            adw::WindowTitle::static_type();
+            adw::ActionRow::static_type();
+            adw::Clamp::static_type();
+            adw::ViewStack::static_type();
+            adw::ViewStackPage::static_type();
             VrxxVpnPage::static_type();
             VrxxProxyPage::static_type();
             VrxxRoutingPage::static_type();
@@ -103,9 +115,12 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
             let obj = self.obj();
+            obj.set_width_request(360);
+            obj.set_height_request(500);
             obj.setup_actions();
             obj.setup_callbacks();
             obj.start_status_polling();
+            obj.check_daemon_health(false);
 
             // Выбор первой страницы (VPN Keys) при запуске
             if let Some(row) = self.navigation_list.row_at_index(0) {
@@ -142,6 +157,31 @@ impl VrxxWindow {
         self.imp().toast_overlay.add_toast(toast);
     }
 
+    /// Асинхронно проверяет доступность системного демона и обновляет баннер.
+    pub fn check_daemon_health(&self, show_toast: bool) {
+        let window_weak = self.downgrade();
+        glib::spawn_future_local(async move {
+            let client = crate::ipc::DaemonClient::new();
+            let is_alive = client.is_alive().await;
+            if let Some(window) = window_weak.upgrade() {
+                window.imp().daemon_status_banner.set_revealed(!is_alive);
+                if show_toast {
+                    let msg = if is_alive {
+                        gettextrs::gettext("System daemon is running and connected")
+                    } else {
+                        gettextrs::gettext("System daemon vrxx-daemon is not running")
+                    };
+                    window.add_toast(adw::Toast::new(&msg));
+                }
+            }
+        });
+    }
+
+    /// Принудительно показывает или скрывает баннер статуса демона.
+    pub fn set_daemon_banner_revealed(&self, revealed: bool) {
+        self.imp().daemon_status_banner.set_revealed(revealed);
+    }
+
     /// Извлекает имя страницы стека из выбранной строки списка сайдбара.
     fn get_page_name_from_row(&self, row: &gtk::ListBoxRow) -> Option<String> {
         let name = row.widget_name();
@@ -176,7 +216,9 @@ impl VrxxWindow {
         };
 
         if current_page == target_page {
-            imp.split_view.set_show_content(true);
+            if imp.split_view.is_collapsed() && !imp.split_view.shows_content() {
+                imp.split_view.set_show_content(true);
+            }
             return;
         }
 
@@ -261,12 +303,14 @@ impl VrxxWindow {
     }
 
     /// Программно переключает стек страниц и обновляет выделение в навигационном списке.
-    fn switch_to_page(&self, page_name: &str) {
+    pub fn switch_to_page(&self, page_name: &str) {
         let imp = self.imp();
         *imp.is_navigating.borrow_mut() = true;
 
         imp.view_stack.set_visible_child_name(page_name);
-        imp.split_view.set_show_content(true);
+        if imp.split_view.is_collapsed() && !imp.split_view.shows_content() {
+            imp.split_view.set_show_content(true);
+        }
 
         let target_idx = match page_name {
             "page_vpn" => 0,
@@ -305,6 +349,7 @@ impl VrxxWindow {
 
     /// Настройка локальных действий окна (GActions).
     fn setup_actions(&self) {
+        // win.disconnect
         let disconnect_action = gio::SimpleAction::new("disconnect", None);
         let window_weak = self.downgrade();
         disconnect_action.connect_activate(move |_, _| {
@@ -313,6 +358,36 @@ impl VrxxWindow {
             }
         });
         self.add_action(&disconnect_action);
+
+        // win.ping_all
+        let ping_all_action = gio::SimpleAction::new("ping_all", None);
+        let window_weak_all = self.downgrade();
+        ping_all_action.connect_activate(move |_, _| {
+            if let Some(window) = window_weak_all.upgrade() {
+                window.ping_all();
+            }
+        });
+        self.add_action(&ping_all_action);
+
+        // win.ping_selected
+        let ping_selected_action = gio::SimpleAction::new("ping_selected", None);
+        let window_weak_sel = self.downgrade();
+        ping_selected_action.connect_activate(move |_, _| {
+            if let Some(window) = window_weak_sel.upgrade() {
+                if let Some(child) = window.imp().view_stack.child_by_name("page_vpn") {
+                    if let Some(vpn_page) = child.downcast_ref::<VrxxVpnPage>() {
+                        vpn_page.ping_selected();
+                    }
+                }
+            }
+        });
+        self.add_action(&ping_selected_action);
+
+        // win.zoom_in, win.zoom_out, win.zoom_normal (для предотвращения предупреждений при фокусе главного окна)
+        for zoom_act in ["zoom_in", "zoom_out", "zoom_normal"] {
+            let act = gio::SimpleAction::new(zoom_act, None);
+            self.add_action(&act);
+        }
     }
 
     /// Инициирует отключение активного VPN соединения через страницу `VrxxVpnPage`.
@@ -325,6 +400,25 @@ impl VrxxWindow {
                 vpn_page.disconnect();
             }
         }
+    }
+
+    /// Инициирует замер задержки (ping) для всех ключей на странице VPN.
+    pub fn ping_all(&self) {
+        if let Some(child) = self.imp().view_stack.child_by_name("page_vpn") {
+            if let Some(vpn_page) = child.downcast_ref::<VrxxVpnPage>() {
+                vpn_page.ping_all();
+            }
+        }
+    }
+
+    /// Проверяет, активно ли в данный момент соединение через VrxxVpnPage.
+    pub fn is_vpn_connected(&self) -> bool {
+        if let Some(child) = self.imp().view_stack.child_by_name("page_vpn") {
+            if let Some(vpn_page) = child.downcast_ref::<VrxxVpnPage>() {
+                return vpn_page.is_connected();
+            }
+        }
+        false
     }
 
     /// Подключение сигналов элементов интерфейса.
@@ -340,10 +434,10 @@ impl VrxxWindow {
             }
         });
 
-        let window_weak2 = self.downgrade();
-        imp.navigation_list.connect_row_activated(move |_, row| {
-            if let Some(window) = window_weak2.upgrade() {
-                window.select_page_by_row(row);
+        let window_weak_banner = self.downgrade();
+        imp.daemon_status_banner.connect_button_clicked(move |_| {
+            if let Some(window) = window_weak_banner.upgrade() {
+                window.check_daemon_health(true);
             }
         });
 

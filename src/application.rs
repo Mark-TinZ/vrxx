@@ -60,10 +60,15 @@ mod imp {
             self.parent_constructed();
             let obj = self.obj();
             obj.setup_gactions();
-            // Регистрация горячих клавиш приложения
-            obj.set_accels_for_action("app.close_window", &["<control>w"]);
-            obj.set_accels_for_action("app.quit", &["<control>q"]);
-            obj.set_accels_for_action("win.disconnect", &["<control>d"]);
+            // Регистрация горячих клавиш приложения по стандартам GNOME HIG
+            obj.set_accels_for_action("app.close_window", &["<Primary>w"]);
+            obj.set_accels_for_action("app.quit", &["<Primary>q"]);
+            obj.set_accels_for_action("app.shortcuts", &["<Primary>question", "<Primary>slash"]);
+            obj.set_accels_for_action("app.preferences", &["<Primary>comma"]);
+            obj.set_accels_for_action("win.disconnect", &["<Primary>d"]);
+            obj.set_accels_for_action("app.pingall", &["<Primary><Shift>p"]);
+            obj.set_accels_for_action("win.ping_all", &["<Primary><Shift>p"]);
+            obj.set_accels_for_action("win.ping_selected", &["<Primary>p"]);
             obj.set_accels_for_action("win.zoom_in", &["<Primary>plus", "<Primary>equal"]);
             obj.set_accels_for_action("win.zoom_out", &["<Primary>minus"]);
             obj.set_accels_for_action("win.zoom_normal", &["<Primary>0"]);
@@ -129,6 +134,9 @@ mod imp {
                         });
                     }
                 }
+            } else {
+                // Сетевое самовосстановление при старте: сбрасываем залипший режим прокси GNOME в 'none'
+                crate::backend::CoreBackend::update_system_proxy(false);
             }
         }
 
@@ -390,11 +398,13 @@ impl VrxxApplication {
             .activate(move |app: &Self, _, _| {
                 if let Some(window) = app.active_window() {
                     let dialog = adw::AlertDialog::builder()
-                        .heading("Reset Settings")
-                        .body("Are you sure you want to reset all settings to defaults?")
+                        .heading(gettext("Reset Settings"))
+                        .body(gettext(
+                            "Are you sure you want to reset all settings to defaults?",
+                        ))
                         .build();
-                    dialog.add_response("cancel", "Cancel");
-                    dialog.add_response("reset", "Reset");
+                    dialog.add_response("cancel", &gettext("Cancel"));
+                    dialog.add_response("reset", &gettext("Reset"));
                     dialog.set_response_appearance("reset", adw::ResponseAppearance::Destructive);
 
                     dialog.connect_response(None, move |_, response| {
@@ -409,10 +419,34 @@ impl VrxxApplication {
             })
             .build();
 
+        // Действие: Диалог горячих клавиш (Shortcuts)
+        let shortcuts_action = gio::ActionEntry::builder("shortcuts")
+            .activate(move |app: &Self, _, _| app.show_shortcuts())
+            .build();
+
+        // Действие: Общий пинг всех профилей
+        let pingall_action = gio::ActionEntry::builder("pingall")
+            .activate(move |app: &Self, _, _| {
+                if let Some(window) = app.active_window() {
+                    if let Some(vrxx_win) = window.downcast_ref::<VrxxWindow>() {
+                        vrxx_win.ping_all();
+                    }
+                }
+            })
+            .build();
+
+        // Действие: Настройки приложения (Preferences)
+        let preferences_action = gio::ActionEntry::builder("preferences")
+            .activate(move |app: &Self, _, _| app.show_preferences())
+            .build();
+
         self.add_action_entries([
             close_window_action,
             quit_action,
             about_action,
+            shortcuts_action,
+            preferences_action,
+            pingall_action,
             color_scheme_action,
             import_config_action,
             export_config_action,
@@ -503,6 +537,32 @@ impl VrxxApplication {
 
         about.present(Some(&window));
     }
+
+    /// Отображает диалог горячих клавиш (AdwShortcutsDialog)
+    fn show_shortcuts(&self) {
+        let window = match self.active_window() {
+            Some(w) => w,
+            None => {
+                tracing::warn!("No active window found to display Shortcuts dialog.");
+                return;
+            }
+        };
+        let builder = gtk::Builder::from_resource("/ru/mark/vrxx/shortcuts-dialog.ui");
+        if let Some(shortcuts_dialog) = builder.object::<adw::Dialog>("shortcuts_dialog") {
+            shortcuts_dialog.present(Some(&window));
+        } else {
+            tracing::error!("Failed to load shortcuts_dialog from resource");
+        }
+    }
+
+    /// Открывает страницу настроек в активном окне
+    fn show_preferences(&self) {
+        if let Some(window) = self.active_window() {
+            if let Some(vrxx_win) = window.downcast_ref::<VrxxWindow>() {
+                vrxx_win.switch_to_page("page_settings");
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -527,6 +587,7 @@ mod tests {
             location: "SE".to_string(),
             timezone: "UTC+1".to_string(),
             url: "vless://test-export@1.1.1.1:443#Sweden".to_string(),
+            group: String::new(),
         }];
 
         // 1. Полный экспорт (настройки + ключи)

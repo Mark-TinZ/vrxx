@@ -80,6 +80,8 @@ mod imp {
     impl ObjectImpl for VrxxProxyPage {
         fn constructed(&self) {
             self.parent_constructed();
+            self.obj().set_width_request(360);
+            self.obj().set_height_request(200);
             setup_primary_menu(&self.primary_menu_btn.get());
             self.obj().setup_settings();
         }
@@ -155,11 +157,21 @@ impl VrxxProxyPage {
         s.allow_lan = current.allow_lan;
         manager.save(&s);
 
-        // Обновляем переменные окружения процесса и системный прокси
-        crate::backend::set_process_proxy_env(s.http_port, s.set_system_proxy);
-        let result = crate::backend::CoreBackend::update_system_proxy(s.set_system_proxy);
+        // Проверяем, активно ли сейчас VPN-соединение в главном окне
+        let is_vpn_active = self
+            .root()
+            .and_downcast::<crate::window::VrxxWindow>()
+            .map(|w| w.is_vpn_connected())
+            .unwrap_or(false);
 
-        // Если GSettings недоступен на данном DE
+        // Системный прокси GNOME и переменные окружения активируются ТОЛЬКО если VPN подключен и TUN выключен!
+        let should_enable_proxy = s.set_system_proxy && is_vpn_active && !s.tun_mode;
+
+        // Обновляем переменные окружения процесса и системный прокси
+        crate::backend::set_process_proxy_env(s.http_port, should_enable_proxy);
+        let result = crate::backend::CoreBackend::update_system_proxy(should_enable_proxy);
+
+        // Если пользователь включил системный прокси, но схема GSettings недоступна на данном DE
         if s.set_system_proxy {
             if let crate::backend::SystemProxyResult::SchemaUnavailable { desktop } = result {
                 if let Some(window) = self.root().and_downcast::<crate::window::VrxxWindow>() {

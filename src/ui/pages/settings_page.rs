@@ -44,6 +44,10 @@ pub struct SettingsSnapshot {
     log_level: u32,
     ping_algorithm: u32,
     ping_target_url: String,
+    auto_ping_on_startup: bool,
+    auto_ping_interval: u32,
+    auto_update_geodata: bool,
+    geodata_update_interval_days: u32,
 }
 
 mod imp {
@@ -76,6 +80,10 @@ mod imp {
         #[template_child]
         pub block_quic_row: TemplateChild<adw::SwitchRow>,
         #[template_child]
+        pub auto_update_geo_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub geo_interval_row: TemplateChild<adw::ComboRow>,
+        #[template_child]
         pub update_geo_row: TemplateChild<adw::ActionRow>,
         #[template_child]
         pub btn_update_geo: TemplateChild<gtk::Button>,
@@ -99,6 +107,10 @@ mod imp {
         pub ping_algorithm_row: TemplateChild<adw::ComboRow>,
         #[template_child]
         pub ping_target_url_row: TemplateChild<adw::EntryRow>,
+        #[template_child]
+        pub auto_ping_on_startup_row: TemplateChild<adw::SwitchRow>,
+        #[template_child]
+        pub auto_ping_interval_row: TemplateChild<adw::ComboRow>,
 
         pub snapshot: RefCell<Option<SettingsSnapshot>>,
         pub has_changes: RefCell<bool>,
@@ -131,6 +143,8 @@ mod imp {
     impl ObjectImpl for VrxxSettingsPage {
         fn constructed(&self) {
             self.parent_constructed();
+            self.obj().set_width_request(360);
+            self.obj().set_height_request(200);
             setup_primary_menu(&self.primary_menu_btn.get());
             self.obj().setup_settings();
         }
@@ -183,6 +197,16 @@ impl VrxxSettingsPage {
             log_level: imp.log_level_row.selected(),
             ping_algorithm: imp.ping_algorithm_row.selected(),
             ping_target_url: imp.ping_target_url_row.text().trim().to_string(),
+            auto_ping_on_startup: imp.auto_ping_on_startup_row.is_active(),
+            auto_ping_interval: imp.auto_ping_interval_row.selected(),
+            auto_update_geodata: imp.auto_update_geo_row.is_active(),
+            geodata_update_interval_days: match imp.geo_interval_row.selected() {
+                0 => 1,
+                1 => 7,
+                2 => 14,
+                3 => 30,
+                _ => 7,
+            },
         }
     }
 
@@ -257,7 +281,23 @@ impl VrxxSettingsPage {
             s.ping_target_url = current.ping_target_url.clone();
         }
 
+        s.auto_ping_on_startup = current.auto_ping_on_startup;
+        s.auto_ping_interval = match current.auto_ping_interval {
+            1 => 300,
+            2 => 600,
+            3 => 900,
+            4 => 1800,
+            5 => 3600,
+            _ => 0,
+        };
+
+        s.auto_update_geodata = current.auto_update_geodata;
+        s.geodata_update_interval_days = current.geodata_update_interval_days;
+
         manager.save(&s);
+
+        // Динамическое обновление уровня логирования на лету без перезапуска
+        crate::logger::update_log_level(&s.log_level);
 
         // Настройка автозапуска GNOME
         let autostart_dir = dirs::config_dir()
@@ -343,6 +383,21 @@ impl VrxxSettingsPage {
             imp.log_level_row.set_selected(snapshot.log_level);
             imp.ping_algorithm_row.set_selected(snapshot.ping_algorithm);
             imp.ping_target_url_row.set_text(&snapshot.ping_target_url);
+            imp.auto_ping_on_startup_row
+                .set_active(snapshot.auto_ping_on_startup);
+            imp.auto_ping_interval_row
+                .set_selected(snapshot.auto_ping_interval);
+            imp.auto_update_geo_row
+                .set_active(snapshot.auto_update_geodata);
+            let geo_interval_idx = match snapshot.geodata_update_interval_days {
+                1 => 0,
+                7 => 1,
+                14 => 2,
+                30 => 3,
+                _ => 1,
+            };
+            imp.geo_interval_row.set_selected(geo_interval_idx);
+            imp.geo_interval_row.set_sensitive(snapshot.auto_update_geodata);
 
             *imp.is_initializing.borrow_mut() = false;
             *imp.has_changes.borrow_mut() = false;
@@ -398,6 +453,30 @@ impl VrxxSettingsPage {
         imp.ping_algorithm_row.set_selected(ping_algo_idx);
         imp.ping_target_url_row.set_text(&settings.ping_target_url);
 
+        imp.auto_ping_on_startup_row
+            .set_active(settings.auto_ping_on_startup);
+        let interval_idx = match settings.auto_ping_interval {
+            300 => 1,
+            600 => 2,
+            900 => 3,
+            1800 => 4,
+            3600 => 5,
+            _ => 0,
+        };
+        imp.auto_ping_interval_row.set_selected(interval_idx);
+
+        imp.auto_update_geo_row
+            .set_active(settings.auto_update_geodata);
+        let geo_interval_idx = match settings.geodata_update_interval_days {
+            1 => 0,
+            7 => 1,
+            14 => 2,
+            30 => 3,
+            _ => 1,
+        };
+        imp.geo_interval_row.set_selected(geo_interval_idx);
+        imp.geo_interval_row.set_sensitive(settings.auto_update_geodata);
+
         self.update_core_info(None);
         self.refresh_geo_status();
 
@@ -442,6 +521,31 @@ impl VrxxSettingsPage {
         connect_switch(&imp.bypass_lan_row, self);
         connect_switch(&imp.fake_dns_row, self);
         connect_switch(&imp.enable_fragment_row, self);
+        connect_switch(&imp.auto_ping_on_startup_row, self);
+        connect_switch(&imp.auto_update_geo_row, self);
+
+        let p_weak_geo_int = self.downgrade();
+        imp.geo_interval_row
+            .connect_selected_notify(move |_| {
+                if let Some(p) = p_weak_geo_int.upgrade() {
+                    p.check_changes();
+                }
+            });
+
+        let geo_int_row_weak = imp.geo_interval_row.downgrade();
+        imp.auto_update_geo_row.connect_active_notify(move |switch| {
+            if let Some(row) = geo_int_row_weak.upgrade() {
+                row.set_sensitive(switch.is_active());
+            }
+        });
+
+        let p_weak_auto_ping = self.downgrade();
+        imp.auto_ping_interval_row
+            .connect_selected_notify(move |_| {
+                if let Some(p) = p_weak_auto_ping.upgrade() {
+                    p.check_changes();
+                }
+            });
 
         let p_weak_lang = self.downgrade();
         imp.language_row.connect_selected_notify(move |_| {

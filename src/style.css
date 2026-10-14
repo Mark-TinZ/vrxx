@@ -96,10 +96,10 @@ checkbutton.theme-switcher-button radio:checked {
    2. ЗАЩИТА ПРИВАТНОСТИ QR-КОДА (Privacy Blur)
    ============================================================================= */
 
-/* Размытие QR-кода при открытии диалога для защиты от подглядывания */
+/* Сокрытие QR-кода при открытии диалога для защиты от подглядывания */
 .blurred-qr {
-  filter: blur(12px);
-  transition: filter 0.3s ease;
+  opacity: 0.05;
+  transition: opacity 0.25s ease-in-out;
 }
 
 /* =============================================================================
@@ -110,3 +110,28 @@ checkbutton.theme-switcher-button radio:checked {
 .log-view {
   font-family: monospace;
 }
+
+/* =============================================================================
+   4. КОМПОНЕНТ СТРОКИ VPN-КЛЮЧА (VpnKeyRow)
+   ============================================================================= */
+
+/* Предотвращение вылезания элементов строки ключа за границы карточки при сужении */
+.vpn-key-row,
+row.vpn-key-row {
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.vpn-key-row > box {
+  overflow: hidden;
+}
+
+/* Устранение двойных внутренних отступов и рамок у вложенного AdwActionRow */
+.vpn-key-row .vpn-header-row,
+.vpn-key-row row.property {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+

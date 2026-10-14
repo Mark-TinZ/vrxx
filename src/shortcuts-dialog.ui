@@ -14,21 +14,12 @@
     ============================================================================
     ДИАЛОГ ГОРЯЧИХ КЛАВИШ ПРИЛОЖЕНИЯ (AdwShortcutsDialog)
     ============================================================================
-
-    СТРУКТУРА ДИАЛОГА:
-    ┌──────────────────────────────────────────────────────────────────────────┐
-    │ AdwShortcutsDialog (shortcuts_dialog):                                   │
-    │ └─ AdwShortcutsSection ("Shortcuts" / "Сочетания клавиш"):               │
-    │    ├─ [Показать сочетания клавиш] -> app.shortcuts                       │
-    │    └─ [Завершить работу (Quit)]   -> app.quit                            │
-    └──────────────────────────────────────────────────────────────────────────┘
   -->
-
   <object class="AdwShortcutsDialog" id="shortcuts_dialog">
     <child>
-      <!-- Секция основных горячих клавиш -->
+      <!-- Секция 1: Основные операции приложения -->
       <object class="AdwShortcutsSection">
-        <property name="title" translatable="yes">Shortcuts</property>
+        <property name="title" translatable="yes">General</property>
 
         <!-- Показать диалог сочетаний клавиш (Ctrl+?) -->
         <child>
@@ -38,14 +29,91 @@
           </object>
         </child>
 
-        <!-- Закрыть программу (Ctrl+Q) -->
+        <!-- Настройки (Ctrl+,) -->
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Preferences</property>
+            <property name="action-name">app.preferences</property>
+          </object>
+        </child>
+
+        <!-- Закрыть окно (Ctrl+W) -->
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Close Window</property>
+            <property name="action-name">app.close_window</property>
+          </object>
+        </child>
+
+        <!-- Завершить работу программы (Ctrl+Q) -->
         <child>
           <object class="AdwShortcutsItem">
             <property name="title" translatable="yes" context="shortcut window">Quit</property>
             <property name="action-name">app.quit</property>
           </object>
         </child>
+      </object>
+    </child>
 
+    <child>
+      <!-- Секция 2: VPN и сетевые профили -->
+      <object class="AdwShortcutsSection">
+        <property name="title" translatable="yes">VPN and Keys</property>
+
+        <!-- Разорвать соединение (Ctrl+D) -->
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Disconnect VPN</property>
+            <property name="action-name">win.disconnect</property>
+          </object>
+        </child>
+
+        <!-- Пинговать выбранный ключ (Ctrl+P) -->
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Ping Selected Key</property>
+            <property name="action-name">win.ping_selected</property>
+          </object>
+        </child>
+
+        <!-- Пинговать все ключи (Ctrl+Shift+P) -->
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Ping All Keys</property>
+            <property name="action-name">win.ping_all</property>
+          </object>
+        </child>
+      </object>
+    </child>
+
+    <child>
+      <!-- Секция 3: Масштабирование и журнал -->
+      <object class="AdwShortcutsSection">
+        <property name="title" translatable="yes">View and Zoom</property>
+
+        <!-- Увеличить масштаб (Ctrl++) -->
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Zoom In</property>
+            <property name="action-name">win.zoom_in</property>
+          </object>
+        </child>
+
+        <!-- Уменьшить масштаб (Ctrl+-) -->
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Zoom Out</property>
+            <property name="action-name">win.zoom_out</property>
+          </object>
+        </child>
+
+        <!-- Исходный масштаб (Ctrl+0) -->
+        <child>
+          <object class="AdwShortcutsItem">
+            <property name="title" translatable="yes" context="shortcut window">Normal Zoom</property>
+            <property name="action-name">win.zoom_normal</property>
+          </object>
+        </child>
       </object>
     </child>
   </object>
