@@ -5,9 +5,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: vrxx 26.1.0-beta.2\n"
+"Project-Id-Version: vrxx 26.1.0-beta.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-28 15:29+0600\n"
+"POT-Creation-Date: 2026-09-23 00:19+0600\n"
 "PO-Revision-Date: 2026-08-28 15:29+0600\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,19 +17,55 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/application.rs:216
+#: src/application.rs:233
 msgid "Import Configuration"
 msgstr "Import Configuration"
 
-#: src/application.rs:273 src/ui/export_dialog.rs:33
+#: src/application.rs:300 src/ui/dialogs/export_dialog.ui:19
+#: src/ui/dialogs/export_dialog.ui:30 src/ui/tests.rs:187
 msgid "Export Configuration"
 msgstr "Export Configuration"
 
-#: src/application.rs:443
+#: src/application.rs:400
+msgid "Reset Settings"
+msgstr "Reset Settings"
+
+#: src/application.rs:402
+msgid "Are you sure you want to reset all settings to defaults?"
+msgstr "Are you sure you want to reset all settings to defaults?"
+
+#: src/application.rs:405 src/application.rs:456
+#: src/ui/dialogs/export_dialog.ui:36 src/ui/dialogs/import_dialog.ui:36
+#: src/ui/dialogs/key_dialog.ui:75 src/ui/dialogs/rule_dialog.ui:71
+#: src/ui/pages/settings_page.rs:320 src/ui/pages/vpn_page.rs:1395
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/application.rs:406
+msgid "Reset"
+msgstr "Reset"
+
+#: src/application.rs:450
+msgid "Quit Vrxx"
+msgstr "Quit Vrxx"
+
+#: src/application.rs:452
+msgid ""
+"This will disconnect any active VPN connection and terminate both the "
+"application and the background service."
+msgstr ""
+"This will disconnect any active VPN connection and terminate both the "
+"application and the background service."
+
+#: src/application.rs:457
+msgid "Quit"
+msgstr "Quit"
+
+#: src/application.rs:517
 msgid "translator-credits"
 msgstr "translator-credits"
 
-#: src/application.rs:448
+#: src/application.rs:522
 msgid ""
 "A graphical interface for sing-box designed to simplify VPN and proxy "
 "configuration on Linux systems."
@@ -37,25 +73,75 @@ msgstr ""
 "A graphical interface for sing-box designed to simplify VPN and proxy "
 "configuration on Linux systems."
 
-#: src/services/geo_updater.rs:234
+#: src/services/geo_updater.rs:243
 msgid "Never updated"
 msgstr "Never updated"
 
-#: src/shortcuts-dialog.ui:31
-msgid "Shortcuts"
-msgstr "Shortcuts"
+#: src/shortcuts-dialog.ui:22 src/ui/dialogs/import_dialog.ui:62
+#: src/ui/dialogs/key_dialog.ui:114 src/ui/pages/settings_page.ui:86
+#: src/ui/tests.rs:159
+msgid "General"
+msgstr "General"
 
-#: src/shortcuts-dialog.ui:36
+#: src/shortcuts-dialog.ui:27
 msgctxt "shortcut window"
 msgid "Show Shortcuts"
 msgstr "Show Shortcuts"
 
-#: src/shortcuts-dialog.ui:44
+#: src/shortcuts-dialog.ui:35
+msgctxt "shortcut window"
+msgid "Preferences"
+msgstr "Preferences"
+
+#: src/shortcuts-dialog.ui:43
+msgctxt "shortcut window"
+msgid "Close Window"
+msgstr "Close Window"
+
+#: src/shortcuts-dialog.ui:51
 msgctxt "shortcut window"
 msgid "Quit"
 msgstr "Quit"
 
-#: src/ui/change_tracker.rs:53 src/ui/tests.rs:153
+#: src/shortcuts-dialog.ui:61
+msgid "VPN and Keys"
+msgstr "VPN and Keys"
+
+#: src/shortcuts-dialog.ui:66
+msgctxt "shortcut window"
+msgid "Disconnect VPN"
+msgstr "Disconnect VPN"
+
+#: src/shortcuts-dialog.ui:74
+msgctxt "shortcut window"
+msgid "Ping Selected Key"
+msgstr "Ping Selected Key"
+
+#: src/shortcuts-dialog.ui:82
+msgctxt "shortcut window"
+msgid "Ping All Keys"
+msgstr "Ping All Keys"
+
+#: src/shortcuts-dialog.ui:92
+msgid "View and Zoom"
+msgstr "View and Zoom"
+
+#: src/shortcuts-dialog.ui:97
+msgctxt "shortcut window"
+msgid "Zoom In"
+msgstr "Zoom In"
+
+#: src/shortcuts-dialog.ui:105
+msgctxt "shortcut window"
+msgid "Zoom Out"
+msgstr "Zoom Out"
+
+#: src/shortcuts-dialog.ui:113
+msgctxt "shortcut window"
+msgid "Normal Zoom"
+msgstr "Normal Zoom"
+
+#: src/ui/change_tracker.rs:53 src/ui/tests.rs:169
 msgid "Unsaved Changes"
 msgstr "Unsaved Changes"
 
@@ -95,7 +181,7 @@ msgstr "Application logs"
 msgid "Access logs"
 msgstr "Access logs"
 
-#: src/ui/components/log_window.rs:581
+#: src/ui/components/log_window.rs:578
 msgid "Save Logs"
 msgstr "Save Logs"
 
@@ -119,7 +205,7 @@ msgstr "System Logs"
 msgid "Auto-scroll"
 msgstr "Auto-scroll"
 
-#: src/ui/components/log_window.ui:106 src/ui/pages/settings_page.ui:68
+#: src/ui/components/log_window.ui:106 src/ui/pages/settings_page.ui:69
 #: src/window.ui:79
 msgid "Menu"
 msgstr "Menu"
@@ -196,6 +282,10 @@ msgstr "Refresh Ping"
 msgid "_Info"
 msgstr "_Info"
 
+#: src/ui/components/vpn_key_row.ui:228 src/ui/menus.ui:53
+msgid "_Ping"
+msgstr "_Ping"
+
 #: src/ui/components/vpn_key_row.ui:211
 msgid "_Edit"
 msgstr "_Edit"
@@ -208,21 +298,20 @@ msgstr "_Share"
 msgid "_Delete"
 msgstr "_Delete"
 
-#: src/ui/error_dialog.rs:28 src/ui/pages/vpn_page.rs:882
+#: src/ui/dialogs/error_dialog.rs:28 src/ui/pages/vpn_page.rs:877
 #: src/ui/pages/vpn_page.rs:995
 msgid "Failed to connect to VPN"
 msgstr "Failed to connect to VPN"
 
-#: src/ui/error_dialog.rs:36
+#: src/ui/dialogs/error_dialog.rs:36
 msgid "Copy technical log"
 msgstr "Copy technical log"
 
-#: src/ui/error_dialog.rs:37 src/ui/pages/vpn_page.rs:1239
-#: src/ui/qr_dialog.rs:208
+#: src/ui/dialogs/error_dialog.rs:37 src/ui/pages/vpn_page.rs:1340
 msgid "Close"
 msgstr "Close"
 
-#: src/ui/error_dialog.rs:66
+#: src/ui/dialogs/error_dialog.rs:66
 msgid ""
 "The sing-box core was not found on your system. Please install or update it "
 "in Settings."
@@ -230,174 +319,520 @@ msgstr ""
 "The sing-box core was not found on your system. Please install or update it "
 "in Settings."
 
-#: src/ui/error_dialog.rs:68
+#: src/ui/dialogs/error_dialog.rs:68
 msgid ""
 "Access denied when configuring network interface (TUN) or routing rules."
 msgstr ""
 "Access denied when configuring network interface (TUN) or routing rules."
 
-#: src/ui/error_dialog.rs:70
+#: src/ui/dialogs/error_dialog.rs:70
 msgid "Failed to connect to vrxx-daemon. Please verify daemon status."
 msgstr "Failed to connect to vrxx-daemon. Please verify daemon status."
 
-#: src/ui/error_dialog.rs:74
+#: src/ui/dialogs/error_dialog.rs:74
 msgid "An error occurred during operation"
 msgstr "An error occurred during operation"
 
-#: src/ui/export_dialog.rs:35
-msgid "Select the components you want to export to a file."
-msgstr "Select the components you want to export to a file."
-
-#: src/ui/export_dialog.rs:40
-msgid "Export Components"
-msgstr "Export Components"
-
-#: src/ui/export_dialog.rs:50
-msgid "Application Settings"
-msgstr "Application Settings"
-
-#: src/ui/export_dialog.rs:52
-msgid ""
-"Theme, interface language, proxy ports, DNS parameters, and routing rules"
-msgstr ""
-"Theme, interface language, proxy ports, DNS parameters, and routing rules"
-
-#: src/ui/export_dialog.rs:66
-msgid "VPN Profiles and Keys"
-msgstr "VPN Profiles and Keys"
-
-#: src/ui/export_dialog.rs:68
-msgid "Saved servers, connection links, private keys, and credentials"
-msgstr "Saved servers, connection links, private keys, and credentials"
-
-#. Кнопки действий
-#: src/ui/export_dialog.rs:89 src/ui/import_dialog.rs:181
-#: src/ui/pages/routing_page.rs:422 src/ui/pages/routing_page.rs:499
-#: src/ui/pages/settings_page.rs:294 src/ui/pages/vpn_page.rs:1322
-#: src/ui/pages/vpn_page.rs:1374 src/ui/pages/vpn_page.rs:1715
-msgid "Cancel"
-msgstr "Cancel"
-
-#: src/ui/export_dialog.rs:90
+#: src/ui/dialogs/export_dialog.ui:42
 msgid "Export"
 msgstr "Export"
 
-#: src/ui/import_dialog.rs:45
-msgid "Import VPN Key"
-msgstr "Import VPN Key"
+#: src/ui/dialogs/export_dialog.ui:55
+msgid "Export Components"
+msgstr "Export Components"
 
-#: src/ui/import_dialog.rs:47
+#: src/ui/dialogs/export_dialog.ui:56
+msgid "Select the components you want to export to a file."
+msgstr "Select the components you want to export to a file."
+
+#: src/ui/dialogs/export_dialog.ui:61 src/ui/tests.rs:191
+msgid "Application Settings"
+msgstr "Application Settings"
+
+#: src/ui/dialogs/export_dialog.ui:62
 msgid ""
-"A VPN profile configuration link was received. Would you like to import it?"
+"Theme, interface language, proxy ports, DNS parameters, and routing rules"
 msgstr ""
-"A VPN profile configuration link was received. Would you like to import it?"
+"Theme, interface language, proxy ports, DNS parameters, and routing rules"
 
-#: src/ui/import_dialog.rs:53 src/ui/pages/settings_page.ui:85
-#: src/ui/pages/vpn_page.rs:1291 src/ui/pages/vpn_page.rs:1476
-#: src/ui/tests.rs:143
-msgid "General"
-msgstr "General"
+#: src/ui/dialogs/export_dialog.ui:70 src/ui/tests.rs:195
+msgid "VPN Profiles and Keys"
+msgstr "VPN Profiles and Keys"
 
-#: src/ui/import_dialog.rs:57 src/ui/pages/vpn_page.rs:1480
-msgid "Profile Name"
-msgstr "Profile Name"
+#: src/ui/dialogs/export_dialog.ui:71
+msgid "Saved servers, connection links, private keys, and credentials"
+msgstr "Saved servers, connection links, private keys, and credentials"
 
-#: src/ui/import_dialog.rs:63 src/ui/pages/vpn_page.rs:1181
-#: src/ui/pages/vpn_page.rs:1274 src/ui/pages/vpn_page.rs:1497
-#: src/window.rs:400
-msgid "Protocol"
-msgstr "Protocol"
-
-#: src/ui/import_dialog.rs:70 src/ui/pages/vpn_page.rs:1504
-msgid "Server Connection"
-msgstr "Server Connection"
-
-#: src/ui/import_dialog.rs:74 src/window.rs:412
-msgid "Host"
-msgstr "Host"
-
-#: src/ui/import_dialog.rs:80 src/ui/pages/vpn_page.rs:1191
-#: src/ui/pages/vpn_page.rs:1282 src/ui/pages/vpn_page.rs:1511
-msgid "Port"
-msgstr "Port"
-
-#: src/ui/import_dialog.rs:87 src/ui/pages/vpn_page.rs:1545
-msgid "Security & Parameters"
-msgstr "Security & Parameters"
-
-#: src/ui/import_dialog.rs:98
-msgid "Security Mode"
-msgstr "Security Mode"
-
-#: src/ui/import_dialog.rs:107 src/ui/pages/vpn_page.rs:1201
-msgid "SNI"
-msgstr "SNI"
-
-#: src/ui/import_dialog.rs:116 src/ui/pages/vpn_page.rs:1204
-msgid "Fingerprint"
-msgstr "Fingerprint"
-
-#: src/ui/import_dialog.rs:126 src/ui/pages/vpn_page.rs:1216
-msgid "Flow"
-msgstr "Flow"
-
-#: src/ui/import_dialog.rs:136
-msgid "Public Key"
-msgstr "Public Key"
-
-#: src/ui/import_dialog.rs:151 src/ui/pages/vpn_page.rs:1536
-msgid "Latency Check"
-msgstr "Latency Check"
-
-#: src/ui/import_dialog.rs:152 src/ui/pages/vpn_page.rs:1675
-msgid "Measuring ping..."
-msgstr "Measuring ping..."
-
-#: src/ui/import_dialog.rs:182
-msgid "Import Profile"
-msgstr "Import Profile"
-
-#: src/ui/import_dialog.rs:183
-msgid "Import and Connect"
-msgstr "Import and Connect"
-
-#: src/ui/import_dialog.rs:205 src/ui/pages/vpn_page.rs:1688
+#: src/ui/dialogs/import_dialog.rs:187 src/ui/dialogs/key_dialog.rs:509
 msgid "Connection timeout"
 msgstr "Connection timeout"
 
-#: src/ui/menus.ui:42
+#: src/ui/dialogs/import_dialog.ui:19 src/ui/dialogs/import_dialog.ui:30
+msgid "Import VPN Key"
+msgstr "Import VPN Key"
+
+#: src/ui/dialogs/import_dialog.ui:42
+msgid "Import and Connect"
+msgstr "Import and Connect"
+
+#: src/ui/dialogs/import_dialog.ui:51
+msgid "Import"
+msgstr "Import"
+
+#: src/ui/dialogs/import_dialog.ui:66 src/ui/dialogs/key_dialog.ui:119
+msgid "Profile Name"
+msgstr "Profile Name"
+
+#: src/ui/dialogs/import_dialog.ui:72 src/ui/dialogs/key_dialog.ui:128
+#: src/ui/pages/vpn_page.rs:1282 src/window.rs:445
+msgid "Protocol"
+msgstr "Protocol"
+
+#: src/ui/dialogs/import_dialog.ui:81 src/ui/dialogs/key_dialog.ui:162
+msgid "Server Connection"
+msgstr "Server Connection"
+
+#: src/ui/dialogs/import_dialog.ui:85 src/window.rs:457
+msgid "Host"
+msgstr "Host"
+
+#: src/ui/dialogs/import_dialog.ui:91 src/ui/dialogs/key_dialog.ui:175
+#: src/ui/pages/vpn_page.rs:1292
+msgid "Port"
+msgstr "Port"
+
+#: src/ui/dialogs/import_dialog.ui:97
+msgid "Latency"
+msgstr "Latency"
+
+#: src/ui/dialogs/import_dialog.ui:98
+msgid "Testing..."
+msgstr "Testing..."
+
+#: src/ui/dialogs/import_dialog.ui:112 src/ui/dialogs/key_dialog.ui:223
+msgid "Security and Parameters"
+msgstr "Security and Parameters"
+
+#: src/ui/dialogs/import_dialog.ui:116
+msgid "Security Mode"
+msgstr "Security Mode"
+
+#: src/ui/dialogs/import_dialog.ui:123 src/ui/dialogs/key_dialog.ui:236
+msgid "SNI / Server Name"
+msgstr "SNI / Server Name"
+
+#: src/ui/dialogs/import_dialog.ui:130
+msgid "TLS Fingerprint"
+msgstr "TLS Fingerprint"
+
+#: src/ui/dialogs/import_dialog.ui:137 src/ui/pages/vpn_page.rs:1317
+msgid "Flow"
+msgstr "Flow"
+
+#: src/ui/dialogs/key_dialog.rs:167 src/ui/dialogs/key_dialog.ui:49
+#: src/ui/dialogs/key_dialog.ui:68 src/ui/tests.rs:203
+msgid "Add VPN Profile"
+msgstr "Add VPN Profile"
+
+#: src/ui/dialogs/key_dialog.rs:170 src/ui/dialogs/key_dialog.ui:82
+#: src/ui/dialogs/rule_dialog.rs:146 src/ui/dialogs/rule_dialog.ui:78
+msgid "Add"
+msgstr "Add"
+
+#: src/ui/dialogs/key_dialog.rs:175
+msgid "Edit VPN key"
+msgstr "Edit VPN key"
+
+#: src/ui/dialogs/key_dialog.rs:178 src/ui/dialogs/rule_dialog.rs:154
+msgid "Save"
+msgstr "Save"
+
+#: src/ui/dialogs/key_dialog.rs:247 src/ui/dialogs/key_dialog.rs:259
+msgid "UUID"
+msgstr "UUID"
+
+#: src/ui/dialogs/key_dialog.rs:253 src/ui/dialogs/key_dialog.ui:244
+msgid "Reality Public Key (pbk)"
+msgstr "Reality Public Key (pbk)"
+
+#: src/ui/dialogs/key_dialog.rs:269
+msgid "Password"
+msgstr "Password"
+
+#: src/ui/dialogs/key_dialog.rs:279
+msgid "Password / Method"
+msgstr "Password / Method"
+
+#: src/ui/dialogs/key_dialog.rs:284
+msgid "Auth / Password"
+msgstr "Auth / Password"
+
+#: src/ui/dialogs/key_dialog.rs:294
+msgid "Password / Token"
+msgstr "Password / Token"
+
+#: src/ui/dialogs/key_dialog.rs:304
+msgid "Private Key"
+msgstr "Private Key"
+
+#: src/ui/dialogs/key_dialog.rs:309
+msgid "Public Key (Peer)"
+msgstr "Public Key (Peer)"
+
+#: src/ui/dialogs/key_dialog.rs:315 src/ui/dialogs/key_dialog.rs:320
+msgid "Password / Credentials (optional)"
+msgstr "Password / Credentials (optional)"
+
+#: src/ui/dialogs/key_dialog.rs:400
+msgid "Please enter a valid server host address"
+msgstr "Please enter a valid server host address"
+
+#: src/ui/dialogs/key_dialog.rs:406
+msgid "Please enter a valid port number (1-65535)"
+msgstr "Please enter a valid port number (1-65535)"
+
+#: src/ui/dialogs/key_dialog.rs:490
+msgid "Enter host address first"
+msgstr "Enter host address first"
+
+#: src/ui/dialogs/key_dialog.rs:496
+msgid "Measuring ping..."
+msgstr "Measuring ping..."
+
+#: src/ui/dialogs/key_dialog.ui:100 src/ui/tests.rs:212
+msgid "Quick Import from Link"
+msgstr "Quick Import from Link"
+
+#: src/ui/dialogs/key_dialog.ui:101
+msgid ""
+"Paste a VPN configuration link to automatically populate the parameters "
+"below."
+msgstr ""
+"Paste a VPN configuration link to automatically populate the parameters "
+"below."
+
+#: src/ui/dialogs/key_dialog.ui:104
+msgid "VPN Link (vless://, vmess://, etc.)"
+msgstr "VPN Link (vless://, vmess://, etc.)"
+
+#: src/ui/dialogs/key_dialog.ui:151
+msgid "Connect after adding"
+msgstr "Connect after adding"
+
+#: src/ui/dialogs/key_dialog.ui:152
+msgid "Immediately activate VPN connection after saving"
+msgstr "Immediately activate VPN connection after saving"
+
+#: src/ui/dialogs/key_dialog.ui:167
+msgid "Server address / Host"
+msgstr "Server address / Host"
+
+#: src/ui/dialogs/key_dialog.ui:184
+msgid "UUID / Password / Key"
+msgstr "UUID / Password / Key"
+
+#: src/ui/dialogs/key_dialog.ui:192
+msgid "Latency Check"
+msgstr "Latency Check"
+
+#: src/ui/dialogs/key_dialog.ui:193
+msgid "Ready"
+msgstr "Ready"
+
+#: src/ui/dialogs/key_dialog.ui:209
+msgid "Test Connection"
+msgstr "Test Connection"
+
+#: src/ui/dialogs/key_dialog.ui:228
+msgid "Security Mode (reality/tls/none)"
+msgstr "Security Mode (reality/tls/none)"
+
+#: src/ui/dialogs/key_dialog.ui:252
+msgid "Fingerprint (uTLS)"
+msgstr "Fingerprint (uTLS)"
+
+#: src/ui/dialogs/key_dialog.ui:260
+msgid "Flow (e.g. xtls-rprx-vision)"
+msgstr "Flow (e.g. xtls-rprx-vision)"
+
+#: src/ui/dialogs/qr_dialog.rs:184 src/ui/dialogs/qr_dialog.ui:122
+msgid "Show QR Code"
+msgstr "Show QR Code"
+
+#: src/ui/dialogs/qr_dialog.rs:190
+msgid "Hide QR Code"
+msgstr "Hide QR Code"
+
+#: src/ui/dialogs/qr_dialog.rs:219 src/ui/dialogs/qr_dialog.rs:223
+msgid "Failed to generate QR code"
+msgstr "Failed to generate QR code"
+
+#: src/ui/dialogs/qr_dialog.rs:234
+msgid "Link copied to clipboard"
+msgstr "Link copied to clipboard"
+
+#: src/ui/dialogs/qr_dialog.rs:245
+msgid "JSON copied to clipboard"
+msgstr "JSON copied to clipboard"
+
+#: src/ui/dialogs/qr_dialog.rs:249
+msgid "Failed to generate JSON for key"
+msgstr "Failed to generate JSON for key"
+
+#: src/ui/dialogs/qr_dialog.rs:264
+msgid "Save QR Code As"
+msgstr "Save QR Code As"
+
+#: src/ui/dialogs/qr_dialog.rs:268
+msgid "PNG Image (*.png)"
+msgstr "PNG Image (*.png)"
+
+#: src/ui/dialogs/qr_dialog.rs:273
+msgid "SVG Vector (*.svg)"
+msgstr "SVG Vector (*.svg)"
+
+#: src/ui/dialogs/qr_dialog.rs:326
+msgid "QR code saved successfully"
+msgstr "QR code saved successfully"
+
+#: src/ui/dialogs/qr_dialog.rs:332
+msgid "Failed to save QR code"
+msgstr "Failed to save QR code"
+
+#: src/ui/dialogs/qr_dialog.ui:28 src/ui/dialogs/qr_dialog.ui:39
+msgid "Share Profile"
+msgstr "Share Profile"
+
+#: src/ui/dialogs/qr_dialog.ui:170
+msgid "Copy Link"
+msgstr "Copy Link"
+
+#: src/ui/dialogs/qr_dialog.ui:182
+msgid "Link"
+msgstr "Link"
+
+#: src/ui/dialogs/qr_dialog.ui:193
+msgid "Copy JSON"
+msgstr "Copy JSON"
+
+#: src/ui/dialogs/qr_dialog.ui:205
+msgid "JSON"
+msgstr "JSON"
+
+#: src/ui/dialogs/qr_dialog.ui:216
+msgid "Save QR Code as..."
+msgstr "Save QR Code as..."
+
+#: src/ui/dialogs/qr_dialog.ui:228
+msgid "Save QR"
+msgstr "Save QR"
+
+#: src/ui/dialogs/rule_dialog.rs:141 src/ui/dialogs/rule_dialog.ui:44
+#: src/ui/dialogs/rule_dialog.ui:63
+msgid "Add Custom Rule"
+msgstr "Add Custom Rule"
+
+#: src/ui/dialogs/rule_dialog.rs:142 src/ui/dialogs/rule_dialog.ui:64
+msgid "Configure domain, IP, or rule-set detour"
+msgstr "Configure domain, IP, or rule-set detour"
+
+#: src/ui/dialogs/rule_dialog.rs:149
+msgid "Edit Custom Rule"
+msgstr "Edit Custom Rule"
+
+#: src/ui/dialogs/rule_dialog.rs:150
+msgid "Modify domain, IP subnet, or detour action"
+msgstr "Modify domain, IP subnet, or detour action"
+
+#: src/ui/dialogs/rule_dialog.rs:243
+msgid ""
+"Matches exact IP address or CIDR subnet (e.g. 192.168.1.50 or 10.0.0.0/24)"
+msgstr ""
+"Matches exact IP address or CIDR subnet (e.g. 192.168.1.50 or 10.0.0.0/24)"
+
+#: src/ui/dialogs/rule_dialog.rs:246
+msgid "IP Address or CIDR Subnet"
+msgstr "IP Address or CIDR Subnet"
+
+#: src/ui/dialogs/rule_dialog.rs:250
+msgid ""
+"Remote binary compiled rule-set URL (e.g. https://example.com/ruleset.srs)"
+msgstr ""
+"Remote binary compiled rule-set URL (e.g. https://example.com/ruleset.srs)"
+
+#: src/ui/dialogs/rule_dialog.rs:252
+msgid "Rule-Set URL (.srs)"
+msgstr "Rule-Set URL (.srs)"
+
+#: src/ui/dialogs/rule_dialog.rs:256
+msgid ""
+"Matches domain and all its subdomains (e.g. example.com matches example.com "
+"and sub.example.com; .org matches all .org domains)"
+msgstr ""
+"Matches domain and all its subdomains (e.g. example.com matches example.com "
+"and sub.example.com; .org matches all .org domains)"
+
+#: src/ui/dialogs/rule_dialog.rs:258
+msgid "Domain Name or Suffix"
+msgstr "Domain Name or Suffix"
+
+#: src/ui/dialogs/rule_dialog.rs:303
+msgid "Please enter a rule value"
+msgstr "Please enter a rule value"
+
+#: src/ui/dialogs/rule_dialog.rs:315
+msgid "Value contains forbidden control characters or quotes"
+msgstr "Value contains forbidden control characters or quotes"
+
+#: src/ui/dialogs/rule_dialog.rs:326
+msgid ""
+"Invalid domain format. Enter domain name without protocol or path (e.g. "
+"example.com or .org)"
+msgstr ""
+"Invalid domain format. Enter domain name without protocol or path (e.g. "
+"example.com or .org)"
+
+#: src/ui/dialogs/rule_dialog.rs:335
+msgid ""
+"Domain contains invalid characters. Use letters, numbers, dots and hyphens"
+msgstr ""
+"Domain contains invalid characters. Use letters, numbers, dots and hyphens"
+
+#: src/ui/dialogs/rule_dialog.rs:347
+msgid ""
+"CIDR subnet prefix length exceeds valid range (0-32 for IPv4, 0-128 for IPv6)"
+msgstr ""
+"CIDR subnet prefix length exceeds valid range (0-32 for IPv4, 0-128 for IPv6)"
+
+#: src/ui/dialogs/rule_dialog.rs:351
+msgid "Invalid CIDR prefix format"
+msgstr "Invalid CIDR prefix format"
+
+#: src/ui/dialogs/rule_dialog.rs:354
+msgid "Invalid IP address in CIDR expression"
+msgstr "Invalid IP address in CIDR expression"
+
+#: src/ui/dialogs/rule_dialog.rs:358
+msgid "Invalid IP address format (e.g. 192.168.1.1 or 10.0.0.0/24)"
+msgstr "Invalid IP address format (e.g. 192.168.1.1 or 10.0.0.0/24)"
+
+#: src/ui/dialogs/rule_dialog.rs:364
+msgid "Rule-Set URL must start with http:// or https://"
+msgstr "Rule-Set URL must start with http:// or https://"
+
+#: src/ui/dialogs/rule_dialog.rs:367
+msgid "URL must not contain spaces"
+msgstr "URL must not contain spaces"
+
+#: src/ui/dialogs/rule_dialog.ui:99
+msgid "How routing rules work"
+msgstr "How routing rules work"
+
+#: src/ui/dialogs/rule_dialog.ui:100
+msgid "Examples and instructions for custom routing"
+msgstr "Examples and instructions for custom routing"
+
+#: src/ui/dialogs/rule_dialog.ui:109 src/ui/tests.rs:177
+msgid "Direct Bypass (Direct Connection)"
+msgstr "Direct Bypass (Direct Connection)"
+
+#: src/ui/dialogs/rule_dialog.ui:110
+msgid ""
+"Useful for domestic or trusted services to connect directly without exposing "
+"VPN IP."
+msgstr ""
+"Useful for domestic or trusted services to connect directly without exposing "
+"VPN IP."
+
+#: src/ui/dialogs/rule_dialog.ui:116
+msgid "VPN Tunnel (Proxy)"
+msgstr "VPN Tunnel (Proxy)"
+
+#: src/ui/dialogs/rule_dialog.ui:117
+msgid ""
+"Routes specific websites or IP ranges through your active encrypted VPN "
+"tunnel."
+msgstr ""
+"Routes specific websites or IP ranges through your active encrypted VPN "
+"tunnel."
+
+#: src/ui/dialogs/rule_dialog.ui:133
+msgid "Description (Optional)"
+msgstr "Description (Optional)"
+
+#: src/ui/dialogs/rule_dialog.ui:141
+msgid "Rule Type"
+msgstr "Rule Type"
+
+#: src/ui/dialogs/rule_dialog.ui:145
+msgid "Domain / Subdomains (e.g. example.com, .org)"
+msgstr "Domain / Subdomains (e.g. example.com, .org)"
+
+#: src/ui/dialogs/rule_dialog.ui:146
+msgid "IP Address / CIDR (e.g. 192.168.1.1, 10.0.0.0/24)"
+msgstr "IP Address / CIDR (e.g. 192.168.1.1, 10.0.0.0/24)"
+
+#: src/ui/dialogs/rule_dialog.ui:147
+msgid "Rule-Set (.srs URL)"
+msgstr "Rule-Set (.srs URL)"
+
+#: src/ui/dialogs/rule_dialog.ui:158
+msgid "Value (Domain, IP, or URL)"
+msgstr "Value (Domain, IP, or URL)"
+
+#: src/ui/dialogs/rule_dialog.ui:166
+msgid "Action"
+msgstr "Action"
+
+#: src/ui/dialogs/rule_dialog.ui:170
+msgid "Direct (Bypass VPN)"
+msgstr "Direct (Bypass VPN)"
+
+#: src/ui/dialogs/rule_dialog.ui:171
+msgid "Proxy (Route via VPN)"
+msgstr "Proxy (Route via VPN)"
+
+#: src/ui/dialogs/rule_dialog.ui:172
+msgid "Block (Reject Connection)"
+msgstr "Block (Reject Connection)"
+
+#: src/ui/menus.ui:43
 msgid "_Preferences"
 msgstr "_Preferences"
 
-#: src/ui/menus.ui:47
+#: src/ui/menus.ui:48
 msgid "_Keyboard Shortcuts"
 msgstr "_Keyboard Shortcuts"
 
-#: src/ui/menus.ui:52
+#: src/ui/menus.ui:53
 msgid "_About Vrxx"
 msgstr "_About Vrxx"
 
-#: src/ui/menus.ui:57
+#: src/ui/menus.ui:58
+msgid "_Close Window"
+msgstr "_Close Window"
+
+#: src/ui/menus.ui:63
 msgid "_Quit"
 msgstr "_Quit"
 
-#: src/ui/pages/proxy_page.rs:171
+#: src/ui/pages/proxy_page.rs:181
 msgid "Switch to TUN"
 msgstr "Switch to TUN"
 
-#: src/ui/pages/proxy_page.rs:184
+#: src/ui/pages/proxy_page.rs:194
 msgid "TUN mode enabled and core restarted."
 msgstr "TUN mode enabled and core restarted."
 
-#: src/ui/pages/proxy_page.rs:198
+#: src/ui/pages/proxy_page.rs:208
 msgid "Proxy settings applied and core restarted."
 msgstr "Proxy settings applied and core restarted."
 
-#: src/ui/pages/proxy_page.rs:232 src/ui/pages/proxy_page.ui:136
+#: src/ui/pages/proxy_page.rs:242 src/ui/pages/proxy_page.ui:136
 msgid "Allow connections from LAN"
 msgstr "Allow connections from LAN"
 
-#: src/ui/pages/proxy_page.rs:234 src/ui/pages/proxy_page.ui:137
+#: src/ui/pages/proxy_page.rs:244 src/ui/pages/proxy_page.ui:137
 msgid "Proxy will be available for other devices in your local network"
 msgstr "Proxy will be available for other devices in your local network"
 
@@ -406,7 +841,7 @@ msgid "Proxy"
 msgstr "Proxy"
 
 #: src/ui/pages/proxy_page.ui:54 src/ui/pages/routing_page.ui:59
-#: src/ui/pages/settings_page.ui:56
+#: src/ui/pages/settings_page.ui:57
 msgid "Apply and Restart Core"
 msgstr "Apply and Restart Core"
 
@@ -455,35 +890,11 @@ msgstr "No Custom Rules Added"
 msgid "Traffic will follow the default global routing mode"
 msgstr "Traffic will follow the default global routing mode"
 
-#: src/ui/pages/routing_page.rs:416
-msgid "Add Custom Rule"
-msgstr "Add Custom Rule"
-
-#: src/ui/pages/routing_page.rs:418
-msgid "Configure domain detour, IP subnet, or remote rule-set"
-msgstr "Configure domain detour, IP subnet, or remote rule-set"
-
-#: src/ui/pages/routing_page.rs:423
-msgid "Add"
-msgstr "Add"
-
-#: src/ui/pages/routing_page.rs:493
-msgid "Edit Custom Rule"
-msgstr "Edit Custom Rule"
-
-#: src/ui/pages/routing_page.rs:495
-msgid "Modify domain, IP subnet, or detour action"
-msgstr "Modify domain, IP subnet, or detour action"
-
-#: src/ui/pages/routing_page.rs:500 src/ui/pages/vpn_page.rs:1323
-msgid "Save"
-msgstr "Save"
-
-#: src/ui/pages/routing_page.rs:659
+#: src/ui/pages/routing_page.rs:539
 msgid "Precompiled binary rule-sets"
 msgstr "Precompiled binary rule-sets"
 
-#: src/ui/pages/routing_page.rs:660
+#: src/ui/pages/routing_page.rs:540
 msgid "Last updated"
 msgstr "Last updated"
 
@@ -545,7 +956,7 @@ msgstr "Prefer IPv4 (IPIfNonMatch)"
 msgid "Prefer IPv6 (IPOnDemand)"
 msgstr "Prefer IPv6 (IPOnDemand)"
 
-#: src/ui/pages/routing_page.ui:145 src/ui/tests.rs:148
+#: src/ui/pages/routing_page.ui:145 src/ui/tests.rs:164
 msgid "Custom Rules"
 msgstr "Custom Rules"
 
@@ -555,7 +966,7 @@ msgid ""
 msgstr ""
 "Define custom routing rules for specific domains, IP addresses, or rule-sets"
 
-#: src/ui/pages/routing_page.ui:152 src/ui/tests.rs:151
+#: src/ui/pages/routing_page.ui:152 src/ui/tests.rs:167
 msgid "Add Rule"
 msgstr "Add Rule"
 
@@ -575,7 +986,7 @@ msgstr "Disable IPv6"
 msgid "Force VPN core to use IPv4 only"
 msgstr "Force VPN core to use IPv4 only"
 
-#: src/ui/pages/routing_page.ui:204 src/ui/tests.rs:157
+#: src/ui/pages/routing_page.ui:204 src/ui/tests.rs:173
 msgid "Predefined Regional Rules"
 msgstr "Predefined Regional Rules"
 
@@ -671,11 +1082,11 @@ msgstr "Antifilter Community List"
 msgid "Proxy blocked resources via active VPN (geosite-antifilter.srs)"
 msgstr "Proxy blocked resources via active VPN (geosite-antifilter.srs)"
 
-#: src/ui/pages/settings_page.rs:288
+#: src/ui/pages/settings_page.rs:314
 msgid "Restart Required"
 msgstr "Restart Required"
 
-#: src/ui/pages/settings_page.rs:290
+#: src/ui/pages/settings_page.rs:316
 msgid ""
 "You have changed the language. The application needs to restart to apply the "
 "new language. Restart now?"
@@ -683,348 +1094,595 @@ msgstr ""
 "You have changed the language. The application needs to restart to apply the "
 "new language. Restart now?"
 
-#: src/ui/pages/settings_page.rs:295
+#: src/ui/pages/settings_page.rs:321
 msgid "Restart"
 msgstr "Restart"
 
-#: src/ui/pages/settings_page.rs:309
+#: src/ui/pages/settings_page.rs:335
 msgid "Application settings applied and core restarted."
 msgstr "Application settings applied and core restarted."
 
-#: src/ui/pages/settings_page.rs:488
+#: src/ui/pages/settings_page.rs:538
 msgid "Last update"
 msgstr "Last update"
 
-#: src/ui/pages/settings_page.rs:500
+#: src/ui/pages/settings_page.rs:550
 msgid "Downloading..."
 msgstr "Downloading..."
 
-#: src/ui/pages/settings_page.rs:542
+#: src/ui/pages/settings_page.rs:592
 msgid "Unknown Version"
 msgstr "Unknown Version"
 
-#: src/ui/pages/settings_page.rs:545
+#: src/ui/pages/settings_page.rs:595
 msgid "not found"
 msgstr "not found"
 
-#: src/ui/pages/settings_page.ui:47 src/window.ui:144
+#: src/ui/pages/settings_page.ui:48 src/window.ui:144
 msgid "Settings"
 msgstr "Settings"
 
-#: src/ui/pages/settings_page.ui:90
+#: src/ui/pages/settings_page.ui:87
+msgid "Application interface, startup, and notification preferences"
+msgstr "Application interface, startup, and notification preferences"
+
+#: src/ui/pages/settings_page.ui:92
 msgid "Language"
 msgstr "Language"
 
-#: src/ui/pages/settings_page.ui:91
+#: src/ui/pages/settings_page.ui:93
 msgid "Application restart required"
 msgstr "Application restart required"
 
-#: src/ui/pages/settings_page.ui:95
+#: src/ui/pages/settings_page.ui:94
+msgid ""
+"Select the interface language. Changing the language requires restarting the "
+"application."
+msgstr ""
+"Select the interface language. Changing the language requires restarting the "
+"application."
+
+#: src/ui/pages/settings_page.ui:98
 msgid "System default"
 msgstr "System default"
 
-#: src/ui/pages/settings_page.ui:96
+#: src/ui/pages/settings_page.ui:99
 msgid "English"
 msgstr "English"
 
-#: src/ui/pages/settings_page.ui:97
+#: src/ui/pages/settings_page.ui:100
 msgid "Russian"
 msgstr "Russian"
 
-#: src/ui/pages/settings_page.ui:107
+#: src/ui/pages/settings_page.ui:110
 msgid "Run at startup"
 msgstr "Run at startup"
 
-#: src/ui/pages/settings_page.ui:108
+#: src/ui/pages/settings_page.ui:111
 msgid "Automatically start application in the background"
 msgstr "Automatically start application in the background"
 
-#: src/ui/pages/settings_page.ui:116
+#: src/ui/pages/settings_page.ui:112
+msgid "Starts VRXX in the background minimized when your system boots up."
+msgstr "Starts VRXX in the background minimized when your system boots up."
+
+#: src/ui/pages/settings_page.ui:120
 msgid "Connect on startup"
 msgstr "Connect on startup"
 
-#: src/ui/pages/settings_page.ui:117
+#: src/ui/pages/settings_page.ui:121
 msgid "Restore last active connection"
 msgstr "Restore last active connection"
 
-#: src/ui/pages/settings_page.ui:125
+#: src/ui/pages/settings_page.ui:122
+msgid ""
+"Automatically connects to the last active VPN server when the application "
+"starts."
+msgstr ""
+"Automatically connects to the last active VPN server when the application "
+"starts."
+
+#: src/ui/pages/settings_page.ui:130
 msgid "Notifications"
 msgstr "Notifications"
 
-#: src/ui/pages/settings_page.ui:126
-msgid "Show notifications on connection status change"
-msgstr "Show notifications on connection status change"
+#: src/ui/pages/settings_page.ui:131
+msgid "Show desktop notifications on connection events"
+msgstr "Show desktop notifications on connection events"
 
-#: src/ui/pages/settings_page.ui:134
+#: src/ui/pages/settings_page.ui:132
+msgid ""
+"Displays system notifications when connection status changes or when errors "
+"occur."
+msgstr ""
+"Displays system notifications when connection status changes or when errors "
+"occur."
+
+#: src/ui/pages/settings_page.ui:140
 msgid "Streamer mode"
 msgstr "Streamer mode"
 
-#: src/ui/pages/settings_page.ui:135
+#: src/ui/pages/settings_page.ui:141
 msgid "Hide IP addresses and sensitive information in the interface"
 msgstr "Hide IP addresses and sensitive information in the interface"
 
-#: src/ui/pages/settings_page.ui:136
+#: src/ui/pages/settings_page.ui:142
 msgid ""
-"Hides IP addresses, domain names, and secret URLs in the interface to "
-"prevent accidental disclosure during screen sharing or streaming."
+"Masks IP addresses, server domains, and configuration keys in the interface "
+"to prevent accidental exposure during screen recording or live streaming."
 msgstr ""
-"Hides IP addresses, domain names, and secret URLs in the interface to "
-"prevent accidental disclosure during screen sharing or streaming."
-
-#: src/ui/pages/settings_page.ui:148
-msgid "Core"
-msgstr "Core"
-
-#: src/ui/pages/settings_page.ui:149
-msgid "Select the routing engine used for connection"
-msgstr "Select the routing engine used for connection"
+"Masks IP addresses, server domains, and configuration keys in the interface "
+"to prevent accidental exposure during screen recording or live streaming."
 
 #: src/ui/pages/settings_page.ui:154
-msgid "Core version"
-msgstr "Core version"
+msgid "Network and Core"
+msgstr "Network and Core"
 
 #: src/ui/pages/settings_page.ui:155
-msgid "Unknown"
-msgstr "Unknown"
+msgid "Core protocol engine parameters and transparent traffic routing"
+msgstr "Core protocol engine parameters and transparent traffic routing"
 
-#: src/ui/pages/settings_page.ui:166
-msgid "Network and Routing"
-msgstr "Network and Routing"
-
-#: src/ui/pages/settings_page.ui:171
+#: src/ui/pages/settings_page.ui:160
 msgid "Enable TUN Mode"
 msgstr "Enable TUN Mode"
 
-#: src/ui/pages/settings_page.ui:172
-msgid "Requires root privileges"
-msgstr "Requires root privileges"
-
-#: src/ui/pages/settings_page.ui:173
+#: src/ui/pages/settings_page.ui:161
 msgid ""
-"Creates a virtual network interface to route all system traffic "
-"transparently, bypassing application-specific proxy settings."
+"Route all system traffic through virtual adapter (TCP/UDP, root required)"
 msgstr ""
-"Creates a virtual network interface to route all system traffic "
-"transparently, bypassing application-specific proxy settings."
+"Route all system traffic through virtual adapter (TCP/UDP, root required)"
 
-#: src/ui/pages/settings_page.ui:180
+#: src/ui/pages/settings_page.ui:162
+msgid ""
+"Creates a virtual network card (vrxx-tun) to route system traffic "
+"transparently. Note: HTTP proxies and certain Shadowsocks plugins only "
+"tunnel TCP, while WireGuard, Hysteria2, TUIC, VLESS, VMess, Trojan, and "
+"plain Shadowsocks support both TCP and UDP."
+msgstr ""
+"Creates a virtual network card (vrxx-tun) to route system traffic "
+"transparently. Note: HTTP proxies and certain Shadowsocks plugins only "
+"tunnel TCP, while WireGuard, Hysteria2, TUIC, VLESS, VMess, Trojan, and "
+"plain Shadowsocks support both TCP and UDP."
+
+#: src/ui/pages/settings_page.ui:169
 msgid "Sniffing (Packet analysis)"
 msgstr "Sniffing (Packet analysis)"
 
-#: src/ui/pages/settings_page.ui:181
-msgid "Determine domain from traffic (required for routing)"
-msgstr "Determine domain from traffic (required for routing)"
+#: src/ui/pages/settings_page.ui:170
+msgid "Extract destination domain from TLS SNI and HTTP headers"
+msgstr "Extract destination domain from TLS SNI and HTTP headers"
 
-#: src/ui/pages/settings_page.ui:182
+#: src/ui/pages/settings_page.ui:171
 msgid ""
-"Inspects encrypted SNI and HTTP headers from traffic to identify destination "
-"domains for accurate rule matching."
+"Inspects outgoing packets to identify actual domain names for accurate "
+"routing and bypass rules."
 msgstr ""
-"Inspects encrypted SNI and HTTP headers from traffic to identify destination "
-"domains for accurate rule matching."
+"Inspects outgoing packets to identify actual domain names for accurate "
+"routing and bypass rules."
 
-#: src/ui/pages/settings_page.ui:189 src/ui/tests.rs:166
+#: src/ui/pages/settings_page.ui:178 src/ui/tests.rs:182
 msgid "Block QUIC (UDP 443)"
 msgstr "Block QUIC (UDP 443)"
 
-#: src/ui/pages/settings_page.ui:190
-msgid "Disables HTTP/3 over UDP to force TCP and prevent VPN drops"
-msgstr "Disables HTTP/3 over UDP to force TCP and prevent VPN drops"
+#: src/ui/pages/settings_page.ui:179
+msgid "Force browsers to use TCP to prevent connection drops"
+msgstr "Force browsers to use TCP to prevent connection drops"
 
-#: src/ui/pages/settings_page.ui:191
+#: src/ui/pages/settings_page.ui:180
 msgid ""
-"Blocks QUIC (UDP 443) traffic, forcing browsers like Chrome to use TCP. "
-"Prevents connection drops on restricted networks."
+"Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and "
+"Firefox to use TCP. Recommended for all protocols, especially HTTP proxies "
+"and restricted networks."
 msgstr ""
-"Blocks QUIC (UDP 443) traffic, forcing browsers like Chrome to use TCP. "
-"Prevents connection drops on restricted networks."
+"Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and "
+"Firefox to use TCP. Recommended for all protocols, especially HTTP proxies "
+"and restricted networks."
 
-#: src/ui/pages/settings_page.ui:198 src/ui/tests.rs:169
-msgid "Update Geo Data"
-msgstr "Update Geo Data"
-
-#: src/ui/pages/settings_page.ui:199
-msgid "Download latest geoip and geosite data"
-msgstr "Download latest geoip and geosite data"
-
-#: src/ui/pages/settings_page.ui:208
-msgid "Update"
-msgstr "Update"
-
-#: src/ui/pages/settings_page.ui:234
+#: src/ui/pages/settings_page.ui:187
 msgid "Bypass LAN"
 msgstr "Bypass LAN"
 
-#: src/ui/pages/settings_page.ui:235
-msgid "Do not route local traffic through VPN"
-msgstr "Do not route local traffic through VPN"
+#: src/ui/pages/settings_page.ui:188
+msgid "Do not route local network traffic through VPN"
+msgstr "Do not route local network traffic through VPN"
 
-#: src/ui/pages/settings_page.ui:236
+#: src/ui/pages/settings_page.ui:189
 msgid ""
-"Directs traffic for local network addresses (192.168.x.x, 10.x.x.x, local "
-"printers) away from the VPN so local devices remain accessible."
+"Directs local network subnets (192.168.x.x, 10.x.x.x, local printers, smart "
+"home devices) directly to your local router instead of through the VPN "
+"tunnel."
 msgstr ""
-"Directs traffic for local network addresses (192.168.x.x, 10.x.x.x, local "
-"printers) away from the VPN so local devices remain accessible."
+"Directs local network subnets (192.168.x.x, 10.x.x.x, local printers, smart "
+"home devices) directly to your local router instead of through the VPN "
+"tunnel."
 
-#: src/ui/pages/settings_page.ui:243
+#: src/ui/pages/settings_page.ui:196
 msgid "Fake DNS"
 msgstr "Fake DNS"
 
-#: src/ui/pages/settings_page.ui:244
-msgid "Return fake IPs (improves speed but breaks some apps)"
-msgstr "Return fake IPs (improves speed but breaks some apps)"
+#: src/ui/pages/settings_page.ui:197
+msgid "Return synthetic local IPs for ultra-fast domain resolution"
+msgstr "Return synthetic local IPs for ultra-fast domain resolution"
 
-#: src/ui/pages/settings_page.ui:245
+#: src/ui/pages/settings_page.ui:198
 msgid ""
-"Returns synthetic local IP addresses (198.18.0.0/15) for fast domain "
-"responses while resolving real target IPs remotely on the proxy server."
+"Assigns synthetic IP addresses (198.18.0.0/15) locally for instant response, "
+"while resolving real IPs on the remote proxy server. Speeds up connection "
+"opening significantly."
 msgstr ""
-"Returns synthetic local IP addresses (198.18.0.0/15) for fast domain "
-"responses while resolving real target IPs remotely on the proxy server."
+"Assigns synthetic IP addresses (198.18.0.0/15) locally for instant response, "
+"while resolving real IPs on the remote proxy server. Speeds up connection "
+"opening significantly."
 
-#: src/ui/pages/settings_page.ui:252
-msgid "Advanced Settings"
-msgstr "Advanced Settings"
+#: src/ui/pages/settings_page.ui:209
+msgid "Advanced Connection"
+msgstr "Advanced Connection"
 
-#: src/ui/pages/settings_page.ui:256
+#: src/ui/pages/settings_page.ui:210
+msgid ""
+"Stream multiplexing, TLS anti-censorship fragmentation, and connection "
+"optimization"
+msgstr ""
+"Stream multiplexing, TLS anti-censorship fragmentation, and connection "
+"optimization"
+
+#: src/ui/pages/settings_page.ui:215
 msgid "Multiplexing (Mux)"
 msgstr "Multiplexing (Mux)"
 
-#: src/ui/pages/settings_page.ui:257
-msgid "Speeds up connections but may cause instability"
-msgstr "Speeds up connections but may cause instability"
+#: src/ui/pages/settings_page.ui:216
+msgid "Combine multiple TCP streams into a single connection (h2mux)"
+msgstr "Combine multiple TCP streams into a single connection (h2mux)"
 
-#: src/ui/pages/settings_page.ui:258
+#: src/ui/pages/settings_page.ui:217
 msgid ""
-"Reduces handshake latency by reusing a single TCP connection for multiple "
-"streams. May increase jitter or trigger DPI traffic detection."
+"Reuses a single persistent TCP connection for multiple streams. Supported on "
+"VLESS, VMess, Trojan, and Shadowsocks. Automatically bypassed for WireGuard, "
+"Hysteria2, TUIC, and HTTP proxies."
 msgstr ""
-"Reduces handshake latency by reusing a single TCP connection for multiple "
-"streams. May increase jitter or trigger DPI traffic detection."
+"Reuses a single persistent TCP connection for multiple streams. Supported on "
+"VLESS, VMess, Trojan, and Shadowsocks. Automatically bypassed for WireGuard, "
+"Hysteria2, TUIC, and HTTP proxies."
 
-#: src/ui/pages/settings_page.ui:262
+#: src/ui/pages/settings_page.ui:223 src/ui/tests.rs:199
 msgid "Concurrency"
 msgstr "Concurrency"
 
-#: src/ui/pages/settings_page.ui:286
-msgid "Backup"
-msgstr "Backup"
+#: src/ui/pages/settings_page.ui:224
+msgid "Maximum concurrent multiplexed streams (1–128)"
+msgstr "Maximum concurrent multiplexed streams (1–128)"
 
-#: src/ui/pages/settings_page.ui:291
-msgid "Import settings"
-msgstr "Import settings"
+#: src/ui/pages/settings_page.ui:225
+msgid ""
+"Defines how many concurrent streams can be transmitted simultaneously over "
+"one TCP connection. Default value is 8."
+msgstr ""
+"Defines how many concurrent streams can be transmitted simultaneously over "
+"one TCP connection. Default value is 8."
 
-#: src/ui/pages/settings_page.ui:292
-msgid "Load profiles and settings from file"
-msgstr "Load profiles and settings from file"
+#: src/ui/pages/settings_page.ui:243
+msgid "TLS Fragmentation"
+msgstr "TLS Fragmentation"
 
-#: src/ui/pages/settings_page.ui:307
-msgid "Export settings"
-msgstr "Export settings"
+#: src/ui/pages/settings_page.ui:244
+msgid "Split TLS ClientHello to bypass SNI filtering (TLS and Reality)"
+msgstr "Split TLS ClientHello to bypass SNI filtering (TLS and Reality)"
 
-#: src/ui/pages/settings_page.ui:308
-msgid "Save current configuration to file"
-msgstr "Save current configuration to file"
+#: src/ui/pages/settings_page.ui:245
+msgid ""
+"Fragments the initial TLS handshake packet across multiple segments to "
+"bypass SNI inspection and DPI censorship. Supported on TLS/Reality protocols "
+"(VLESS, VMess TLS, Trojan, Hysteria2, TUIC, HTTPS)."
+msgstr ""
+"Fragments the initial TLS handshake packet across multiple segments to "
+"bypass SNI inspection and DPI censorship. Supported on TLS/Reality protocols "
+"(VLESS, VMess TLS, Trojan, Hysteria2, TUIC, HTTPS)."
 
-#: src/ui/pages/settings_page.ui:327 src/ui/tests.rs:164
+#: src/ui/pages/settings_page.ui:257
+msgid "Geo Data"
+msgstr "Geo Data"
+
+#: src/ui/pages/settings_page.ui:258
+msgid ""
+"Precompiled binary rule-sets (GeoIP and GeoSite) for domain and IP routing"
+msgstr ""
+"Precompiled binary rule-sets (GeoIP and GeoSite) for domain and IP routing"
+
+#: src/ui/pages/settings_page.ui:263 src/ui/tests.rs:185
+msgid "Update Geo Data"
+msgstr "Update Geo Data"
+
+#: src/ui/pages/settings_page.ui:264
+msgid "Download latest GeoIP and GeoSite binary rule-sets (.srs)"
+msgstr "Download latest GeoIP and GeoSite binary rule-sets (.srs)"
+
+#: src/ui/pages/settings_page.ui:265
+msgid ""
+"Fetches the latest compiled binary rule-sets for GeoIP and GeoSite databases "
+"to keep regional bypass lists up to date."
+msgstr ""
+"Fetches the latest compiled binary rule-sets for GeoIP and GeoSite databases "
+"to keep regional bypass lists up to date."
+
+#: src/ui/pages/settings_page.ui:274
+msgid "Update"
+msgstr "Update"
+
+#: src/ui/pages/settings_page.ui:275
+msgid "Download latest geo-databases now"
+msgstr "Download latest geo-databases now"
+
+#: src/ui/pages/settings_page.ui:305 src/ui/tests.rs:180
 msgid "Latency Testing"
 msgstr "Latency Testing"
 
-#: src/ui/pages/settings_page.ui:332
+#: src/ui/pages/settings_page.ui:306
+msgid "Methods and parameters for measuring server response time"
+msgstr "Methods and parameters for measuring server response time"
+
+#: src/ui/pages/settings_page.ui:311
 msgid "Ping Algorithm"
 msgstr "Ping Algorithm"
 
-#: src/ui/pages/settings_page.ui:333
-msgid "Method used for measuring server latency"
-msgstr "Method used for measuring server latency"
+#: src/ui/pages/settings_page.ui:312
+msgid "HTTP GET via Proxy (universal), TCP Handshake, or ICMP Ping"
+msgstr "HTTP GET via Proxy (universal), TCP Handshake, or ICMP Ping"
 
-#: src/ui/pages/settings_page.ui:337
+#: src/ui/pages/settings_page.ui:313
+msgid ""
+"HTTP GET/HEAD via Proxy is recommended as it performs a real end-to-end test "
+"through the proxy tunnel for 100% of protocols. TCP Handshake directly "
+"connects to the port (may timeout on UDP-only protocols like WireGuard/"
+"TUIC). ICMP Ping sends echo packets to the host IP (may be blocked by "
+"firewalls)."
+msgstr ""
+"HTTP GET/HEAD via Proxy is recommended as it performs a real end-to-end test "
+"through the proxy tunnel for 100% of protocols. TCP Handshake directly "
+"connects to the port (may timeout on UDP-only protocols like WireGuard/"
+"TUIC). ICMP Ping sends echo packets to the host IP (may be blocked by "
+"firewalls)."
+
+#: src/ui/pages/settings_page.ui:317
 msgid "TCP Handshake"
 msgstr "TCP Handshake"
 
-#: src/ui/pages/settings_page.ui:338
+#: src/ui/pages/settings_page.ui:318
 msgid "ICMP Ping"
 msgstr "ICMP Ping"
 
-#: src/ui/pages/settings_page.ui:339
+#: src/ui/pages/settings_page.ui:319
 msgid "HTTP GET (via Proxy)"
 msgstr "HTTP GET (via Proxy)"
 
-#: src/ui/pages/settings_page.ui:340
+#: src/ui/pages/settings_page.ui:320
 msgid "HTTP HEAD (via Proxy)"
 msgstr "HTTP HEAD (via Proxy)"
 
-#: src/ui/pages/settings_page.ui:351
+#: src/ui/pages/settings_page.ui:331
 msgid "Ping Target URL"
 msgstr "Ping Target URL"
 
-#: src/ui/pages/settings_page.ui:363
+#: src/ui/pages/settings_page.ui:332
+msgid ""
+"The lightweight URL requested during HTTP proxy latency measurements "
+"(default is Google generate_204)."
+msgstr ""
+"The lightweight URL requested during HTTP proxy latency measurements "
+"(default is Google generate_204)."
+
+#: src/ui/pages/settings_page.ui:340
+msgid "Auto Ping on Startup"
+msgstr "Auto Ping on Startup"
+
+#: src/ui/pages/settings_page.ui:341
+msgid "Measure latency of all profiles when application launches"
+msgstr "Measure latency of all profiles when application launches"
+
+#: src/ui/pages/settings_page.ui:349
+msgid "Auto Ping Interval"
+msgstr "Auto Ping Interval"
+
+#: src/ui/pages/settings_page.ui:350
+msgid "Periodically refresh connection latency in background"
+msgstr "Periodically refresh connection latency in background"
+
+#: src/ui/pages/settings_page.ui:354
+msgid "Disabled"
+msgstr "Disabled"
+
+#: src/ui/pages/settings_page.ui:355
+msgid "5 minutes"
+msgstr "5 minutes"
+
+#: src/ui/pages/settings_page.ui:356
+msgid "10 minutes"
+msgstr "10 minutes"
+
+#: src/ui/pages/settings_page.ui:357
+msgid "15 minutes"
+msgstr "15 minutes"
+
+#: src/ui/pages/settings_page.ui:358
+msgid "30 minutes"
+msgstr "30 minutes"
+
+#: src/ui/pages/settings_page.ui:359
+msgid "1 hour"
+msgstr "1 hour"
+
+#: src/ui/pages/settings_page.ui:374
 msgid "Diagnostics"
 msgstr "Diagnostics"
 
-#: src/ui/pages/settings_page.ui:368
+#: src/ui/pages/settings_page.ui:375
+msgid "Core version information, logs, and troubleshooting tools"
+msgstr "Core version information, logs, and troubleshooting tools"
+
+#: src/ui/pages/settings_page.ui:380
+msgid "Core version"
+msgstr "Core version"
+
+#: src/ui/pages/settings_page.ui:381
+msgid "Unknown"
+msgstr "Unknown"
+
+#: src/ui/pages/settings_page.ui:382
+msgid ""
+"Displays the currently installed binary version and compilation tags of the "
+"sing-box core."
+msgstr ""
+"Displays the currently installed binary version and compilation tags of the "
+"sing-box core."
+
+#: src/ui/pages/settings_page.ui:389
 msgid "Logging level"
 msgstr "Logging level"
 
-#: src/ui/pages/settings_page.ui:372 src/window.rs:498
+#: src/ui/pages/settings_page.ui:390
+msgid "Verbosity of core output messages"
+msgstr "Verbosity of core output messages"
+
+#: src/ui/pages/settings_page.ui:391
+msgid ""
+"Controls how detailed the core log messages are: Error (critical only), "
+"Warning (potential issues), Info (standard connection events), Debug "
+"(detailed packet diagnostics)."
+msgstr ""
+"Controls how detailed the core log messages are: Error (critical only), "
+"Warning (potential issues), Info (standard connection events), Debug "
+"(detailed packet diagnostics)."
+
+#: src/ui/pages/settings_page.ui:395 src/window.rs:543 src/ui/components/log_window.rs:149
 msgid "Error"
 msgstr "Error"
 
-#: src/ui/pages/settings_page.ui:373
+#: src/ui/pages/settings_page.ui:396 src/ui/components/log_window.rs:150
 msgid "Warning"
 msgstr "Warning"
 
-#: src/ui/pages/settings_page.ui:374
+#: src/ui/pages/settings_page.ui:397 src/ui/components/log_window.rs:151
 msgid "Info"
 msgstr "Info"
 
-#: src/ui/pages/settings_page.ui:375
+#: src/ui/pages/settings_page.ui:398 src/ui/components/log_window.rs:152
 msgid "Debug"
 msgstr "Debug"
 
-#: src/ui/pages/settings_page.ui:386
+#: src/ui/pages/settings_page.ui:409
 msgid "View logs"
 msgstr "View logs"
 
-#: src/ui/pages/settings_page.ui:387
-msgid "Open console with real-time logs"
-msgstr "Open console with real-time logs"
+#: src/ui/pages/settings_page.ui:410
+msgid "Open real-time console log viewer"
+msgstr "Open real-time console log viewer"
 
-#: src/ui/pages/settings_page.ui:402
+#: src/ui/pages/settings_page.ui:411
+msgid ""
+"Opens the integrated live log viewer window with real-time filtering, pause, "
+"search, and export options."
+msgstr ""
+"Opens the integrated live log viewer window with real-time filtering, pause, "
+"search, and export options."
+
+#: src/ui/pages/settings_page.ui:426
 msgid "Open logs folder"
 msgstr "Open logs folder"
 
-#: src/ui/pages/settings_page.ui:403
-msgid "Open system folder with log files"
-msgstr "Open system folder with log files"
+#: src/ui/pages/settings_page.ui:427
+msgid "Open system directory containing log files"
+msgstr "Open system directory containing log files"
 
-#: src/ui/pages/settings_page.ui:425
+#: src/ui/pages/settings_page.ui:428
+msgid ""
+"Opens the local system directory containing persistent log files in your "
+"file manager."
+msgstr ""
+"Opens the local system directory containing persistent log files in your "
+"file manager."
+
+#: src/ui/pages/settings_page.ui:447
+msgid "Backup"
+msgstr "Backup"
+
+#: src/ui/pages/settings_page.ui:448
+msgid "Export and import application settings and VPN profiles"
+msgstr "Export and import application settings and VPN profiles"
+
+#: src/ui/pages/settings_page.ui:453
+msgid "Import settings"
+msgstr "Import settings"
+
+#: src/ui/pages/settings_page.ui:454
+msgid "Restore settings and profiles from a backup file"
+msgstr "Restore settings and profiles from a backup file"
+
+#: src/ui/pages/settings_page.ui:455
+msgid ""
+"Loads application settings, custom routing rules, and VPN profiles from a "
+"JSON backup file."
+msgstr ""
+"Loads application settings, custom routing rules, and VPN profiles from a "
+"JSON backup file."
+
+#: src/ui/pages/settings_page.ui:470
+msgid "Export settings"
+msgstr "Export settings"
+
+#: src/ui/pages/settings_page.ui:471
+msgid "Save current configuration and profiles to a backup file"
+msgstr "Save current configuration and profiles to a backup file"
+
+#: src/ui/pages/settings_page.ui:472
+msgid ""
+"Exports all application settings, routing rules, and VPN profiles to a "
+"portable JSON backup file."
+msgstr ""
+"Exports all application settings, routing rules, and VPN profiles to a "
+"portable JSON backup file."
+
+#: src/ui/pages/settings_page.ui:491
+msgid "Danger Zone"
+msgstr "Danger Zone"
+
+#: src/ui/pages/settings_page.ui:492
+msgid "Irreversible actions and complete configuration reset"
+msgstr "Irreversible actions and complete configuration reset"
+
+#: src/ui/pages/settings_page.ui:497
 msgid "Reset settings"
 msgstr "Reset settings"
 
-#: src/ui/pages/settings_page.ui:426
-msgid "Delete all saved data (danger zone)"
-msgstr "Delete all saved data (danger zone)"
+#: src/ui/pages/settings_page.ui:498
+msgid "Erase all profiles and restore factory defaults"
+msgstr "Erase all profiles and restore factory defaults"
 
-#: src/ui/pages/vpn_page.rs:180
+#: src/ui/pages/settings_page.ui:499
+msgid ""
+"Permanently erases all saved VPN keys, custom rules, and configuration "
+"settings, returning the application to its default state."
+msgstr ""
+"Permanently erases all saved VPN keys, custom rules, and configuration "
+"settings, returning the application to its default state."
+
+#: src/ui/pages/vpn_page.rs:186
 msgid "No VPN Connections"
 msgstr "No VPN Connections"
 
-#: src/ui/pages/vpn_page.rs:182
+#: src/ui/pages/vpn_page.rs:188
 msgid "Add a new connection using the buttons above to get started."
 msgstr "Add a new connection using the buttons above to get started."
 
-#: src/ui/pages/vpn_page.rs:284
+#: src/ui/pages/vpn_page.rs:290
 msgid "Please wait before pinging again"
 msgstr "Please wait before pinging again"
 
-#: src/ui/pages/vpn_page.rs:292
+#: src/ui/pages/vpn_page.rs:298 src/ui/pages/vpn_page.rs:1021
+#: src/ui/pages/vpn_page.rs:1042 src/ui/pages/vpn_page.rs:1060
 msgid "pinging..."
 msgstr "pinging..."
 
-#: src/ui/pages/vpn_page.rs:463 src/ui/pages/vpn_page.rs:465
-#: src/ui/pages/vpn_page.rs:934 src/window.rs:471 src/window.rs:536
+#: src/ui/pages/vpn_page.rs:465 src/ui/pages/vpn_page.rs:467
+#: src/ui/pages/vpn_page.rs:931 src/window.rs:516 src/window.rs:581
 #: src/window.ui:207
 msgid "Connected"
 msgstr "Connected"
@@ -1033,11 +1691,11 @@ msgstr "Connected"
 msgid "Disconnected"
 msgstr "Disconnected"
 
-#: src/ui/pages/vpn_page.rs:517 src/ui/pages/vpn_page.rs:779 src/window.rs:480
+#: src/ui/pages/vpn_page.rs:517 src/ui/pages/vpn_page.rs:780 src/window.rs:525
 msgid "Connecting..."
 msgstr "Connecting..."
 
-#: src/ui/pages/vpn_page.rs:523 src/window.rs:482
+#: src/ui/pages/vpn_page.rs:523 src/window.rs:527
 msgid "Disconnecting..."
 msgstr "Disconnecting..."
 
@@ -1061,31 +1719,31 @@ msgstr "Core process unexpectedly terminated. Log details"
 msgid "OK"
 msgstr "OK"
 
-#: src/ui/pages/vpn_page.rs:732
+#: src/ui/pages/vpn_page.rs:733
 msgid "Please wait before switching keys"
 msgstr "Please wait before switching keys"
 
-#: src/ui/pages/vpn_page.rs:795
+#: src/ui/pages/vpn_page.rs:793
 msgid "Configuration error"
 msgstr "Configuration error"
 
-#: src/ui/pages/vpn_page.rs:799
+#: src/ui/pages/vpn_page.rs:797
 msgid "Invalid Key Format"
 msgstr "Invalid Key Format"
 
-#: src/ui/pages/vpn_page.rs:800
+#: src/ui/pages/vpn_page.rs:798
 msgid "Failed to parse VPN key URL"
 msgstr "Failed to parse VPN key URL"
 
-#: src/ui/pages/vpn_page.rs:815
+#: src/ui/pages/vpn_page.rs:813
 msgid "Invalid Key"
 msgstr "Invalid Key"
 
-#: src/ui/pages/vpn_page.rs:820
+#: src/ui/pages/vpn_page.rs:818
 msgid "Key Validation Error"
 msgstr "Key Validation Error"
 
-#: src/ui/pages/vpn_page.rs:821
+#: src/ui/pages/vpn_page.rs:819
 msgid ""
 "The VPN key parameters are invalid or corrupted (e.g. invalid UUID, missing "
 "Reality public key or SNI)."
@@ -1093,11 +1751,11 @@ msgstr ""
 "The VPN key parameters are invalid or corrupted (e.g. invalid UUID, missing "
 "Reality public key or SNI)."
 
-#: src/ui/pages/vpn_page.rs:866
+#: src/ui/pages/vpn_page.rs:861
 msgid "Core startup error"
 msgstr "Core startup error"
 
-#: src/ui/pages/vpn_page.rs:962 src/ui/pages/vpn_page.rs:1025
+#: src/ui/pages/vpn_page.rs:962 src/ui/pages/vpn_page.rs:1126
 msgid "error"
 msgstr "error"
 
@@ -1129,127 +1787,59 @@ msgstr "Local proxy error"
 msgid "Test request through proxy failed"
 msgstr "Test request through proxy failed"
 
-#: src/ui/pages/vpn_page.rs:1019
+#: src/ui/pages/vpn_page.rs:1120
 msgid "timeout"
 msgstr "timeout"
 
-#: src/ui/pages/vpn_page.rs:1023
+#: src/ui/pages/vpn_page.rs:1124
 msgid "auth error"
 msgstr "auth error"
 
-#: src/ui/pages/vpn_page.rs:1175 src/ui/pages/vpn_page.rs:1278
+#: src/ui/pages/vpn_page.rs:1276
 msgid "Server address"
 msgstr "Server address"
 
-#: src/ui/pages/vpn_page.rs:1177
+#: src/ui/pages/vpn_page.rs:1278
 msgid "Location"
 msgstr "Location"
 
-#: src/ui/pages/vpn_page.rs:1179
+#: src/ui/pages/vpn_page.rs:1280
 msgid "Timezone"
 msgstr "Timezone"
 
-#: src/ui/pages/vpn_page.rs:1194
+#: src/ui/pages/vpn_page.rs:1295
 msgid "Network"
 msgstr "Network"
 
-#: src/ui/pages/vpn_page.rs:1197
+#: src/ui/pages/vpn_page.rs:1298
 msgid "Security"
 msgstr "Security"
 
-#: src/ui/pages/vpn_page.rs:1210
+#: src/ui/pages/vpn_page.rs:1302
+msgid "SNI"
+msgstr "SNI"
+
+#: src/ui/pages/vpn_page.rs:1305
+msgid "Fingerprint"
+msgstr "Fingerprint"
+
+#: src/ui/pages/vpn_page.rs:1311
 msgid "Public key"
 msgstr "Public key"
 
-#: src/ui/pages/vpn_page.rs:1266
-msgid "Edit VPN key"
-msgstr "Edit VPN key"
-
-#: src/ui/pages/vpn_page.rs:1270
-msgid "Name"
-msgstr "Name"
-
-#: src/ui/pages/vpn_page.rs:1286
-msgid "UUID / Password"
-msgstr "UUID / Password"
-
-#: src/ui/pages/vpn_page.rs:1296
-msgid "Connection"
-msgstr "Connection"
-
-#: src/ui/pages/vpn_page.rs:1366
+#: src/ui/pages/vpn_page.rs:1387
 msgid "Delete VPN key"
 msgstr "Delete VPN key"
 
-#: src/ui/pages/vpn_page.rs:1369
+#: src/ui/pages/vpn_page.rs:1390
 msgid "Are you sure you want to delete"
 msgstr "Are you sure you want to delete"
 
-#: src/ui/pages/vpn_page.rs:1375
+#: src/ui/pages/vpn_page.rs:1396
 msgid "Delete"
 msgstr "Delete"
 
-#: src/ui/pages/vpn_page.rs:1461
-msgid "Add VPN Profile"
-msgstr "Add VPN Profile"
-
-#: src/ui/pages/vpn_page.rs:1466
-msgid "Quick Import from Link"
-msgstr "Quick Import from Link"
-
-#: src/ui/pages/vpn_page.rs:1470
-msgid "VPN Link (vless://, vmess://, etc.)"
-msgstr "VPN Link (vless://, vmess://, etc.)"
-
-#: src/ui/pages/vpn_page.rs:1508
-msgid "Server address / Host"
-msgstr "Server address / Host"
-
-#: src/ui/pages/vpn_page.rs:1515
-msgid "UUID / Password / Key"
-msgstr "UUID / Password / Key"
-
-#: src/ui/pages/vpn_page.rs:1532
-msgid "Test Connection"
-msgstr "Test Connection"
-
-#: src/ui/pages/vpn_page.rs:1537
-msgid "Ready"
-msgstr "Ready"
-
-#: src/ui/pages/vpn_page.rs:1549
-msgid "Security Mode (reality/tls/none)"
-msgstr "Security Mode (reality/tls/none)"
-
-#: src/ui/pages/vpn_page.rs:1552
-msgid "SNI / Server Name"
-msgstr "SNI / Server Name"
-
-#: src/ui/pages/vpn_page.rs:1555
-msgid "Reality Public Key (pbk)"
-msgstr "Reality Public Key (pbk)"
-
-#: src/ui/pages/vpn_page.rs:1558
-msgid "Fingerprint (uTLS)"
-msgstr "Fingerprint (uTLS)"
-
-#: src/ui/pages/vpn_page.rs:1561
-msgid "Flow (e.g. xtls-rprx-vision)"
-msgstr "Flow (e.g. xtls-rprx-vision)"
-
-#: src/ui/pages/vpn_page.rs:1670
-msgid "Enter host address first"
-msgstr "Enter host address first"
-
-#: src/ui/pages/vpn_page.rs:1716
-msgid "Add Profile"
-msgstr "Add Profile"
-
-#: src/ui/pages/vpn_page.rs:1717
-msgid "Add and Connect"
-msgstr "Add and Connect"
-
-#: src/ui/pages/vpn_page.rs:1870
+#: src/ui/pages/vpn_page.rs:1575
 msgid "Please wait before disconnecting again"
 msgstr "Please wait before disconnecting again"
 
@@ -1265,263 +1855,43 @@ msgstr "Import from link"
 msgid "Import from clipboard"
 msgstr "Import from clipboard"
 
-#: src/ui/pages/vpn_page.ui:87 src/window.ui:517
+#: src/ui/pages/vpn_page.ui:76
+msgid "Ping all keys"
+msgstr "Ping all keys"
+
+#: src/ui/pages/vpn_page.ui:96 src/window.ui:520
 msgid "Disconnect"
 msgstr "Disconnect"
 
-#: src/ui/pages/vpn_page.ui:105
+#: src/ui/pages/vpn_page.ui:114
 msgid "Connection list"
 msgstr "Connection list"
 
-#: src/ui/qr_dialog.rs:177 src/ui/qr_dialog.ui:110
-msgid "Show QR Code"
-msgstr "Show QR Code"
+#: src/ui/tests.rs:206
+msgid "Add Profile"
+msgstr "Add Profile"
 
-#: src/ui/qr_dialog.rs:184
-msgid "Hide QR Code"
-msgstr "Hide QR Code"
+#: src/ui/tests.rs:208
+msgid "Add and Connect"
+msgstr "Add and Connect"
 
-#. / Отображает интерактивный модальный диалог `AdwAlertDialog` с QR-кодом и опциями шеринга.
-#. /
-#. / Возможности:
-#. / - Декларативная разметка в `src/ui/qr_dialog.ui`
-#. / - Защита приватности с эффектом размытия (Privacy Blur)
-#. / - Кнопка «Ссылка»: копирование URI в буфер обмена
-#. / - Кнопка «JSON»: парсинг и копирование JSON-конфигурации
-#. / - Кнопка «Сохранить QR»: экспорт в файлы PNG или SVG через `gtk::FileDialog`
-#: src/ui/qr_dialog.rs:207
-msgid "Share Profile"
-msgstr "Share Profile"
-
-#: src/ui/qr_dialog.rs:224 src/ui/qr_dialog.rs:228
-msgid "Failed to generate QR code"
-msgstr "Failed to generate QR code"
-
-#: src/ui/qr_dialog.rs:239
-msgid "Link copied to clipboard"
-msgstr "Link copied to clipboard"
-
-#: src/ui/qr_dialog.rs:250
-msgid "JSON copied to clipboard"
-msgstr "JSON copied to clipboard"
-
-#: src/ui/qr_dialog.rs:254
-msgid "Failed to generate JSON for key"
-msgstr "Failed to generate JSON for key"
-
-#: src/ui/qr_dialog.rs:269
-msgid "Save QR Code As"
-msgstr "Save QR Code As"
-
-#: src/ui/qr_dialog.rs:273
-msgid "PNG Image (*.png)"
-msgstr "PNG Image (*.png)"
-
-#: src/ui/qr_dialog.rs:278
-msgid "SVG Vector (*.svg)"
-msgstr "SVG Vector (*.svg)"
-
-#: src/ui/qr_dialog.rs:331
-msgid "QR code saved successfully"
-msgstr "QR code saved successfully"
-
-#: src/ui/qr_dialog.rs:337
-msgid "Failed to save QR code"
-msgstr "Failed to save QR code"
-
-#: src/ui/qr_dialog.ui:158
-msgid "Copy Link"
-msgstr "Copy Link"
-
-#: src/ui/qr_dialog.ui:170
-msgid "Link"
-msgstr "Link"
-
-#: src/ui/qr_dialog.ui:181
-msgid "Copy JSON"
-msgstr "Copy JSON"
-
-#: src/ui/qr_dialog.ui:193
-msgid "JSON"
-msgstr "JSON"
-
-#: src/ui/qr_dialog.ui:204
-msgid "Save QR Code as..."
-msgstr "Save QR Code as..."
-
-#: src/ui/qr_dialog.ui:216
-msgid "Save QR"
-msgstr "Save QR"
-
-#: src/ui/rule_dialog.rs:146
-msgid ""
-"Matches exact IP address or CIDR subnet (e.g. 192.168.1.50 or 10.0.0.0/24)"
-msgstr ""
-"Matches exact IP address or CIDR subnet (e.g. 192.168.1.50 or 10.0.0.0/24)"
-
-#: src/ui/rule_dialog.rs:149
-msgid "IP Address or CIDR Subnet"
-msgstr "IP Address or CIDR Subnet"
-
-#: src/ui/rule_dialog.rs:153
-msgid ""
-"Remote binary compiled rule-set URL (e.g. https://example.com/ruleset.srs)"
-msgstr ""
-"Remote binary compiled rule-set URL (e.g. https://example.com/ruleset.srs)"
-
-#: src/ui/rule_dialog.rs:156
-msgid "Rule-Set URL (.srs)"
-msgstr "Rule-Set URL (.srs)"
-
-#: src/ui/rule_dialog.rs:160
-msgid ""
-"Matches domain and all its subdomains (e.g. example.com matches example.com "
-"and sub.example.com; .org matches all .org domains)"
-msgstr ""
-"Matches domain and all its subdomains (e.g. example.com matches example.com "
-"and sub.example.com; .org matches all .org domains)"
-
-#: src/ui/rule_dialog.rs:163
-msgid "Domain Name or Suffix"
-msgstr "Domain Name or Suffix"
-
-#: src/ui/rule_dialog.rs:206
-msgid "Please enter a rule value"
-msgstr "Please enter a rule value"
-
-#: src/ui/rule_dialog.rs:218
-msgid "Value contains forbidden control characters or quotes"
-msgstr "Value contains forbidden control characters or quotes"
-
-#: src/ui/rule_dialog.rs:229
-msgid ""
-"Invalid domain format. Enter domain name without protocol or path (e.g. "
-"example.com or .org)"
-msgstr ""
-"Invalid domain format. Enter domain name without protocol or path (e.g. "
-"example.com or .org)"
-
-#: src/ui/rule_dialog.rs:238
-msgid ""
-"Domain contains invalid characters. Use letters, numbers, dots and hyphens"
-msgstr ""
-"Domain contains invalid characters. Use letters, numbers, dots and hyphens"
-
-#: src/ui/rule_dialog.rs:250
-msgid ""
-"CIDR subnet prefix length exceeds valid range (0-32 for IPv4, 0-128 for IPv6)"
-msgstr ""
-"CIDR subnet prefix length exceeds valid range (0-32 for IPv4, 0-128 for IPv6)"
-
-#: src/ui/rule_dialog.rs:254
-msgid "Invalid CIDR prefix format"
-msgstr "Invalid CIDR prefix format"
-
-#: src/ui/rule_dialog.rs:257
-msgid "Invalid IP address in CIDR expression"
-msgstr "Invalid IP address in CIDR expression"
-
-#: src/ui/rule_dialog.rs:261
-msgid "Invalid IP address format (e.g. 192.168.1.1 or 10.0.0.0/24)"
-msgstr "Invalid IP address format (e.g. 192.168.1.1 or 10.0.0.0/24)"
-
-#: src/ui/rule_dialog.rs:268
-msgid "Rule-Set URL must start with http:// or https://"
-msgstr "Rule-Set URL must start with http:// or https://"
-
-#: src/ui/rule_dialog.rs:272
-msgid "URL must not contain spaces"
-msgstr "URL must not contain spaces"
-
-#: src/ui/rule_dialog.ui:58
-msgid "How routing rules work"
-msgstr "How routing rules work"
-
-#: src/ui/rule_dialog.ui:59
-msgid "Examples and instructions for custom routing"
-msgstr "Examples and instructions for custom routing"
-
-#: src/ui/rule_dialog.ui:68 src/ui/tests.rs:161
-msgid "Direct Bypass (Direct Connection)"
-msgstr "Direct Bypass (Direct Connection)"
-
-#: src/ui/rule_dialog.ui:69
-msgid ""
-"Useful for domestic or trusted services to connect directly without exposing "
-"VPN IP."
-msgstr ""
-"Useful for domestic or trusted services to connect directly without exposing "
-"VPN IP."
-
-#: src/ui/rule_dialog.ui:75
-msgid "VPN Tunnel (Proxy)"
-msgstr "VPN Tunnel (Proxy)"
-
-#: src/ui/rule_dialog.ui:76
-msgid ""
-"Routes specific websites or IP ranges through your active encrypted VPN "
-"tunnel."
-msgstr ""
-"Routes specific websites or IP ranges through your active encrypted VPN "
-"tunnel."
-
-#: src/ui/rule_dialog.ui:92
-msgid "Description (Optional)"
-msgstr "Description (Optional)"
-
-#: src/ui/rule_dialog.ui:100
-msgid "Rule Type"
-msgstr "Rule Type"
-
-#: src/ui/rule_dialog.ui:104
-msgid "Domain / Subdomains (e.g. example.com, .org)"
-msgstr "Domain / Subdomains (e.g. example.com, .org)"
-
-#: src/ui/rule_dialog.ui:105
-msgid "IP Address / CIDR (e.g. 192.168.1.1, 10.0.0.0/24)"
-msgstr "IP Address / CIDR (e.g. 192.168.1.1, 10.0.0.0/24)"
-
-#: src/ui/rule_dialog.ui:106
-msgid "Rule-Set (.srs URL)"
-msgstr "Rule-Set (.srs URL)"
-
-#: src/ui/rule_dialog.ui:117
-msgid "Value (Domain, IP, or URL)"
-msgstr "Value (Domain, IP, or URL)"
-
-#: src/ui/rule_dialog.ui:125
-msgid "Action"
-msgstr "Action"
-
-#: src/ui/rule_dialog.ui:129
-msgid "Direct (Bypass VPN)"
-msgstr "Direct (Bypass VPN)"
-
-#: src/ui/rule_dialog.ui:130
-msgid "Proxy (Route via VPN)"
-msgstr "Proxy (Route via VPN)"
-
-#: src/ui/rule_dialog.ui:131
-msgid "Block (Reject Connection)"
-msgstr "Block (Reject Connection)"
-
-#: src/window.rs:393
+#: src/window.rs:438
 msgid "Unknown Location"
 msgstr "Unknown Location"
 
-#: src/window.rs:415
+#: src/window.rs:460
 msgid "TUN Mode"
 msgstr "TUN Mode"
 
-#: src/window.rs:417
+#: src/window.rs:462
 msgid "Proxy Mode"
 msgstr "Proxy Mode"
 
-#: src/window.rs:422 src/window.rs:544
+#: src/window.rs:467 src/window.rs:589
 msgid "Ping"
 msgstr "Ping"
 
-#: src/window.rs:500
+#: src/window.rs:545
 msgid "Connection Error"
 msgstr "Connection Error"
 
@@ -1533,231 +1903,194 @@ msgstr "Vrxx"
 msgid "VPN Keys"
 msgstr "VPN Keys"
 
-#: src/window.ui:272
+#: src/window.ui:275
 msgid "Active Connection"
 msgstr "Active Connection"
 
-#: src/window.ui:542
+#: src/window.ui:547
 msgid "Content"
 msgstr "Content"
 
-#: src/ui/menus.ui:56
-msgid "_Close Window"
-msgstr "_Close Window"
+#: src/ui/components/log_window.rs:148
+msgid "All levels"
+msgstr "All levels"
 
-#: src/application.rs:426
-msgid "Quit Vrxx"
-msgstr "Quit Vrxx"
+#: src/ui/components/log_window.ui:45
+msgid "Sort: Chronological"
+msgstr "Sort: Chronological"
 
-#: src/application.rs:427
-msgid ""
-"This will disconnect any active VPN connection and terminate both the "
-"application and the background service."
-msgstr ""
-"This will disconnect any active VPN connection and terminate both the "
-"application and the background service."
+#: src/ui/components/log_window.ui:49
+msgid "Sort: By Severity (Errors first)"
+msgstr "Sort: By Severity (Errors first)"
 
-#: src/application.rs:431
-msgid "Quit"
-msgstr "Quit"
+#: src/ui/components/log_window.ui:53
+msgid "Sort: Newest First"
+msgstr "Sort: Newest First"
 
-#: src/ui/pages/settings_page.ui:85
-msgid "Application interface, startup, and notification preferences"
-msgstr "Application interface, startup, and notification preferences"
+#: src/ui/components/log_window.ui:111
+msgid "Filter by source"
+msgstr "Filter by source"
 
-#: src/ui/pages/settings_page.ui:90
-msgid "Select the interface language. Changing the language requires restarting the application."
-msgstr "Select the interface language. Changing the language requires restarting the application."
+#: src/ui/components/log_window.ui:118
+msgid "Filter by log level"
+msgstr "Filter by log level"
 
-#: src/ui/pages/settings_page.ui:105
-msgid "Starts VRXX in the background minimized when your system boots up."
-msgstr "Starts VRXX in the background minimized when your system boots up."
+#: src/ui/components/log_window.rs:882
+msgid "Save Logs As"
+msgstr "Save Logs As"
 
-#: src/ui/pages/settings_page.ui:113
-msgid "Automatically connects to the last active VPN server when the application starts."
-msgstr "Automatically connects to the last active VPN server when the application starts."
+#: src/ui/components/log_window.rs:886
+msgid "Text File (*.txt)"
+msgstr "Text File (*.txt)"
 
-#: src/ui/pages/settings_page.ui:120
-msgid "Show desktop notifications on connection events"
-msgstr "Show desktop notifications on connection events"
+#: src/ui/components/log_window.rs:891
+msgid "Log File (*.log)"
+msgstr "Log File (*.log)"
 
-#: src/ui/pages/settings_page.ui:121
-msgid "Displays system notifications when connection status changes or when errors occur."
-msgstr "Displays system notifications when connection status changes or when errors occur."
+#~ msgid "Shortcuts"
+#~ msgstr "Shortcuts"
 
-#: src/ui/pages/settings_page.ui:129
-msgid "Masks IP addresses, server domains, and configuration keys in the interface to prevent accidental exposure during screen recording or live streaming."
-msgstr "Masks IP addresses, server domains, and configuration keys in the interface to prevent accidental exposure during screen recording or live streaming."
+#~ msgid ""
+#~ "A VPN profile configuration link was received. Would you like to import "
+#~ "it?"
+#~ msgstr ""
+#~ "A VPN profile configuration link was received. Would you like to import "
+#~ "it?"
 
-#: src/ui/pages/settings_page.ui:137
-msgid "Network and Core"
-msgstr "Network and Core"
+#~ msgid "Import Profile"
+#~ msgstr "Import Profile"
 
-#: src/ui/pages/settings_page.ui:138
-msgid "Core protocol engine parameters and transparent traffic routing"
-msgstr "Core protocol engine parameters and transparent traffic routing"
+#~ msgid "Show notifications on connection status change"
+#~ msgstr "Show notifications on connection status change"
 
-#: src/ui/pages/settings_page.ui:143
-msgid "Route all system traffic through virtual adapter (requires root)"
-msgstr "Route all system traffic through virtual adapter (requires root)"
+#~ msgid ""
+#~ "Hides IP addresses, domain names, and secret URLs in the interface to "
+#~ "prevent accidental disclosure during screen sharing or streaming."
+#~ msgstr ""
+#~ "Hides IP addresses, domain names, and secret URLs in the interface to "
+#~ "prevent accidental disclosure during screen sharing or streaming."
 
-#: src/ui/pages/settings_page.ui:144
-msgid "Creates a virtual network card (vrxx-tun) to route all system traffic transparently, without needing proxy settings in individual apps."
-msgstr "Creates a virtual network card (vrxx-tun) to route all system traffic transparently, without needing proxy settings in individual apps."
+#~ msgid "Core"
+#~ msgstr "Core"
 
-#: src/ui/pages/settings_page.ui:151
-msgid "Extract destination domain from TLS SNI and HTTP headers"
-msgstr "Extract destination domain from TLS SNI and HTTP headers"
+#~ msgid "Select the routing engine used for connection"
+#~ msgstr "Select the routing engine used for connection"
 
-#: src/ui/pages/settings_page.ui:152
-msgid "Inspects outgoing packets to identify actual domain names for accurate routing and bypass rules."
-msgstr "Inspects outgoing packets to identify actual domain names for accurate routing and bypass rules."
+#~ msgid "Network and Routing"
+#~ msgstr "Network and Routing"
 
-#: src/ui/pages/settings_page.ui:159
-msgid "Force browsers to use TCP to prevent connection drops"
-msgstr "Force browsers to use TCP to prevent connection drops"
+#~ msgid "Requires root privileges"
+#~ msgstr "Requires root privileges"
 
-#: src/ui/pages/settings_page.ui:160
-msgid "Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and Firefox to use TCP. Prevents streaming buffering and connection stalls on restricted networks."
-msgstr "Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and Firefox to use TCP. Prevents streaming buffering and connection stalls on restricted networks."
+#~ msgid ""
+#~ "Creates a virtual network interface to route all system traffic "
+#~ "transparently, bypassing application-specific proxy settings."
+#~ msgstr ""
+#~ "Creates a virtual network interface to route all system traffic "
+#~ "transparently, bypassing application-specific proxy settings."
 
-#: src/ui/pages/settings_page.ui:168
-msgid "Directs local network subnets (192.168.x.x, 10.x.x.x, local printers, smart home devices) directly to your local router instead of through the VPN tunnel."
-msgstr "Directs local network subnets (192.168.x.x, 10.x.x.x, local printers, smart home devices) directly to your local router instead of through the VPN tunnel."
+#~ msgid "Determine domain from traffic (required for routing)"
+#~ msgstr "Determine domain from traffic (required for routing)"
 
-#: src/ui/pages/settings_page.ui:176
-msgid "Return synthetic local IPs for ultra-fast domain resolution"
-msgstr "Return synthetic local IPs for ultra-fast domain resolution"
+#~ msgid ""
+#~ "Inspects encrypted SNI and HTTP headers from traffic to identify "
+#~ "destination domains for accurate rule matching."
+#~ msgstr ""
+#~ "Inspects encrypted SNI and HTTP headers from traffic to identify "
+#~ "destination domains for accurate rule matching."
 
-#: src/ui/pages/settings_page.ui:177
-msgid "Assigns synthetic IP addresses (198.18.0.0/15) locally for instant response, while resolving real IPs on the remote proxy server. Speeds up connection opening significantly."
-msgstr "Assigns synthetic IP addresses (198.18.0.0/15) locally for instant response, while resolving real IPs on the remote proxy server. Speeds up connection opening significantly."
+#~ msgid "Disables HTTP/3 over UDP to force TCP and prevent VPN drops"
+#~ msgstr "Disables HTTP/3 over UDP to force TCP and prevent VPN drops"
 
-#: src/ui/pages/settings_page.ui:185
-msgid "Advanced Connection"
-msgstr "Advanced Connection"
+#~ msgid ""
+#~ "Blocks QUIC (UDP 443) traffic, forcing browsers like Chrome to use TCP. "
+#~ "Prevents connection drops on restricted networks."
+#~ msgstr ""
+#~ "Blocks QUIC (UDP 443) traffic, forcing browsers like Chrome to use TCP. "
+#~ "Prevents connection drops on restricted networks."
 
-#: src/ui/pages/settings_page.ui:186
-msgid "TCP stream multiplexing and connection optimization"
-msgstr "TCP stream multiplexing and connection optimization"
+#~ msgid "Download latest geoip and geosite data"
+#~ msgstr "Download latest geoip and geosite data"
 
-#: src/ui/pages/settings_page.ui:191
-msgid "Combine multiple TCP streams into a single connection (h2mux)"
-msgstr "Combine multiple TCP streams into a single connection (h2mux)"
+#~ msgid ""
+#~ "Directs traffic for local network addresses (192.168.x.x, 10.x.x.x, local "
+#~ "printers) away from the VPN so local devices remain accessible."
+#~ msgstr ""
+#~ "Directs traffic for local network addresses (192.168.x.x, 10.x.x.x, local "
+#~ "printers) away from the VPN so local devices remain accessible."
 
-#: src/ui/pages/settings_page.ui:192
-msgid "Reuses a single persistent TCP connection for multiple streams, reducing latency when opening many connections simultaneously. May cause jitter on high-packet-loss networks."
-msgstr "Reuses a single persistent TCP connection for multiple streams, reducing latency when opening many connections simultaneously. May cause jitter on high-packet-loss networks."
+#~ msgid "Return fake IPs (improves speed but breaks some apps)"
+#~ msgstr "Return fake IPs (improves speed but breaks some apps)"
 
-#: src/ui/pages/settings_page.ui:199
-msgid "Maximum concurrent multiplexed streams (1–128)"
-msgstr "Maximum concurrent multiplexed streams (1–128)"
+#~ msgid ""
+#~ "Returns synthetic local IP addresses (198.18.0.0/15) for fast domain "
+#~ "responses while resolving real target IPs remotely on the proxy server."
+#~ msgstr ""
+#~ "Returns synthetic local IP addresses (198.18.0.0/15) for fast domain "
+#~ "responses while resolving real target IPs remotely on the proxy server."
 
-#: src/ui/pages/settings_page.ui:200
-msgid "Defines how many concurrent streams can be transmitted simultaneously over one TCP connection. Default value is 8."
-msgstr "Defines how many concurrent streams can be transmitted simultaneously over one TCP connection. Default value is 8."
+#~ msgid "Advanced Settings"
+#~ msgstr "Advanced Settings"
 
-#: src/ui/pages/settings_page.ui:216
-msgid "Geo Data"
-msgstr "Geo Data"
+#~ msgid "Speeds up connections but may cause instability"
+#~ msgstr "Speeds up connections but may cause instability"
 
-#: src/ui/pages/settings_page.ui:217
-msgid "Precompiled binary rule-sets (GeoIP and GeoSite) for domain and IP routing"
-msgstr "Precompiled binary rule-sets (GeoIP and GeoSite) for domain and IP routing"
+#~ msgid ""
+#~ "Reduces handshake latency by reusing a single TCP connection for multiple "
+#~ "streams. May increase jitter or trigger DPI traffic detection."
+#~ msgstr ""
+#~ "Reduces handshake latency by reusing a single TCP connection for multiple "
+#~ "streams. May increase jitter or trigger DPI traffic detection."
 
-#: src/ui/pages/settings_page.ui:222
-msgid "Download latest GeoIP and GeoSite binary rule-sets (.srs)"
-msgstr "Download latest GeoIP and GeoSite binary rule-sets (.srs)"
+#~ msgid "Load profiles and settings from file"
+#~ msgstr "Load profiles and settings from file"
 
-#: src/ui/pages/settings_page.ui:223
-msgid "Fetches the latest compiled binary rule-sets for GeoIP and GeoSite databases to keep regional bypass lists up to date."
-msgstr "Fetches the latest compiled binary rule-sets for GeoIP and GeoSite databases to keep regional bypass lists up to date."
+#~ msgid "Save current configuration to file"
+#~ msgstr "Save current configuration to file"
 
-#: src/ui/pages/settings_page.ui:232
-msgid "Download latest geo-databases now"
-msgstr "Download latest geo-databases now"
+#~ msgid "Method used for measuring server latency"
+#~ msgstr "Method used for measuring server latency"
 
-#: src/ui/pages/settings_page.ui:250
-msgid "Methods and parameters for measuring server response time"
-msgstr "Methods and parameters for measuring server response time"
+#~ msgid "Open console with real-time logs"
+#~ msgstr "Open console with real-time logs"
 
-#: src/ui/pages/settings_page.ui:255
-msgid "Method used for measuring server response time"
-msgstr "Method used for measuring server response time"
+#~ msgid "Open system folder with log files"
+#~ msgstr "Open system folder with log files"
 
-#: src/ui/pages/settings_page.ui:256
-msgid "Choose measurement method: TCP Handshake (fast, connects to port), ICMP Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test through tunnel)."
-msgstr "Choose measurement method: TCP Handshake (fast, connects to port), ICMP Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test through tunnel)."
+#~ msgid "Delete all saved data (danger zone)"
+#~ msgstr "Delete all saved data (danger zone)"
 
-#: src/ui/pages/settings_page.ui:274
-msgid "The lightweight URL requested during HTTP proxy latency measurements (default is Google generate_204)."
-msgstr "The lightweight URL requested during HTTP proxy latency measurements (default is Google generate_204)."
+#~ msgid "Name"
+#~ msgstr "Name"
 
-#: src/ui/pages/settings_page.ui:283
-msgid "Core version information, logs, and troubleshooting tools"
-msgstr "Core version information, logs, and troubleshooting tools"
+#~ msgid "Connection"
+#~ msgstr "Connection"
 
-#: src/ui/pages/settings_page.ui:289
-msgid "Displays the currently installed binary version and compilation tags of the sing-box core."
-msgstr "Displays the currently installed binary version and compilation tags of the sing-box core."
+#~ msgid ""
+#~ "Creates a virtual network card (vrxx-tun) to route all system traffic "
+#~ "transparently, without needing proxy settings in individual apps."
+#~ msgstr ""
+#~ "Creates a virtual network card (vrxx-tun) to route all system traffic "
+#~ "transparently, without needing proxy settings in individual apps."
 
-#: src/ui/pages/settings_page.ui:296
-msgid "Verbosity of core output messages"
-msgstr "Verbosity of core output messages"
+#~ msgid ""
+#~ "Reuses a single persistent TCP connection for multiple streams, reducing "
+#~ "latency when opening many connections simultaneously. May cause jitter on "
+#~ "high-packet-loss networks."
+#~ msgstr ""
+#~ "Reuses a single persistent TCP connection for multiple streams, reducing "
+#~ "latency when opening many connections simultaneously. May cause jitter on "
+#~ "high-packet-loss networks."
 
-#: src/ui/pages/settings_page.ui:297
-msgid "Controls how detailed the core log messages are: Error (critical only), Warning (potential issues), Info (standard connection events), Debug (detailed packet diagnostics)."
-msgstr "Controls how detailed the core log messages are: Error (critical only), Warning (potential issues), Info (standard connection events), Debug (detailed packet diagnostics)."
+#~ msgid "Method used for measuring server response time"
+#~ msgstr "Method used for measuring server response time"
 
-#: src/ui/pages/settings_page.ui:314
-msgid "Open real-time console log viewer"
-msgstr "Open real-time console log viewer"
-
-#: src/ui/pages/settings_page.ui:315
-msgid "Opens the integrated live log viewer window with real-time filtering, pause, search, and export options."
-msgstr "Opens the integrated live log viewer window with real-time filtering, pause, search, and export options."
-
-#: src/ui/pages/settings_page.ui:328
-msgid "Open system directory containing log files"
-msgstr "Open system directory containing log files"
-
-#: src/ui/pages/settings_page.ui:329
-msgid "Opens the local system directory containing persistent log files in your file manager."
-msgstr "Opens the local system directory containing persistent log files in your file manager."
-
-#: src/ui/pages/settings_page.ui:344
-msgid "Export and import application settings and VPN profiles"
-msgstr "Export and import application settings and VPN profiles"
-
-#: src/ui/pages/settings_page.ui:349
-msgid "Restore settings and profiles from a backup file"
-msgstr "Restore settings and profiles from a backup file"
-
-#: src/ui/pages/settings_page.ui:350
-msgid "Loads application settings, custom routing rules, and VPN profiles from a JSON backup file."
-msgstr "Loads application settings, custom routing rules, and VPN profiles from a JSON backup file."
-
-#: src/ui/pages/settings_page.ui:363
-msgid "Save current configuration and profiles to a backup file"
-msgstr "Save current configuration and profiles to a backup file"
-
-#: src/ui/pages/settings_page.ui:364
-msgid "Exports all application settings, routing rules, and VPN profiles to a portable JSON backup file."
-msgstr "Exports all application settings, routing rules, and VPN profiles to a portable JSON backup file."
-
-#: src/ui/pages/settings_page.ui:378
-msgid "Danger Zone"
-msgstr "Danger Zone"
-
-#: src/ui/pages/settings_page.ui:379
-msgid "Irreversible actions and complete configuration reset"
-msgstr "Irreversible actions and complete configuration reset"
-
-#: src/ui/pages/settings_page.ui:384
-msgid "Erase all profiles and restore factory defaults"
-msgstr "Erase all profiles and restore factory defaults"
-
-#: src/ui/pages/settings_page.ui:385
-msgid "Permanently erases all saved VPN keys, custom rules, and configuration settings, returning the application to its default state."
-msgstr "Permanently erases all saved VPN keys, custom rules, and configuration settings, returning the application to its default state."
+#~ msgid ""
+#~ "Choose measurement method: TCP Handshake (fast, connects to port), ICMP "
+#~ "Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test "
+#~ "through tunnel)."
+#~ msgstr ""
+#~ "Choose measurement method: TCP Handshake (fast, connects to port), ICMP "
+#~ "Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test "
+#~ "through tunnel)."
 

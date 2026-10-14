@@ -5,9 +5,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: vrxx 26.1.0-beta.2\n"
+"Project-Id-Version: vrxx 26.1.0-beta.3\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-28 15:29+0600\n"
+"POT-Creation-Date: 2026-09-23 00:19+0600\n"
 "PO-Revision-Date: 2026-03-03 00:10+0600\n"
 "Last-Translator: VRXX Team\n"
 "Language-Team: none\n"
@@ -18,19 +18,55 @@ msgstr ""
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#: src/application.rs:216
+#: src/application.rs:233
 msgid "Import Configuration"
 msgstr "Импорт конфигурации"
 
-#: src/application.rs:273 src/ui/export_dialog.rs:33
+#: src/application.rs:300 src/ui/dialogs/export_dialog.ui:19
+#: src/ui/dialogs/export_dialog.ui:30 src/ui/tests.rs:187
 msgid "Export Configuration"
 msgstr "Экспорт конфигурации"
 
-#: src/application.rs:443
+#: src/application.rs:400
+msgid "Reset Settings"
+msgstr "Сбросить настройки"
+
+#: src/application.rs:402
+msgid "Are you sure you want to reset all settings to defaults?"
+msgstr "Вы уверены, что хотите сбросить все настройки до значений по умолчанию?"
+
+#: src/application.rs:405 src/application.rs:456
+#: src/ui/dialogs/export_dialog.ui:36 src/ui/dialogs/import_dialog.ui:36
+#: src/ui/dialogs/key_dialog.ui:75 src/ui/dialogs/rule_dialog.ui:71
+#: src/ui/pages/settings_page.rs:320 src/ui/pages/vpn_page.rs:1395
+msgid "Cancel"
+msgstr "Отмена"
+
+#: src/application.rs:406
+msgid "Reset"
+msgstr "Сбросить"
+
+#: src/application.rs:450
+msgid "Quit Vrxx"
+msgstr "Выход из Vrxx"
+
+#: src/application.rs:452
+msgid ""
+"This will disconnect any active VPN connection and terminate both the "
+"application and the background service."
+msgstr ""
+"Это действие остановит активное VPN-соединение, службу демона и полностью "
+"завершит работу программы."
+
+#: src/application.rs:457
+msgid "Quit"
+msgstr "Выход"
+
+#: src/application.rs:517
 msgid "translator-credits"
 msgstr "Mark"
 
-#: src/application.rs:448
+#: src/application.rs:522
 msgid ""
 "A graphical interface for sing-box designed to simplify VPN and proxy "
 "configuration on Linux systems."
@@ -38,25 +74,75 @@ msgstr ""
 "Графический интерфейс для sing-box, созданный для упрощения настройки VPN и "
 "прокси на Linux."
 
-#: src/services/geo_updater.rs:234
+#: src/services/geo_updater.rs:243
 msgid "Never updated"
 msgstr "Никогда не обновлялось"
 
-#: src/shortcuts-dialog.ui:31
-msgid "Shortcuts"
-msgstr "Горячие клавиши"
+#: src/shortcuts-dialog.ui:22 src/ui/dialogs/import_dialog.ui:62
+#: src/ui/dialogs/key_dialog.ui:114 src/ui/pages/settings_page.ui:86
+#: src/ui/tests.rs:159
+msgid "General"
+msgstr "Общие"
 
-#: src/shortcuts-dialog.ui:36
+#: src/shortcuts-dialog.ui:27
 msgctxt "shortcut window"
 msgid "Show Shortcuts"
 msgstr "Показать горячие клавиши"
 
-#: src/shortcuts-dialog.ui:44
+#: src/shortcuts-dialog.ui:35
+msgctxt "shortcut window"
+msgid "Preferences"
+msgstr "Настройки"
+
+#: src/shortcuts-dialog.ui:43
+msgctxt "shortcut window"
+msgid "Close Window"
+msgstr "Закрыть окно"
+
+#: src/shortcuts-dialog.ui:51
 msgctxt "shortcut window"
 msgid "Quit"
 msgstr "Выход"
 
-#: src/ui/change_tracker.rs:53 src/ui/tests.rs:153
+#: src/shortcuts-dialog.ui:61
+msgid "VPN and Keys"
+msgstr "VPN и ключи"
+
+#: src/shortcuts-dialog.ui:66
+msgctxt "shortcut window"
+msgid "Disconnect VPN"
+msgstr "Отключить VPN"
+
+#: src/shortcuts-dialog.ui:74
+msgctxt "shortcut window"
+msgid "Ping Selected Key"
+msgstr "Проверить задержку выбранного ключа"
+
+#: src/shortcuts-dialog.ui:82
+msgctxt "shortcut window"
+msgid "Ping All Keys"
+msgstr "Проверить задержку всех ключей"
+
+#: src/shortcuts-dialog.ui:92
+msgid "View and Zoom"
+msgstr "Вид и масштаб"
+
+#: src/shortcuts-dialog.ui:97
+msgctxt "shortcut window"
+msgid "Zoom In"
+msgstr "Увеличить масштаб"
+
+#: src/shortcuts-dialog.ui:105
+msgctxt "shortcut window"
+msgid "Zoom Out"
+msgstr "Уменьшить масштаб"
+
+#: src/shortcuts-dialog.ui:113
+msgctxt "shortcut window"
+msgid "Normal Zoom"
+msgstr "Исходный масштаб"
+
+#: src/ui/change_tracker.rs:53 src/ui/tests.rs:169
 msgid "Unsaved Changes"
 msgstr "Несохраненные изменения"
 
@@ -96,7 +182,7 @@ msgstr "Логи приложения"
 msgid "Access logs"
 msgstr "Логи доступа"
 
-#: src/ui/components/log_window.rs:581
+#: src/ui/components/log_window.rs:578
 msgid "Save Logs"
 msgstr "Сохранить логи"
 
@@ -120,7 +206,7 @@ msgstr "Системные логи"
 msgid "Auto-scroll"
 msgstr "Автопрокрутка"
 
-#: src/ui/components/log_window.ui:106 src/ui/pages/settings_page.ui:68
+#: src/ui/components/log_window.ui:106 src/ui/pages/settings_page.ui:69
 #: src/window.ui:79
 msgid "Menu"
 msgstr "Меню"
@@ -197,6 +283,10 @@ msgstr "Обновить Пинг"
 msgid "_Info"
 msgstr "Информация"
 
+#: src/ui/components/vpn_key_row.ui:228 src/ui/menus.ui:53
+msgid "_Ping"
+msgstr "_Пинг"
+
 #: src/ui/components/vpn_key_row.ui:211
 msgid "_Edit"
 msgstr "Редактировать"
@@ -209,194 +299,545 @@ msgstr "_Поделиться"
 msgid "_Delete"
 msgstr "Удалить"
 
-#: src/ui/error_dialog.rs:28 src/ui/pages/vpn_page.rs:882
+#: src/ui/dialogs/error_dialog.rs:28 src/ui/pages/vpn_page.rs:877
 #: src/ui/pages/vpn_page.rs:995
 msgid "Failed to connect to VPN"
 msgstr "Не удалось подключиться к VPN"
 
-#: src/ui/error_dialog.rs:36
+#: src/ui/dialogs/error_dialog.rs:36
 msgid "Copy technical log"
 msgstr "Скопировать технический лог"
 
-#: src/ui/error_dialog.rs:37 src/ui/pages/vpn_page.rs:1239
-#: src/ui/qr_dialog.rs:208
+#: src/ui/dialogs/error_dialog.rs:37 src/ui/pages/vpn_page.rs:1340
 msgid "Close"
 msgstr "Закрыть"
 
-#: src/ui/error_dialog.rs:66
+#: src/ui/dialogs/error_dialog.rs:66
 msgid ""
 "The sing-box core was not found on your system. Please install or update it "
 "in Settings."
 msgstr ""
 "Ядро sing-box не найдено в системе. Установите или обновите его в Настройках."
 
-#: src/ui/error_dialog.rs:68
+#: src/ui/dialogs/error_dialog.rs:68
 msgid ""
 "Access denied when configuring network interface (TUN) or routing rules."
 msgstr ""
 "Отказано в доступе при настройке сетевого интерфейса (TUN) или правил "
 "маршрутизации."
 
-#: src/ui/error_dialog.rs:70
+#: src/ui/dialogs/error_dialog.rs:70
 msgid "Failed to connect to vrxx-daemon. Please verify daemon status."
 msgstr "Не удалось подключиться к vrxx-daemon. Проверьте статус службы демона."
 
-#: src/ui/error_dialog.rs:74
+#: src/ui/dialogs/error_dialog.rs:74
 msgid "An error occurred during operation"
 msgstr "Произошла ошибка при выполнении операции"
 
-#: src/ui/export_dialog.rs:35
-msgid "Select the components you want to export to a file."
-msgstr "Выберите компоненты, которые вы хотите экспортировать в файл."
-
-#: src/ui/export_dialog.rs:40
-msgid "Export Components"
-msgstr "Компоненты экспорта"
-
-#: src/ui/export_dialog.rs:50
-msgid "Application Settings"
-msgstr "Настройки приложения"
-
-#: src/ui/export_dialog.rs:52
-msgid ""
-"Theme, interface language, proxy ports, DNS parameters, and routing rules"
-msgstr "Тема, язык интерфейса, порты прокси, параметры DNS и правила маршрутизации"
-
-#: src/ui/export_dialog.rs:66
-msgid "VPN Profiles and Keys"
-msgstr "VPN-профили и ключи"
-
-#: src/ui/export_dialog.rs:68
-msgid "Saved servers, connection links, private keys, and credentials"
-msgstr "Сохраненные серверы, ссылки подключения, приватные ключи и учетные данные"
-
-#. Кнопки действий
-#: src/ui/export_dialog.rs:89 src/ui/import_dialog.rs:181
-#: src/ui/pages/routing_page.rs:422 src/ui/pages/routing_page.rs:499
-#: src/ui/pages/settings_page.rs:294 src/ui/pages/vpn_page.rs:1322
-#: src/ui/pages/vpn_page.rs:1374 src/ui/pages/vpn_page.rs:1715
-msgid "Cancel"
-msgstr "Отмена"
-
-#: src/ui/export_dialog.rs:90
+#: src/ui/dialogs/export_dialog.ui:42
 msgid "Export"
 msgstr "Экспортировать"
 
-#: src/ui/import_dialog.rs:45
-msgid "Import VPN Key"
-msgstr "Импорт VPN ключа"
+#: src/ui/dialogs/export_dialog.ui:55
+msgid "Export Components"
+msgstr "Компоненты экспорта"
 
-#: src/ui/import_dialog.rs:47
+#: src/ui/dialogs/export_dialog.ui:56
+msgid "Select the components you want to export to a file."
+msgstr "Выберите компоненты, которые вы хотите экспортировать в файл."
+
+#: src/ui/dialogs/export_dialog.ui:61 src/ui/tests.rs:191
+msgid "Application Settings"
+msgstr "Настройки приложения"
+
+#: src/ui/dialogs/export_dialog.ui:62
 msgid ""
-"A VPN profile configuration link was received. Would you like to import it?"
-msgstr "Получена ссылка на конфигурацию VPN профиля. Хотите импортировать её?"
+"Theme, interface language, proxy ports, DNS parameters, and routing rules"
+msgstr ""
+"Тема, язык интерфейса, порты прокси, параметры DNS и правила маршрутизации"
 
-#: src/ui/import_dialog.rs:53 src/ui/pages/settings_page.ui:85
-#: src/ui/pages/vpn_page.rs:1291 src/ui/pages/vpn_page.rs:1476
-#: src/ui/tests.rs:143
-msgid "General"
-msgstr "Общие"
+#: src/ui/dialogs/export_dialog.ui:70 src/ui/tests.rs:195
+msgid "VPN Profiles and Keys"
+msgstr "VPN-профили и ключи"
 
-#: src/ui/import_dialog.rs:57 src/ui/pages/vpn_page.rs:1480
-msgid "Profile Name"
-msgstr "Имя профиля"
+#: src/ui/dialogs/export_dialog.ui:71
+msgid "Saved servers, connection links, private keys, and credentials"
+msgstr ""
+"Сохраненные серверы, ссылки подключения, приватные ключи и учетные данные"
 
-#: src/ui/import_dialog.rs:63 src/ui/pages/vpn_page.rs:1181
-#: src/ui/pages/vpn_page.rs:1274 src/ui/pages/vpn_page.rs:1497
-#: src/window.rs:400
-msgid "Protocol"
-msgstr "Протокол"
-
-#: src/ui/import_dialog.rs:70 src/ui/pages/vpn_page.rs:1504
-msgid "Server Connection"
-msgstr "Подключение к серверу"
-
-#: src/ui/import_dialog.rs:74 src/window.rs:412
-msgid "Host"
-msgstr "Хост"
-
-#: src/ui/import_dialog.rs:80 src/ui/pages/vpn_page.rs:1191
-#: src/ui/pages/vpn_page.rs:1282 src/ui/pages/vpn_page.rs:1511
-msgid "Port"
-msgstr "Порт"
-
-#: src/ui/import_dialog.rs:87 src/ui/pages/vpn_page.rs:1545
-msgid "Security & Parameters"
-msgstr "Безопасность и параметры"
-
-#: src/ui/import_dialog.rs:98
-msgid "Security Mode"
-msgstr "Режим безопасности"
-
-#: src/ui/import_dialog.rs:107 src/ui/pages/vpn_page.rs:1201
-msgid "SNI"
-msgstr "SNI"
-
-#: src/ui/import_dialog.rs:116 src/ui/pages/vpn_page.rs:1204
-msgid "Fingerprint"
-msgstr "Отпечаток"
-
-#: src/ui/import_dialog.rs:126 src/ui/pages/vpn_page.rs:1216
-msgid "Flow"
-msgstr "Flow"
-
-#: src/ui/import_dialog.rs:136
-msgid "Public Key"
-msgstr "Публичный ключ"
-
-#: src/ui/import_dialog.rs:151 src/ui/pages/vpn_page.rs:1536
-msgid "Latency Check"
-msgstr "Проверка задержки"
-
-#: src/ui/import_dialog.rs:152 src/ui/pages/vpn_page.rs:1675
-msgid "Measuring ping..."
-msgstr "Измерение пинга..."
-
-#: src/ui/import_dialog.rs:182
-msgid "Import Profile"
-msgstr "Импортировать профиль"
-
-#: src/ui/import_dialog.rs:183
-msgid "Import and Connect"
-msgstr "Импортировать и подключиться"
-
-#: src/ui/import_dialog.rs:205 src/ui/pages/vpn_page.rs:1688
+#: src/ui/dialogs/import_dialog.rs:187 src/ui/dialogs/key_dialog.rs:509
 msgid "Connection timeout"
 msgstr "Таймаут подключения"
 
-#: src/ui/menus.ui:42
+#: src/ui/dialogs/import_dialog.ui:19 src/ui/dialogs/import_dialog.ui:30
+msgid "Import VPN Key"
+msgstr "Импорт VPN ключа"
+
+#: src/ui/dialogs/import_dialog.ui:42
+msgid "Import and Connect"
+msgstr "Импортировать и подключиться"
+
+#: src/ui/dialogs/import_dialog.ui:51
+msgid "Import"
+msgstr "Импортировать"
+
+#: src/ui/dialogs/import_dialog.ui:66 src/ui/dialogs/key_dialog.ui:119
+msgid "Profile Name"
+msgstr "Имя профиля"
+
+#: src/ui/dialogs/import_dialog.ui:72 src/ui/dialogs/key_dialog.ui:128
+#: src/ui/pages/vpn_page.rs:1282 src/window.rs:445
+msgid "Protocol"
+msgstr "Протокол"
+
+#: src/ui/dialogs/import_dialog.ui:81 src/ui/dialogs/key_dialog.ui:162
+msgid "Server Connection"
+msgstr "Подключение к серверу"
+
+#: src/ui/dialogs/import_dialog.ui:85 src/window.rs:457
+msgid "Host"
+msgstr "Хост"
+
+#: src/ui/dialogs/import_dialog.ui:91 src/ui/dialogs/key_dialog.ui:175
+#: src/ui/pages/vpn_page.rs:1292
+msgid "Port"
+msgstr "Порт"
+
+#: src/ui/dialogs/import_dialog.ui:97
+msgid "Latency"
+msgstr "Задержка"
+
+#: src/ui/dialogs/import_dialog.ui:98
+msgid "Testing..."
+msgstr "Проверка..."
+
+#: src/ui/dialogs/import_dialog.ui:112 src/ui/dialogs/key_dialog.ui:223
+msgid "Security and Parameters"
+msgstr "Безопасность и параметры"
+
+#: src/ui/dialogs/import_dialog.ui:116
+msgid "Security Mode"
+msgstr "Режим безопасности"
+
+#: src/ui/dialogs/import_dialog.ui:123 src/ui/dialogs/key_dialog.ui:236
+msgid "SNI / Server Name"
+msgstr "SNI / Имя сервера"
+
+#: src/ui/dialogs/import_dialog.ui:130
+msgid "TLS Fingerprint"
+msgstr "Отпечаток TLS"
+
+#: src/ui/dialogs/import_dialog.ui:137 src/ui/pages/vpn_page.rs:1317
+msgid "Flow"
+msgstr "Flow"
+
+#: src/ui/dialogs/key_dialog.rs:167 src/ui/dialogs/key_dialog.ui:49
+#: src/ui/dialogs/key_dialog.ui:68 src/ui/tests.rs:203
+msgid "Add VPN Profile"
+msgstr "Добавить VPN-профиль"
+
+#: src/ui/dialogs/key_dialog.rs:170 src/ui/dialogs/key_dialog.ui:82
+#: src/ui/dialogs/rule_dialog.rs:146 src/ui/dialogs/rule_dialog.ui:78
+msgid "Add"
+msgstr "Добавить"
+
+#: src/ui/dialogs/key_dialog.rs:175
+msgid "Edit VPN key"
+msgstr "Редактировать VPN ключ"
+
+#: src/ui/dialogs/key_dialog.rs:178 src/ui/dialogs/rule_dialog.rs:154
+msgid "Save"
+msgstr "Сохранить"
+
+#: src/ui/dialogs/key_dialog.rs:247 src/ui/dialogs/key_dialog.rs:259
+msgid "UUID"
+msgstr "UUID"
+
+#: src/ui/dialogs/key_dialog.rs:253 src/ui/dialogs/key_dialog.ui:244
+msgid "Reality Public Key (pbk)"
+msgstr "Публичный ключ Reality (pbk)"
+
+#: src/ui/dialogs/key_dialog.rs:269
+msgid "Password"
+msgstr "Пароль"
+
+#: src/ui/dialogs/key_dialog.rs:279
+msgid "Password / Method"
+msgstr "Пароль / Метод шифрования"
+
+#: src/ui/dialogs/key_dialog.rs:284
+msgid "Auth / Password"
+msgstr "Аутентификация / Пароль"
+
+#: src/ui/dialogs/key_dialog.rs:294
+msgid "Password / Token"
+msgstr "Пароль / Токен"
+
+#: src/ui/dialogs/key_dialog.rs:304
+msgid "Private Key"
+msgstr "Приватный ключ"
+
+#: src/ui/dialogs/key_dialog.rs:309
+msgid "Public Key (Peer)"
+msgstr "Публичный ключ (Peer)"
+
+#: src/ui/dialogs/key_dialog.rs:315 src/ui/dialogs/key_dialog.rs:320
+msgid "Password / Credentials (optional)"
+msgstr "Пароль / Учетные данные (необязательно)"
+
+#: src/ui/dialogs/key_dialog.rs:400
+msgid "Please enter a valid server host address"
+msgstr "Пожалуйста, введите корректный адрес сервера"
+
+#: src/ui/dialogs/key_dialog.rs:406
+msgid "Please enter a valid port number (1-65535)"
+msgstr "Пожалуйста, введите корректный номер порта (1-65535)"
+
+#: src/ui/dialogs/key_dialog.rs:490
+msgid "Enter host address first"
+msgstr "Сначала укажите адрес хоста"
+
+#: src/ui/dialogs/key_dialog.rs:496
+msgid "Measuring ping..."
+msgstr "Измерение пинга..."
+
+#: src/ui/dialogs/key_dialog.ui:100 src/ui/tests.rs:212
+msgid "Quick Import from Link"
+msgstr "Быстрый импорт по ссылке"
+
+#: src/ui/dialogs/key_dialog.ui:101
+msgid ""
+"Paste a VPN configuration link to automatically populate the parameters "
+"below."
+msgstr ""
+"Вставьте ссылку конфигурации VPN для автоматического заполнения параметров "
+"ниже."
+
+#: src/ui/dialogs/key_dialog.ui:104
+msgid "VPN Link (vless://, vmess://, etc.)"
+msgstr "VPN-ссылка (vless://, vmess:// и т.д.)"
+
+#: src/ui/dialogs/key_dialog.ui:151
+msgid "Connect after adding"
+msgstr "Подключиться после добавления"
+
+#: src/ui/dialogs/key_dialog.ui:152
+msgid "Immediately activate VPN connection after saving"
+msgstr "Немедленно активировать VPN соединение после сохранения"
+
+#: src/ui/dialogs/key_dialog.ui:167
+msgid "Server address / Host"
+msgstr "Адрес сервера / Хост"
+
+#: src/ui/dialogs/key_dialog.ui:184
+msgid "UUID / Password / Key"
+msgstr "UUID / Пароль / Ключ"
+
+#: src/ui/dialogs/key_dialog.ui:192
+msgid "Latency Check"
+msgstr "Проверка задержки"
+
+#: src/ui/dialogs/key_dialog.ui:193
+msgid "Ready"
+msgstr "Готово"
+
+#: src/ui/dialogs/key_dialog.ui:209
+msgid "Test Connection"
+msgstr "Проверить соединение"
+
+#: src/ui/dialogs/key_dialog.ui:228
+msgid "Security Mode (reality/tls/none)"
+msgstr "Режим безопасности (reality/tls/none)"
+
+#: src/ui/dialogs/key_dialog.ui:252
+msgid "Fingerprint (uTLS)"
+msgstr "Отпечаток (uTLS)"
+
+#: src/ui/dialogs/key_dialog.ui:260
+msgid "Flow (e.g. xtls-rprx-vision)"
+msgstr "Flow (напр. xtls-rprx-vision)"
+
+#: src/ui/dialogs/qr_dialog.rs:184 src/ui/dialogs/qr_dialog.ui:122
+msgid "Show QR Code"
+msgstr "Показать QR-код"
+
+#: src/ui/dialogs/qr_dialog.rs:190
+msgid "Hide QR Code"
+msgstr "Скрыть QR-код"
+
+#: src/ui/dialogs/qr_dialog.rs:219 src/ui/dialogs/qr_dialog.rs:223
+msgid "Failed to generate QR code"
+msgstr "Не удалось сгенерировать QR-код"
+
+#: src/ui/dialogs/qr_dialog.rs:234
+msgid "Link copied to clipboard"
+msgstr "Ссылка скопирована в буфер обмена"
+
+#: src/ui/dialogs/qr_dialog.rs:245
+msgid "JSON copied to clipboard"
+msgstr "JSON скопирован в буфер обмена"
+
+#: src/ui/dialogs/qr_dialog.rs:249
+msgid "Failed to generate JSON for key"
+msgstr "Не удалось сгенерировать JSON для ключа"
+
+#: src/ui/dialogs/qr_dialog.rs:264
+msgid "Save QR Code As"
+msgstr "Сохранить QR-код как"
+
+#: src/ui/dialogs/qr_dialog.rs:268
+msgid "PNG Image (*.png)"
+msgstr "Изображение PNG (*.png)"
+
+#: src/ui/dialogs/qr_dialog.rs:273
+msgid "SVG Vector (*.svg)"
+msgstr "Вектор SVG (*.svg)"
+
+#: src/ui/dialogs/qr_dialog.rs:326
+msgid "QR code saved successfully"
+msgstr "QR-код успешно сохранен"
+
+#: src/ui/dialogs/qr_dialog.rs:332
+msgid "Failed to save QR code"
+msgstr "Не удалось сохранить QR-код"
+
+#: src/ui/dialogs/qr_dialog.ui:28 src/ui/dialogs/qr_dialog.ui:39
+msgid "Share Profile"
+msgstr "Поделиться профилем"
+
+#: src/ui/dialogs/qr_dialog.ui:170
+msgid "Copy Link"
+msgstr "Скопировать ссылку"
+
+#: src/ui/dialogs/qr_dialog.ui:182
+msgid "Link"
+msgstr "Ссылка"
+
+#: src/ui/dialogs/qr_dialog.ui:193
+msgid "Copy JSON"
+msgstr "Скопировать JSON"
+
+#: src/ui/dialogs/qr_dialog.ui:205
+msgid "JSON"
+msgstr "JSON"
+
+#: src/ui/dialogs/qr_dialog.ui:216
+msgid "Save QR Code as..."
+msgstr "Сохранить QR-код как..."
+
+#: src/ui/dialogs/qr_dialog.ui:228
+msgid "Save QR"
+msgstr "Сохранить QR"
+
+#: src/ui/dialogs/rule_dialog.rs:141 src/ui/dialogs/rule_dialog.ui:44
+#: src/ui/dialogs/rule_dialog.ui:63
+msgid "Add Custom Rule"
+msgstr "Добавить правило маршрутизации"
+
+#: src/ui/dialogs/rule_dialog.rs:142 src/ui/dialogs/rule_dialog.ui:64
+msgid "Configure domain, IP, or rule-set detour"
+msgstr "Настройка маршрутизации доменов, IP-адресов и списков правил"
+
+#: src/ui/dialogs/rule_dialog.rs:149
+msgid "Edit Custom Rule"
+msgstr "Редактировать правило"
+
+#: src/ui/dialogs/rule_dialog.rs:150
+msgid "Modify domain, IP subnet, or detour action"
+msgstr "Изменение домена, IP-подсети или действия маршрутизации"
+
+#: src/ui/dialogs/rule_dialog.rs:243
+msgid ""
+"Matches exact IP address or CIDR subnet (e.g. 192.168.1.50 or 10.0.0.0/24)"
+msgstr ""
+"Сопоставляет точный IP-адрес или CIDR-подсеть (например, 192.168.1.50 или "
+"10.0.0.0/24)"
+
+#: src/ui/dialogs/rule_dialog.rs:246
+msgid "IP Address or CIDR Subnet"
+msgstr "IP-адрес или CIDR-подсеть"
+
+#: src/ui/dialogs/rule_dialog.rs:250
+msgid ""
+"Remote binary compiled rule-set URL (e.g. https://example.com/ruleset.srs)"
+msgstr ""
+"URL удаленного скомпилированного набора правил (например, https://"
+"example.com/ruleset.srs)"
+
+#: src/ui/dialogs/rule_dialog.rs:252
+msgid "Rule-Set URL (.srs)"
+msgstr "URL набора правил (.srs)"
+
+#: src/ui/dialogs/rule_dialog.rs:256
+msgid ""
+"Matches domain and all its subdomains (e.g. example.com matches example.com "
+"and sub.example.com; .org matches all .org domains)"
+msgstr ""
+"Сопоставляет домен и все его поддомены (например, example.com сопоставит "
+"example.com и sub.example.com; .org сопоставит все домены зоны .org)"
+
+#: src/ui/dialogs/rule_dialog.rs:258
+msgid "Domain Name or Suffix"
+msgstr "Доменное имя или суффикс"
+
+#: src/ui/dialogs/rule_dialog.rs:303
+msgid "Please enter a rule value"
+msgstr "Пожалуйста, введите значение правила"
+
+#: src/ui/dialogs/rule_dialog.rs:315
+msgid "Value contains forbidden control characters or quotes"
+msgstr "Значение содержит недопустимые управляющие символы или кавычки"
+
+#: src/ui/dialogs/rule_dialog.rs:326
+msgid ""
+"Invalid domain format. Enter domain name without protocol or path (e.g. "
+"example.com or .org)"
+msgstr ""
+"Некорректный формат домена. Введите доменное имя без протокола или пути "
+"(например, example.com или .org)"
+
+#: src/ui/dialogs/rule_dialog.rs:335
+msgid ""
+"Domain contains invalid characters. Use letters, numbers, dots and hyphens"
+msgstr ""
+"Домен содержит недопустимые символы. Используйте буквы, цифры, точки и дефисы"
+
+#: src/ui/dialogs/rule_dialog.rs:347
+msgid ""
+"CIDR subnet prefix length exceeds valid range (0-32 for IPv4, 0-128 for IPv6)"
+msgstr ""
+"Длина маски CIDR выходит за допустимый диапазон (0-32 для IPv4, 0-128 для "
+"IPv6)"
+
+#: src/ui/dialogs/rule_dialog.rs:351
+msgid "Invalid CIDR prefix format"
+msgstr "Некорректный формат маски CIDR"
+
+#: src/ui/dialogs/rule_dialog.rs:354
+msgid "Invalid IP address in CIDR expression"
+msgstr "Некорректный IP-адрес в выражении CIDR"
+
+#: src/ui/dialogs/rule_dialog.rs:358
+msgid "Invalid IP address format (e.g. 192.168.1.1 or 10.0.0.0/24)"
+msgstr "Некорректный формат IP-адреса (например, 192.168.1.1 или 10.0.0.0/24)"
+
+#: src/ui/dialogs/rule_dialog.rs:364
+msgid "Rule-Set URL must start with http:// or https://"
+msgstr "URL набора правил должен начинаться с http:// или https://"
+
+#: src/ui/dialogs/rule_dialog.rs:367
+msgid "URL must not contain spaces"
+msgstr "URL не должен содержать пробелы"
+
+#: src/ui/dialogs/rule_dialog.ui:99
+msgid "How routing rules work"
+msgstr "Как работают правила маршрутизации"
+
+#: src/ui/dialogs/rule_dialog.ui:100
+msgid "Examples and instructions for custom routing"
+msgstr "Примеры и инструкции по настройке маршрутизации"
+
+#: src/ui/dialogs/rule_dialog.ui:109 src/ui/tests.rs:177
+msgid "Direct Bypass (Direct Connection)"
+msgstr "Прямой обход (Прямое подключение)"
+
+#: src/ui/dialogs/rule_dialog.ui:110
+msgid ""
+"Useful for domestic or trusted services to connect directly without exposing "
+"VPN IP."
+msgstr ""
+"Полезно для доверенных или локальных сервисов: прямое подключение без "
+"использования VPN-туннеля."
+
+#: src/ui/dialogs/rule_dialog.ui:116
+msgid "VPN Tunnel (Proxy)"
+msgstr "VPN-туннель (Прокси)"
+
+#: src/ui/dialogs/rule_dialog.ui:117
+msgid ""
+"Routes specific websites or IP ranges through your active encrypted VPN "
+"tunnel."
+msgstr ""
+"Направляет указанные сайты или диапазоны IP через активный зашифрованный VPN-"
+"туннель."
+
+#: src/ui/dialogs/rule_dialog.ui:133
+msgid "Description (Optional)"
+msgstr "Описание (необязательно)"
+
+#: src/ui/dialogs/rule_dialog.ui:141
+msgid "Rule Type"
+msgstr "Тип правила"
+
+#: src/ui/dialogs/rule_dialog.ui:145
+msgid "Domain / Subdomains (e.g. example.com, .org)"
+msgstr "Домен / Поддомены (например, vk.com, .ru)"
+
+#: src/ui/dialogs/rule_dialog.ui:146
+msgid "IP Address / CIDR (e.g. 192.168.1.1, 10.0.0.0/24)"
+msgstr "IP-адрес / CIDR (например, 192.168.1.1, 10.0.0.0/24)"
+
+#: src/ui/dialogs/rule_dialog.ui:147
+msgid "Rule-Set (.srs URL)"
+msgstr "Набор правил (.srs URL)"
+
+#: src/ui/dialogs/rule_dialog.ui:158
+msgid "Value (Domain, IP, or URL)"
+msgstr "Значение (домен, IP или URL)"
+
+#: src/ui/dialogs/rule_dialog.ui:166
+msgid "Action"
+msgstr "Действие"
+
+#: src/ui/dialogs/rule_dialog.ui:170
+msgid "Direct (Bypass VPN)"
+msgstr "Напрямую (Обход VPN)"
+
+#: src/ui/dialogs/rule_dialog.ui:171
+msgid "Proxy (Route via VPN)"
+msgstr "Через VPN (Проксирование)"
+
+#: src/ui/dialogs/rule_dialog.ui:172
+msgid "Block (Reject Connection)"
+msgstr "Блокировать (Сброс соединения)"
+
+#: src/ui/menus.ui:43
 msgid "_Preferences"
 msgstr "Настройки"
 
-#: src/ui/menus.ui:47
+#: src/ui/menus.ui:48
 msgid "_Keyboard Shortcuts"
 msgstr "Горячие клавиши"
 
-#: src/ui/menus.ui:52
+#: src/ui/menus.ui:53
 msgid "_About Vrxx"
 msgstr "О программе"
 
-#: src/ui/menus.ui:57
+#: src/ui/menus.ui:58
+msgid "_Close Window"
+msgstr "_Закрыть"
+
+#: src/ui/menus.ui:63
 msgid "_Quit"
 msgstr "Выход"
 
-#: src/ui/pages/proxy_page.rs:171
+#: src/ui/pages/proxy_page.rs:181
 msgid "Switch to TUN"
 msgstr "Переключить на TUN"
 
-#: src/ui/pages/proxy_page.rs:184
+#: src/ui/pages/proxy_page.rs:194
 msgid "TUN mode enabled and core restarted."
 msgstr "Режим TUN включен, ядро перезапущено."
 
-#: src/ui/pages/proxy_page.rs:198
+#: src/ui/pages/proxy_page.rs:208
 msgid "Proxy settings applied and core restarted."
 msgstr "Настройки прокси применены, ядро перезапущено."
 
-#: src/ui/pages/proxy_page.rs:232 src/ui/pages/proxy_page.ui:136
+#: src/ui/pages/proxy_page.rs:242 src/ui/pages/proxy_page.ui:136
 msgid "Allow connections from LAN"
 msgstr "Разрешить подключения из локальной сети"
 
-#: src/ui/pages/proxy_page.rs:234 src/ui/pages/proxy_page.ui:137
+#: src/ui/pages/proxy_page.rs:244 src/ui/pages/proxy_page.ui:137
 msgid "Proxy will be available for other devices in your local network"
 msgstr "Прокси будет доступен для других устройств в вашей локальной сети"
 
@@ -405,7 +846,7 @@ msgid "Proxy"
 msgstr "Прокси"
 
 #: src/ui/pages/proxy_page.ui:54 src/ui/pages/routing_page.ui:59
-#: src/ui/pages/settings_page.ui:56
+#: src/ui/pages/settings_page.ui:57
 msgid "Apply and Restart Core"
 msgstr "Применить и перезапустить ядро"
 
@@ -454,36 +895,11 @@ msgstr "Нет пользовательских правил"
 msgid "Traffic will follow the default global routing mode"
 msgstr "Трафик будет следовать глобальному режиму маршрутизации"
 
-#: src/ui/pages/routing_page.rs:416
-msgid "Add Custom Rule"
-msgstr "Добавить правило маршрутизации"
-
-#: src/ui/pages/routing_page.rs:418
-msgid "Configure domain detour, IP subnet, or remote rule-set"
-msgstr ""
-"Настройка прямого обхода или перенаправления для доменов, IP-сетей и списков"
-
-#: src/ui/pages/routing_page.rs:423
-msgid "Add"
-msgstr "Добавить"
-
-#: src/ui/pages/routing_page.rs:493
-msgid "Edit Custom Rule"
-msgstr "Редактировать правило"
-
-#: src/ui/pages/routing_page.rs:495
-msgid "Modify domain, IP subnet, or detour action"
-msgstr "Изменение домена, IP-подсети или действия маршрутизации"
-
-#: src/ui/pages/routing_page.rs:500 src/ui/pages/vpn_page.rs:1323
-msgid "Save"
-msgstr "Сохранить"
-
-#: src/ui/pages/routing_page.rs:659
+#: src/ui/pages/routing_page.rs:539
 msgid "Precompiled binary rule-sets"
 msgstr "Скомпилированные бинарные базы"
 
-#: src/ui/pages/routing_page.rs:660
+#: src/ui/pages/routing_page.rs:540
 msgid "Last updated"
 msgstr "Последнее обновление"
 
@@ -545,7 +961,7 @@ msgstr "Предпочитать IPv4 (IPIfNonMatch)"
 msgid "Prefer IPv6 (IPOnDemand)"
 msgstr "Предпочитать IPv6 (IPOnDemand)"
 
-#: src/ui/pages/routing_page.ui:145 src/ui/tests.rs:148
+#: src/ui/pages/routing_page.ui:145 src/ui/tests.rs:164
 msgid "Custom Rules"
 msgstr "Пользовательские правила"
 
@@ -555,7 +971,7 @@ msgid ""
 msgstr ""
 "Собственные правила маршрутизации для отдельных доменов, IP-сетей и списков"
 
-#: src/ui/pages/routing_page.ui:152 src/ui/tests.rs:151
+#: src/ui/pages/routing_page.ui:152 src/ui/tests.rs:167
 msgid "Add Rule"
 msgstr "Добавить правило"
 
@@ -575,7 +991,7 @@ msgstr "Отключить IPv6"
 msgid "Force VPN core to use IPv4 only"
 msgstr "Принудительно использовать только IPv4 для VPN ядра"
 
-#: src/ui/pages/routing_page.ui:204 src/ui/tests.rs:157
+#: src/ui/pages/routing_page.ui:204 src/ui/tests.rs:173
 msgid "Predefined Regional Rules"
 msgstr "Предустановленные региональные правила"
 
@@ -672,11 +1088,11 @@ msgid "Proxy blocked resources via active VPN (geosite-antifilter.srs)"
 msgstr ""
 "Проксировать заблокированные ресурсы через VPN (geosite-antifilter.srs)"
 
-#: src/ui/pages/settings_page.rs:288
+#: src/ui/pages/settings_page.rs:314
 msgid "Restart Required"
 msgstr "Требуется перезапуск"
 
-#: src/ui/pages/settings_page.rs:290
+#: src/ui/pages/settings_page.rs:316
 msgid ""
 "You have changed the language. The application needs to restart to apply the "
 "new language. Restart now?"
@@ -684,351 +1100,591 @@ msgstr ""
 "Вы изменили язык. Приложению требуется перезапуск для применения нового "
 "языка. Перезапустить сейчас?"
 
-#: src/ui/pages/settings_page.rs:295
+#: src/ui/pages/settings_page.rs:321
 msgid "Restart"
 msgstr "Перезапустить"
 
-#: src/ui/pages/settings_page.rs:309
+#: src/ui/pages/settings_page.rs:335
 msgid "Application settings applied and core restarted."
 msgstr "Настройки приложения применены, ядро перезапущено."
 
-#: src/ui/pages/settings_page.rs:488
+#: src/ui/pages/settings_page.rs:538
 msgid "Last update"
 msgstr "Последнее обновление"
 
-#: src/ui/pages/settings_page.rs:500
+#: src/ui/pages/settings_page.rs:550
 msgid "Downloading..."
 msgstr "Загрузка..."
 
-#: src/ui/pages/settings_page.rs:542
+#: src/ui/pages/settings_page.rs:592
 msgid "Unknown Version"
 msgstr "Неизвестная версия"
 
-#: src/ui/pages/settings_page.rs:545
+#: src/ui/pages/settings_page.rs:595
 msgid "not found"
 msgstr "не найден"
 
-#: src/ui/pages/settings_page.ui:47 src/window.ui:144
+#: src/ui/pages/settings_page.ui:48 src/window.ui:144
 msgid "Settings"
 msgstr "Настройки"
 
-#: src/ui/pages/settings_page.ui:90
+#: src/ui/pages/settings_page.ui:87
+msgid "Application interface, startup, and notification preferences"
+msgstr "Параметры интерфейса, автозапуска и системных уведомлений"
+
+#: src/ui/pages/settings_page.ui:92
 msgid "Language"
 msgstr "Язык (Language)"
 
-#: src/ui/pages/settings_page.ui:91
+#: src/ui/pages/settings_page.ui:93
 msgid "Application restart required"
 msgstr "Требуется перезапуск приложения (Requires restart)"
 
-#: src/ui/pages/settings_page.ui:95
+#: src/ui/pages/settings_page.ui:94
+msgid ""
+"Select the interface language. Changing the language requires restarting the "
+"application."
+msgstr ""
+"Выберите язык интерфейса. Для применения нового языка потребуется перезапуск "
+"приложения."
+
+#: src/ui/pages/settings_page.ui:98
 msgid "System default"
 msgstr "Системный (System)"
 
-#: src/ui/pages/settings_page.ui:96
+#: src/ui/pages/settings_page.ui:99
 msgid "English"
 msgstr "English"
 
-#: src/ui/pages/settings_page.ui:97
+#: src/ui/pages/settings_page.ui:100
 msgid "Russian"
 msgstr "Русский"
 
-#: src/ui/pages/settings_page.ui:107
+#: src/ui/pages/settings_page.ui:110
 msgid "Run at startup"
 msgstr "Запускать при старте системы"
 
-#: src/ui/pages/settings_page.ui:108
+#: src/ui/pages/settings_page.ui:111
 msgid "Automatically start application in the background"
 msgstr "Автоматически запускать приложение в фоновом режиме"
 
-#: src/ui/pages/settings_page.ui:116
+#: src/ui/pages/settings_page.ui:112
+msgid "Starts VRXX in the background minimized when your system boots up."
+msgstr ""
+"Запускает VRXX в фоновом режиме в системном трее при включении компьютера."
+
+#: src/ui/pages/settings_page.ui:120
 msgid "Connect on startup"
 msgstr "Подключаться при запуске"
 
-#: src/ui/pages/settings_page.ui:117
+#: src/ui/pages/settings_page.ui:121
 msgid "Restore last active connection"
 msgstr "Восстанавливать последнее активное подключение"
 
-#: src/ui/pages/settings_page.ui:125
+#: src/ui/pages/settings_page.ui:122
+msgid ""
+"Automatically connects to the last active VPN server when the application "
+"starts."
+msgstr ""
+"Автоматически подключается к последнему использованному серверу при запуске "
+"VRXX."
+
+#: src/ui/pages/settings_page.ui:130
 msgid "Notifications"
 msgstr "Уведомления"
 
-#: src/ui/pages/settings_page.ui:126
-msgid "Show notifications on connection status change"
-msgstr "Показывать уведомления при смене статуса подключения"
+#: src/ui/pages/settings_page.ui:131
+msgid "Show desktop notifications on connection events"
+msgstr "Показывать системные уведомления о событиях подключения"
 
-#: src/ui/pages/settings_page.ui:134
+#: src/ui/pages/settings_page.ui:132
+msgid ""
+"Displays system notifications when connection status changes or when errors "
+"occur."
+msgstr ""
+"Отображает всплывающие уведомления при смене статуса сети или возникновении "
+"ошибок."
+
+#: src/ui/pages/settings_page.ui:140
 msgid "Streamer mode"
 msgstr "Режим стримера"
 
-#: src/ui/pages/settings_page.ui:135
+#: src/ui/pages/settings_page.ui:141
 msgid "Hide IP addresses and sensitive information in the interface"
 msgstr "Скрывать IP-адреса и конфиденциальную информацию в интерфейсе"
 
-#: src/ui/pages/settings_page.ui:136
+#: src/ui/pages/settings_page.ui:142
 msgid ""
-"Hides IP addresses, domain names, and secret URLs in the interface to "
-"prevent accidental disclosure during screen sharing or streaming."
+"Masks IP addresses, server domains, and configuration keys in the interface "
+"to prevent accidental exposure during screen recording or live streaming."
 msgstr ""
-"Скрывает IP-адреса, доменные имена и секретные URL в интерфейсе для "
-"предотвращения случайного раскрытия при демонстрации экрана или стриминге."
-
-#: src/ui/pages/settings_page.ui:148
-msgid "Core"
-msgstr "Ядро (Core)"
-
-#: src/ui/pages/settings_page.ui:149
-msgid "Select the routing engine used for connection"
-msgstr "Выберите движок маршрутизации, используемый для подключения"
+"Скрывает IP-адреса, доменные имена и секретные ключи в интерфейсе для "
+"предотвращения их случайного раскрытия при трансляции или записи экрана."
 
 #: src/ui/pages/settings_page.ui:154
-msgid "Core version"
-msgstr "Версия ядра"
+msgid "Network and Core"
+msgstr "Сеть и ядро"
 
 #: src/ui/pages/settings_page.ui:155
-msgid "Unknown"
-msgstr "Неизвестно"
+msgid "Core protocol engine parameters and transparent traffic routing"
+msgstr "Параметры сетевого протокола ядра и прозрачная маршрутизация трафика"
 
-#: src/ui/pages/settings_page.ui:166
-msgid "Network and Routing"
-msgstr "Сеть и Маршрутизация"
-
-#: src/ui/pages/settings_page.ui:171
+#: src/ui/pages/settings_page.ui:160
 msgid "Enable TUN Mode"
 msgstr "Включить режим TUN"
 
-#: src/ui/pages/settings_page.ui:172
-msgid "Requires root privileges"
-msgstr "Требуются права Root"
-
-#: src/ui/pages/settings_page.ui:173
+#: src/ui/pages/settings_page.ui:161
 msgid ""
-"Creates a virtual network interface to route all system traffic "
-"transparently, bypassing application-specific proxy settings."
+"Route all system traffic through virtual adapter (TCP/UDP, root required)"
 msgstr ""
-"Создает виртуальный сетевой интерфейс для прозрачной маршрутизации всего "
-"системного трафика без необходимости настраивать прокси в приложениях."
+"Маршрутизировать весь трафик системы через виртуальный адаптер (TCP/UDP, требуются "
+"права root)"
 
-#: src/ui/pages/settings_page.ui:180
+#: src/ui/pages/settings_page.ui:162
+msgid ""
+"Creates a virtual network card (vrxx-tun) to route system traffic "
+"transparently. Note: HTTP proxies and certain Shadowsocks plugins only "
+"tunnel TCP, while WireGuard, Hysteria2, TUIC, VLESS, VMess, Trojan, and "
+"plain Shadowsocks support both TCP and UDP."
+msgstr ""
+"Создает виртуальную сетевую карту (vrxx-tun) для прозрачной маршрутизации "
+"системного трафика. Примечание: HTTP-прокси и некоторые плагины Shadowsocks "
+"туннелируют только TCP, тогда как WireGuard, Hysteria2, TUIC, VLESS, VMess, "
+"Trojan и обычный Shadowsocks поддерживают как TCP, так и UDP."
+
+#: src/ui/pages/settings_page.ui:169
 msgid "Sniffing (Packet analysis)"
 msgstr "Sniffing (Анализ пакетов)"
 
-#: src/ui/pages/settings_page.ui:181
-msgid "Determine domain from traffic (required for routing)"
-msgstr "Определять домен из трафика (требуется для маршрутизации)"
+#: src/ui/pages/settings_page.ui:170
+msgid "Extract destination domain from TLS SNI and HTTP headers"
+msgstr "Извлекать целевой домен из заголовков TLS SNI и HTTP"
 
-#: src/ui/pages/settings_page.ui:182
+#: src/ui/pages/settings_page.ui:171
 msgid ""
-"Inspects encrypted SNI and HTTP headers from traffic to identify destination "
-"domains for accurate rule matching."
+"Inspects outgoing packets to identify actual domain names for accurate "
+"routing and bypass rules."
 msgstr ""
-"Анализирует шифрованный SNI и заголовки HTTP для точного определения целевых "
-"доменов и применения правил."
+"Анализирует исходящие пакеты для точного определения доменов в правилах "
+"маршрутизации и обхода."
 
-#: src/ui/pages/settings_page.ui:189 src/ui/tests.rs:166
+#: src/ui/pages/settings_page.ui:178 src/ui/tests.rs:182
 msgid "Block QUIC (UDP 443)"
 msgstr "Блокировать QUIC (UDP 443)"
 
-#: src/ui/pages/settings_page.ui:190
-msgid "Disables HTTP/3 over UDP to force TCP and prevent VPN drops"
-msgstr ""
-"Отключает HTTP/3 поверх UDP для принудительного использования TCP и защиты "
-"от разрывов VPN"
+#: src/ui/pages/settings_page.ui:179
+msgid "Force browsers to use TCP to prevent connection drops"
+msgstr "Принудительно переключать браузеры на TCP для предотвращения обрывов"
 
-#: src/ui/pages/settings_page.ui:191
+#: src/ui/pages/settings_page.ui:180
 msgid ""
-"Blocks QUIC (UDP 443) traffic, forcing browsers like Chrome to use TCP. "
-"Prevents connection drops on restricted networks."
+"Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and "
+"Firefox to use TCP. Recommended for all protocols, especially HTTP proxies "
+"and restricted networks."
 msgstr ""
-"Блокирует трафик QUIC (UDP 443), заставляя браузеры использовать TCP. "
-"Предотвращает разрывы соединения в сетях с ограничениями."
+"Блокирует HTTP/3 (QUIC через UDP 443), вынуждая браузеры вроде Chrome и "
+"Firefox использовать TCP. Рекомендуется для всех протоколов, особенно для "
+"HTTP-прокси и ограниченных сетей."
 
-#: src/ui/pages/settings_page.ui:198 src/ui/tests.rs:169
-msgid "Update Geo Data"
-msgstr "Обновление гео-баз"
-
-#: src/ui/pages/settings_page.ui:199
-msgid "Download latest geoip and geosite data"
-msgstr "Загрузить актуальные базы geoip и geosite"
-
-#: src/ui/pages/settings_page.ui:208
-msgid "Update"
-msgstr "Обновить"
-
-#: src/ui/pages/settings_page.ui:234
+#: src/ui/pages/settings_page.ui:187
 msgid "Bypass LAN"
 msgstr "Обход LAN (Bypass LAN)"
 
-#: src/ui/pages/settings_page.ui:235
-msgid "Do not route local traffic through VPN"
-msgstr "Не маршрутизировать локальный трафик через VPN"
+#: src/ui/pages/settings_page.ui:188
+msgid "Do not route local network traffic through VPN"
+msgstr "Не маршрутизировать локальный сетевой трафик через VPN"
 
-#: src/ui/pages/settings_page.ui:236
+#: src/ui/pages/settings_page.ui:189
 msgid ""
-"Directs traffic for local network addresses (192.168.x.x, 10.x.x.x, local "
-"printers) away from the VPN so local devices remain accessible."
+"Directs local network subnets (192.168.x.x, 10.x.x.x, local printers, smart "
+"home devices) directly to your local router instead of through the VPN "
+"tunnel."
 msgstr ""
-"Направляет трафик локальных адресов (192.168.x.x, 10.x.x.x, локальные "
-"принтеры) в обход VPN, сохраняя доступ к локальным устройствам."
+"Направляет трафик локальных адресов (192.168.x.x, 10.x.x.x, принтеры, умный "
+"дом) напрямую в локальную сеть в обход VPN."
 
-#: src/ui/pages/settings_page.ui:243
+#: src/ui/pages/settings_page.ui:196
 msgid "Fake DNS"
 msgstr "Fake DNS"
 
-#: src/ui/pages/settings_page.ui:244
-msgid "Return fake IPs (improves speed but breaks some apps)"
-msgstr ""
-"Возвращать поддельные IP (улучшает скорость, но ломает некоторые приложения)"
+#: src/ui/pages/settings_page.ui:197
+msgid "Return synthetic local IPs for ultra-fast domain resolution"
+msgstr "Возвращать фиктивные локальные IP для мгновенного отклика DNS"
 
-#: src/ui/pages/settings_page.ui:245
+#: src/ui/pages/settings_page.ui:198
 msgid ""
-"Returns synthetic local IP addresses (198.18.0.0/15) for fast domain "
-"responses while resolving real target IPs remotely on the proxy server."
+"Assigns synthetic IP addresses (198.18.0.0/15) locally for instant response, "
+"while resolving real IPs on the remote proxy server. Speeds up connection "
+"opening significantly."
 msgstr ""
-"Возвращает синтетические локальные IP-адреса (198.18.0.0/15) для быстрых DNS-"
-"ответов, резолвя реальные IP удаленно на стороне прокси-сервера."
+"Локально возвращает синтетические IP-адреса (198.18.0.0/15) для ускорения "
+"ответа, в то время как реальные IP разрешаются на прокси-сервере."
 
-#: src/ui/pages/settings_page.ui:252
-msgid "Advanced Settings"
-msgstr "Расширенные настройки"
+#: src/ui/pages/settings_page.ui:209
+msgid "Advanced Connection"
+msgstr "Расширенная оптимизация"
 
-#: src/ui/pages/settings_page.ui:256
+#: src/ui/pages/settings_page.ui:210
+msgid ""
+"Stream multiplexing, TLS anti-censorship fragmentation, and connection "
+"optimization"
+msgstr ""
+"Мультиплексирование потоков, фрагментация TLS против цензуры и оптимизация "
+"соединений"
+
+#: src/ui/pages/settings_page.ui:215
 msgid "Multiplexing (Mux)"
 msgstr "Мультиплексирование (Mux)"
 
-#: src/ui/pages/settings_page.ui:257
-msgid "Speeds up connections but may cause instability"
-msgstr "Ускоряет соединения, но может вызвать нестабильность"
+#: src/ui/pages/settings_page.ui:216
+msgid "Combine multiple TCP streams into a single connection (h2mux)"
+msgstr "Объединять несколько TCP-потоков в одно соединение (h2mux)"
 
-#: src/ui/pages/settings_page.ui:258
+#: src/ui/pages/settings_page.ui:217
 msgid ""
-"Reduces handshake latency by reusing a single TCP connection for multiple "
-"streams. May increase jitter or trigger DPI traffic detection."
+"Reuses a single persistent TCP connection for multiple streams. Supported on "
+"VLESS, VMess, Trojan, and Shadowsocks. Automatically bypassed for WireGuard, "
+"Hysteria2, TUIC, and HTTP proxies."
 msgstr ""
-"Уменьшает задержку рукопожатия путем мультиплексирования потоков в одно TCP-"
-"соединение. Может увеличивать джиттер или детектироваться системами DPI."
+"Повторно использует одно постоянное TCP-соединение для нескольких потоков. "
+"Поддерживается в VLESS, VMess, Trojan и Shadowsocks. Автоматически "
+"пропускается для WireGuard, Hysteria2, TUIC и HTTP-прокси."
 
-#: src/ui/pages/settings_page.ui:262
+#: src/ui/pages/settings_page.ui:223 src/ui/tests.rs:199
 msgid "Concurrency"
 msgstr "Параллельность (Concurrency)"
 
-#: src/ui/pages/settings_page.ui:286
-msgid "Backup"
-msgstr "Резервное копирование"
+#: src/ui/pages/settings_page.ui:224
+msgid "Maximum concurrent multiplexed streams (1–128)"
+msgstr "Максимальное число параллельных потоков на соединение (1–128)"
 
-#: src/ui/pages/settings_page.ui:291
-msgid "Import settings"
-msgstr "Импорт настроек"
+#: src/ui/pages/settings_page.ui:225
+msgid ""
+"Defines how many concurrent streams can be transmitted simultaneously over "
+"one TCP connection. Default value is 8."
+msgstr ""
+"Задает максимальное число одновременных потоков через одно TCP-соединение. "
+"Рекомендуемое значение: 8."
 
-#: src/ui/pages/settings_page.ui:292
-msgid "Load profiles and settings from file"
-msgstr "Загрузить профили и настройки из файла"
+#: src/ui/pages/settings_page.ui:243
+msgid "TLS Fragmentation"
+msgstr "Фрагментация TLS"
 
-#: src/ui/pages/settings_page.ui:307
-msgid "Export settings"
-msgstr "Экспорт настроек"
+#: src/ui/pages/settings_page.ui:244
+msgid "Split TLS ClientHello to bypass SNI filtering (TLS and Reality)"
+msgstr "Разбиение TLS ClientHello для обхода фильтрации SNI (TLS и Reality)"
 
-#: src/ui/pages/settings_page.ui:308
-msgid "Save current configuration to file"
-msgstr "Сохранить текущую конфигурацию в файл"
+#: src/ui/pages/settings_page.ui:245
+msgid ""
+"Fragments the initial TLS handshake packet across multiple segments to "
+"bypass SNI inspection and DPI censorship. Supported on TLS/Reality protocols "
+"(VLESS, VMess TLS, Trojan, Hysteria2, TUIC, HTTPS)."
+msgstr ""
+"Фрагментирует начальный пакет рукопожатия TLS на несколько сегментов для "
+"обхода инспекции SNI и цензуры DPI. Поддерживается в протоколах TLS/Reality "
+"(VLESS, VMess TLS, Trojan, Hysteria2, TUIC, HTTPS)."
 
-#: src/ui/pages/settings_page.ui:327 src/ui/tests.rs:164
+#: src/ui/pages/settings_page.ui:257
+msgid "Geo Data"
+msgstr "Базы гео-данных"
+
+#: src/ui/pages/settings_page.ui:258
+msgid ""
+"Precompiled binary rule-sets (GeoIP and GeoSite) for domain and IP routing"
+msgstr ""
+"Скомпилированные бинарные наборы правил (GeoIP и GeoSite) для маршрутизации"
+
+#: src/ui/pages/settings_page.ui:263 src/ui/tests.rs:185
+msgid "Update Geo Data"
+msgstr "Обновление гео-баз"
+
+#: src/ui/pages/settings_page.ui:264
+msgid "Download latest GeoIP and GeoSite binary rule-sets (.srs)"
+msgstr "Загрузить актуальные бинарные наборы правил GeoIP и GeoSite (.srs)"
+
+#: src/ui/pages/settings_page.ui:265
+msgid ""
+"Fetches the latest compiled binary rule-sets for GeoIP and GeoSite databases "
+"to keep regional bypass lists up to date."
+msgstr ""
+"Загружает свежие скомпилированные базы правил для GeoIP и GeoSite для "
+"поддержания списков обхода в актуальном состоянии."
+
+#: src/ui/pages/settings_page.ui:274
+msgid "Update"
+msgstr "Обновить"
+
+#: src/ui/pages/settings_page.ui:275
+msgid "Download latest geo-databases now"
+msgstr "Загрузить актуальные гео-базы сейчас"
+
+#: src/ui/pages/settings_page.ui:305 src/ui/tests.rs:180
 msgid "Latency Testing"
 msgstr "Замер задержки"
 
-#: src/ui/pages/settings_page.ui:332
+#: src/ui/pages/settings_page.ui:306
+msgid "Methods and parameters for measuring server response time"
+msgstr "Методы и параметры замера времени отклика серверов"
+
+#: src/ui/pages/settings_page.ui:311
 msgid "Ping Algorithm"
 msgstr "Алгоритм пинга"
 
-#: src/ui/pages/settings_page.ui:333
-msgid "Method used for measuring server latency"
-msgstr "Метод, используемый для измерения задержки до серверов"
+#: src/ui/pages/settings_page.ui:312
+msgid "HTTP GET via Proxy (universal), TCP Handshake, or ICMP Ping"
+msgstr "HTTP GET через прокси (универсальный), TCP Handshake или ICMP Ping"
 
-#: src/ui/pages/settings_page.ui:337
+#: src/ui/pages/settings_page.ui:313
+msgid ""
+"HTTP GET/HEAD via Proxy is recommended as it performs a real end-to-end test "
+"through the proxy tunnel for 100% of protocols. TCP Handshake directly "
+"connects to the port (may timeout on UDP-only protocols like WireGuard/"
+"TUIC). ICMP Ping sends echo packets to the host IP (may be blocked by "
+"firewalls)."
+msgstr ""
+"HTTP GET/HEAD через прокси рекомендуется, так как выполняет реальную "
+"сквозную проверку через туннель прокси для 100% протоколов. TCP Handshake "
+"подключается напрямую к порту (может вызывать таймаут для протоколов с UDP, "
+"таких как WireGuard/TUIC). ICMP Ping отправляет echo-пакеты на IP хоста."
+
+#: src/ui/pages/settings_page.ui:317
 msgid "TCP Handshake"
 msgstr "TCP Handshake"
 
-#: src/ui/pages/settings_page.ui:338
+#: src/ui/pages/settings_page.ui:318
 msgid "ICMP Ping"
 msgstr "ICMP Ping"
 
-#: src/ui/pages/settings_page.ui:339
+#: src/ui/pages/settings_page.ui:319
 msgid "HTTP GET (via Proxy)"
 msgstr "HTTP GET (через прокси)"
 
-#: src/ui/pages/settings_page.ui:340
+#: src/ui/pages/settings_page.ui:320
 msgid "HTTP HEAD (via Proxy)"
 msgstr "HTTP HEAD (через прокси)"
 
-#: src/ui/pages/settings_page.ui:351
+#: src/ui/pages/settings_page.ui:331
 msgid "Ping Target URL"
 msgstr "Целевой URL для пинга"
 
-#: src/ui/pages/settings_page.ui:363
+#: src/ui/pages/settings_page.ui:332
+msgid ""
+"The lightweight URL requested during HTTP proxy latency measurements "
+"(default is Google generate_204)."
+msgstr ""
+"Легковесный URL, запрашиваемый при замере задержки через прокси (по "
+"умолчанию Google generate_204)."
+
+#: src/ui/pages/settings_page.ui:340
+msgid "Auto Ping on Startup"
+msgstr "Автопинг при запуске"
+
+#: src/ui/pages/settings_page.ui:341
+msgid "Measure latency of all profiles when application launches"
+msgstr "Измерять задержку всех профилей при запуске приложения"
+
+#: src/ui/pages/settings_page.ui:349
+msgid "Auto Ping Interval"
+msgstr "Интервал автопинга"
+
+#: src/ui/pages/settings_page.ui:350
+msgid "Periodically refresh connection latency in background"
+msgstr "Периодически обновлять задержку соединений в фоновом режиме"
+
+#: src/ui/pages/settings_page.ui:354
+msgid "Disabled"
+msgstr "Отключено"
+
+#: src/ui/pages/settings_page.ui:355
+msgid "5 minutes"
+msgstr "5 минут"
+
+#: src/ui/pages/settings_page.ui:356
+msgid "10 minutes"
+msgstr "10 минут"
+
+#: src/ui/pages/settings_page.ui:357
+msgid "15 minutes"
+msgstr "15 минут"
+
+#: src/ui/pages/settings_page.ui:358
+msgid "30 minutes"
+msgstr "30 минут"
+
+#: src/ui/pages/settings_page.ui:359
+msgid "1 hour"
+msgstr "1 час"
+
+#: src/ui/pages/settings_page.ui:374
 msgid "Diagnostics"
 msgstr "Диагностика"
 
-#: src/ui/pages/settings_page.ui:368
+#: src/ui/pages/settings_page.ui:375
+msgid "Core version information, logs, and troubleshooting tools"
+msgstr "Информация о версии ядра, журналы и средства диагностики"
+
+#: src/ui/pages/settings_page.ui:380
+msgid "Core version"
+msgstr "Версия ядра"
+
+#: src/ui/pages/settings_page.ui:381
+msgid "Unknown"
+msgstr "Неизвестно"
+
+#: src/ui/pages/settings_page.ui:382
+msgid ""
+"Displays the currently installed binary version and compilation tags of the "
+"sing-box core."
+msgstr ""
+"Отображает версию и флаги сборки установленного исполняемого файла sing-box."
+
+#: src/ui/pages/settings_page.ui:389
 msgid "Logging level"
 msgstr "Уровень логирования"
 
-#: src/ui/pages/settings_page.ui:372 src/window.rs:498
+#: src/ui/pages/settings_page.ui:390
+msgid "Verbosity of core output messages"
+msgstr "Степень подробности вывода сообщений ядра"
+
+#: src/ui/pages/settings_page.ui:391
+msgid ""
+"Controls how detailed the core log messages are: Error (critical only), "
+"Warning (potential issues), Info (standard connection events), Debug "
+"(detailed packet diagnostics)."
+msgstr ""
+"Управляет детализацией логов ядра: Error (только критические ошибки), "
+"Warning (предупреждения), Info (стандартные события), Debug (подробная "
+"диагностика пакетов)."
+
+#: src/ui/pages/settings_page.ui:395 src/window.rs:543 src/ui/components/log_window.rs:149
 msgid "Error"
 msgstr "Error"
 
-#: src/ui/pages/settings_page.ui:373
+#: src/ui/pages/settings_page.ui:396 src/ui/components/log_window.rs:150
 msgid "Warning"
 msgstr "Warning"
 
-#: src/ui/pages/settings_page.ui:374
+#: src/ui/pages/settings_page.ui:397 src/ui/components/log_window.rs:151
 msgid "Info"
 msgstr "Info"
 
-#: src/ui/pages/settings_page.ui:375
+#: src/ui/pages/settings_page.ui:398 src/ui/components/log_window.rs:152
 msgid "Debug"
 msgstr "Debug"
 
-#: src/ui/pages/settings_page.ui:386
+#: src/ui/pages/settings_page.ui:409
 msgid "View logs"
 msgstr "Просмотр логов"
 
-#: src/ui/pages/settings_page.ui:387
-msgid "Open console with real-time logs"
-msgstr "Открыть консоль с логами в реальном времени"
+#: src/ui/pages/settings_page.ui:410
+msgid "Open real-time console log viewer"
+msgstr "Открыть окно просмотра логов в реальном времени"
 
-#: src/ui/pages/settings_page.ui:402
+#: src/ui/pages/settings_page.ui:411
+msgid ""
+"Opens the integrated live log viewer window with real-time filtering, pause, "
+"search, and export options."
+msgstr ""
+"Открывает встроенное окно журнала с фильтрацией в реальном времени, паузой, "
+"поиском и экспортом."
+
+#: src/ui/pages/settings_page.ui:426
 msgid "Open logs folder"
 msgstr "Открыть папку логов"
 
-#: src/ui/pages/settings_page.ui:403
-msgid "Open system folder with log files"
-msgstr "Открыть системную папку с файлами журналов"
+#: src/ui/pages/settings_page.ui:427
+msgid "Open system directory containing log files"
+msgstr "Открыть системный каталог с файлами журналов"
 
-#: src/ui/pages/settings_page.ui:425
+#: src/ui/pages/settings_page.ui:428
+msgid ""
+"Opens the local system directory containing persistent log files in your "
+"file manager."
+msgstr "Открывает директорию с файлами логов в системном файловом менеджере."
+
+#: src/ui/pages/settings_page.ui:447
+msgid "Backup"
+msgstr "Резервное копирование"
+
+#: src/ui/pages/settings_page.ui:448
+msgid "Export and import application settings and VPN profiles"
+msgstr "Экспорт и импорт настроек приложения и профилей VPN"
+
+#: src/ui/pages/settings_page.ui:453
+msgid "Import settings"
+msgstr "Импорт настроек"
+
+#: src/ui/pages/settings_page.ui:454
+msgid "Restore settings and profiles from a backup file"
+msgstr "Восстановить настройки и профили из файла резервной копии"
+
+#: src/ui/pages/settings_page.ui:455
+msgid ""
+"Loads application settings, custom routing rules, and VPN profiles from a "
+"JSON backup file."
+msgstr ""
+"Загружает настройки программы, пользовательские правила маршрутизации и "
+"профили VPN из файла резервной копии JSON."
+
+#: src/ui/pages/settings_page.ui:470
+msgid "Export settings"
+msgstr "Экспорт настроек"
+
+#: src/ui/pages/settings_page.ui:471
+msgid "Save current configuration and profiles to a backup file"
+msgstr "Сохранить текущую конфигурацию и профили в файл резервной копии"
+
+#: src/ui/pages/settings_page.ui:472
+msgid ""
+"Exports all application settings, routing rules, and VPN profiles to a "
+"portable JSON backup file."
+msgstr ""
+"Экспортирует все настройки, правила маршрутизации и профили VPN в файл "
+"резервной копии JSON."
+
+#: src/ui/pages/settings_page.ui:491
+msgid "Danger Zone"
+msgstr "Опасная зона"
+
+#: src/ui/pages/settings_page.ui:492
+msgid "Irreversible actions and complete configuration reset"
+msgstr "Необратимые действия и полный сброс конфигурации"
+
+#: src/ui/pages/settings_page.ui:497
 msgid "Reset settings"
 msgstr "Сбросить настройки"
 
-#: src/ui/pages/settings_page.ui:426
-msgid "Delete all saved data (danger zone)"
-msgstr "Удалить все сохраненные данные (опасная зона)"
+#: src/ui/pages/settings_page.ui:498
+msgid "Erase all profiles and restore factory defaults"
+msgstr "Удалить все профили и вернуть настройки по умолчанию"
 
-#: src/ui/pages/vpn_page.rs:180
+#: src/ui/pages/settings_page.ui:499
+msgid ""
+"Permanently erases all saved VPN keys, custom rules, and configuration "
+"settings, returning the application to its default state."
+msgstr ""
+"Безвозвратно удаляет все сохраненные VPN-профили, правила и настройки, "
+"возвращая программу к начальному состоянию."
+
+#: src/ui/pages/vpn_page.rs:186
 msgid "No VPN Connections"
 msgstr "Нет VPN-подключений"
 
-#: src/ui/pages/vpn_page.rs:182
+#: src/ui/pages/vpn_page.rs:188
 msgid "Add a new connection using the buttons above to get started."
 msgstr "Добавьте новое подключение с помощью кнопок выше, чтобы начать."
 
-#: src/ui/pages/vpn_page.rs:284
+#: src/ui/pages/vpn_page.rs:290
 msgid "Please wait before pinging again"
 msgstr "Пожалуйста, подождите перед повторным пингом"
 
-#: src/ui/pages/vpn_page.rs:292
+#: src/ui/pages/vpn_page.rs:298 src/ui/pages/vpn_page.rs:1021
+#: src/ui/pages/vpn_page.rs:1042 src/ui/pages/vpn_page.rs:1060
 msgid "pinging..."
 msgstr "пинг..."
 
-#: src/ui/pages/vpn_page.rs:463 src/ui/pages/vpn_page.rs:465
-#: src/ui/pages/vpn_page.rs:934 src/window.rs:471 src/window.rs:536
+#: src/ui/pages/vpn_page.rs:465 src/ui/pages/vpn_page.rs:467
+#: src/ui/pages/vpn_page.rs:931 src/window.rs:516 src/window.rs:581
 #: src/window.ui:207
 msgid "Connected"
 msgstr "Подключено"
@@ -1037,11 +1693,11 @@ msgstr "Подключено"
 msgid "Disconnected"
 msgstr "Отключено"
 
-#: src/ui/pages/vpn_page.rs:517 src/ui/pages/vpn_page.rs:779 src/window.rs:480
+#: src/ui/pages/vpn_page.rs:517 src/ui/pages/vpn_page.rs:780 src/window.rs:525
 msgid "Connecting..."
 msgstr "Подключение..."
 
-#: src/ui/pages/vpn_page.rs:523 src/window.rs:482
+#: src/ui/pages/vpn_page.rs:523 src/window.rs:527
 msgid "Disconnecting..."
 msgstr "Отключение..."
 
@@ -1065,31 +1721,31 @@ msgstr "Процесс ядра неожиданно завершился. Де�
 msgid "OK"
 msgstr "ОК"
 
-#: src/ui/pages/vpn_page.rs:732
+#: src/ui/pages/vpn_page.rs:733
 msgid "Please wait before switching keys"
 msgstr "Подождите перед переключением ключа"
 
-#: src/ui/pages/vpn_page.rs:795
+#: src/ui/pages/vpn_page.rs:793
 msgid "Configuration error"
 msgstr "Ошибка конфигурации"
 
-#: src/ui/pages/vpn_page.rs:799
+#: src/ui/pages/vpn_page.rs:797
 msgid "Invalid Key Format"
 msgstr "Некорректный формат ключа"
 
-#: src/ui/pages/vpn_page.rs:800
+#: src/ui/pages/vpn_page.rs:798
 msgid "Failed to parse VPN key URL"
 msgstr "Не удалось разобрать URL VPN-ключа"
 
-#: src/ui/pages/vpn_page.rs:815
+#: src/ui/pages/vpn_page.rs:813
 msgid "Invalid Key"
 msgstr "Недействительный ключ"
 
-#: src/ui/pages/vpn_page.rs:820
+#: src/ui/pages/vpn_page.rs:818
 msgid "Key Validation Error"
 msgstr "Ошибка валидации ключа"
 
-#: src/ui/pages/vpn_page.rs:821
+#: src/ui/pages/vpn_page.rs:819
 msgid ""
 "The VPN key parameters are invalid or corrupted (e.g. invalid UUID, missing "
 "Reality public key or SNI)."
@@ -1097,11 +1753,11 @@ msgstr ""
 "Параметры VPN-ключа недействительны или повреждены (например, неверный UUID, "
 "отсутствует публичный ключ Reality или SNI)."
 
-#: src/ui/pages/vpn_page.rs:866
+#: src/ui/pages/vpn_page.rs:861
 msgid "Core startup error"
 msgstr "Ошибка запуска ядра"
 
-#: src/ui/pages/vpn_page.rs:962 src/ui/pages/vpn_page.rs:1025
+#: src/ui/pages/vpn_page.rs:962 src/ui/pages/vpn_page.rs:1126
 msgid "error"
 msgstr "ошибка"
 
@@ -1133,127 +1789,59 @@ msgstr "Ошибка локального прокси"
 msgid "Test request through proxy failed"
 msgstr "Тестовый запрос через прокси не удался"
 
-#: src/ui/pages/vpn_page.rs:1019
+#: src/ui/pages/vpn_page.rs:1120
 msgid "timeout"
 msgstr "таймаут"
 
-#: src/ui/pages/vpn_page.rs:1023
+#: src/ui/pages/vpn_page.rs:1124
 msgid "auth error"
 msgstr "ошибка аутентификации"
 
-#: src/ui/pages/vpn_page.rs:1175 src/ui/pages/vpn_page.rs:1278
+#: src/ui/pages/vpn_page.rs:1276
 msgid "Server address"
 msgstr "Адрес сервера"
 
-#: src/ui/pages/vpn_page.rs:1177
+#: src/ui/pages/vpn_page.rs:1278
 msgid "Location"
 msgstr "Локация"
 
-#: src/ui/pages/vpn_page.rs:1179
+#: src/ui/pages/vpn_page.rs:1280
 msgid "Timezone"
 msgstr "Часовой пояс"
 
-#: src/ui/pages/vpn_page.rs:1194
+#: src/ui/pages/vpn_page.rs:1295
 msgid "Network"
 msgstr "Сеть"
 
-#: src/ui/pages/vpn_page.rs:1197
+#: src/ui/pages/vpn_page.rs:1298
 msgid "Security"
 msgstr "Безопасность"
 
-#: src/ui/pages/vpn_page.rs:1210
+#: src/ui/pages/vpn_page.rs:1302
+msgid "SNI"
+msgstr "SNI"
+
+#: src/ui/pages/vpn_page.rs:1305
+msgid "Fingerprint"
+msgstr "Отпечаток"
+
+#: src/ui/pages/vpn_page.rs:1311
 msgid "Public key"
 msgstr "Публичный ключ"
 
-#: src/ui/pages/vpn_page.rs:1266
-msgid "Edit VPN key"
-msgstr "Редактировать VPN ключ"
-
-#: src/ui/pages/vpn_page.rs:1270
-msgid "Name"
-msgstr "Имя"
-
-#: src/ui/pages/vpn_page.rs:1286
-msgid "UUID / Password"
-msgstr "UUID / Пароль"
-
-#: src/ui/pages/vpn_page.rs:1296
-msgid "Connection"
-msgstr "Соединение"
-
-#: src/ui/pages/vpn_page.rs:1366
+#: src/ui/pages/vpn_page.rs:1387
 msgid "Delete VPN key"
 msgstr "Удалить VPN ключ"
 
-#: src/ui/pages/vpn_page.rs:1369
+#: src/ui/pages/vpn_page.rs:1390
 msgid "Are you sure you want to delete"
 msgstr "Вы уверены, что хотите удалить"
 
-#: src/ui/pages/vpn_page.rs:1375
+#: src/ui/pages/vpn_page.rs:1396
 msgid "Delete"
 msgstr "Удалить"
 
-#: src/ui/pages/vpn_page.rs:1461
-msgid "Add VPN Profile"
-msgstr "Добавить VPN-профиль"
-
-#: src/ui/pages/vpn_page.rs:1466
-msgid "Quick Import from Link"
-msgstr "Быстрый импорт по ссылке"
-
-#: src/ui/pages/vpn_page.rs:1470
-msgid "VPN Link (vless://, vmess://, etc.)"
-msgstr "VPN-ссылка (vless://, vmess:// и т.д.)"
-
-#: src/ui/pages/vpn_page.rs:1508
-msgid "Server address / Host"
-msgstr "Адрес сервера / Хост"
-
-#: src/ui/pages/vpn_page.rs:1515
-msgid "UUID / Password / Key"
-msgstr "UUID / Пароль / Ключ"
-
-#: src/ui/pages/vpn_page.rs:1532
-msgid "Test Connection"
-msgstr "Проверить соединение"
-
-#: src/ui/pages/vpn_page.rs:1537
-msgid "Ready"
-msgstr "Готово"
-
-#: src/ui/pages/vpn_page.rs:1549
-msgid "Security Mode (reality/tls/none)"
-msgstr "Режим безопасности (reality/tls/none)"
-
-#: src/ui/pages/vpn_page.rs:1552
-msgid "SNI / Server Name"
-msgstr "SNI / Имя сервера"
-
-#: src/ui/pages/vpn_page.rs:1555
-msgid "Reality Public Key (pbk)"
-msgstr "Публичный ключ Reality (pbk)"
-
-#: src/ui/pages/vpn_page.rs:1558
-msgid "Fingerprint (uTLS)"
-msgstr "Отпечаток (uTLS)"
-
-#: src/ui/pages/vpn_page.rs:1561
-msgid "Flow (e.g. xtls-rprx-vision)"
-msgstr "Flow (напр. xtls-rprx-vision)"
-
-#: src/ui/pages/vpn_page.rs:1670
-msgid "Enter host address first"
-msgstr "Сначала укажите адрес хоста"
-
-#: src/ui/pages/vpn_page.rs:1716
-msgid "Add Profile"
-msgstr "Добавить профиль"
-
-#: src/ui/pages/vpn_page.rs:1717
-msgid "Add and Connect"
-msgstr "Добавить и подключиться"
-
-#: src/ui/pages/vpn_page.rs:1870
+#: src/ui/pages/vpn_page.rs:1575
 msgid "Please wait before disconnecting again"
 msgstr "Пожалуйста, подождите перед повторным отключением"
 
@@ -1269,266 +1857,43 @@ msgstr "Импорт по ссылке"
 msgid "Import from clipboard"
 msgstr "Импорт из буфера обмена"
 
-#: src/ui/pages/vpn_page.ui:87 src/window.ui:517
+#: src/ui/pages/vpn_page.ui:76
+msgid "Ping all keys"
+msgstr "Проверить все ключи"
+
+#: src/ui/pages/vpn_page.ui:96 src/window.ui:520
 msgid "Disconnect"
 msgstr "Отключить"
 
-#: src/ui/pages/vpn_page.ui:105
+#: src/ui/pages/vpn_page.ui:114
 msgid "Connection list"
 msgstr "Список подключений"
 
-#: src/ui/qr_dialog.rs:177 src/ui/qr_dialog.ui:110
-msgid "Show QR Code"
-msgstr "Показать QR-код"
+#: src/ui/tests.rs:206
+msgid "Add Profile"
+msgstr "Добавить профиль"
 
-#: src/ui/qr_dialog.rs:184
-msgid "Hide QR Code"
-msgstr "Скрыть QR-код"
+#: src/ui/tests.rs:208
+msgid "Add and Connect"
+msgstr "Добавить и подключиться"
 
-#. / Отображает интерактивный модальный диалог `AdwAlertDialog` с QR-кодом и опциями шеринга.
-#. /
-#. / Возможности:
-#. / - Декларативная разметка в `src/ui/qr_dialog.ui`
-#. / - Защита приватности с эффектом размытия (Privacy Blur)
-#. / - Кнопка «Ссылка»: копирование URI в буфер обмена
-#. / - Кнопка «JSON»: парсинг и копирование JSON-конфигурации
-#. / - Кнопка «Сохранить QR»: экспорт в файлы PNG или SVG через `gtk::FileDialog`
-#: src/ui/qr_dialog.rs:207
-msgid "Share Profile"
-msgstr "Поделиться профилем"
-
-#: src/ui/qr_dialog.rs:224 src/ui/qr_dialog.rs:228
-msgid "Failed to generate QR code"
-msgstr "Не удалось сгенерировать QR-код"
-
-#: src/ui/qr_dialog.rs:239
-msgid "Link copied to clipboard"
-msgstr "Ссылка скопирована в буфер обмена"
-
-#: src/ui/qr_dialog.rs:250
-msgid "JSON copied to clipboard"
-msgstr "JSON скопирован в буфер обмена"
-
-#: src/ui/qr_dialog.rs:254
-msgid "Failed to generate JSON for key"
-msgstr "Не удалось сгенерировать JSON для ключа"
-
-#: src/ui/qr_dialog.rs:269
-msgid "Save QR Code As"
-msgstr "Сохранить QR-код как"
-
-#: src/ui/qr_dialog.rs:273
-msgid "PNG Image (*.png)"
-msgstr "Изображение PNG (*.png)"
-
-#: src/ui/qr_dialog.rs:278
-msgid "SVG Vector (*.svg)"
-msgstr "Вектор SVG (*.svg)"
-
-#: src/ui/qr_dialog.rs:331
-msgid "QR code saved successfully"
-msgstr "QR-код успешно сохранен"
-
-#: src/ui/qr_dialog.rs:337
-msgid "Failed to save QR code"
-msgstr "Не удалось сохранить QR-код"
-
-#: src/ui/qr_dialog.ui:158
-msgid "Copy Link"
-msgstr "Скопировать ссылку"
-
-#: src/ui/qr_dialog.ui:170
-msgid "Link"
-msgstr "Ссылка"
-
-#: src/ui/qr_dialog.ui:181
-msgid "Copy JSON"
-msgstr "Скопировать JSON"
-
-#: src/ui/qr_dialog.ui:193
-msgid "JSON"
-msgstr "JSON"
-
-#: src/ui/qr_dialog.ui:204
-msgid "Save QR Code as..."
-msgstr "Сохранить QR-код как..."
-
-#: src/ui/qr_dialog.ui:216
-msgid "Save QR"
-msgstr "Сохранить QR"
-
-#: src/ui/rule_dialog.rs:146
-msgid ""
-"Matches exact IP address or CIDR subnet (e.g. 192.168.1.50 or 10.0.0.0/24)"
-msgstr ""
-"Сопоставляет точный IP-адрес или CIDR-подсеть (например, 192.168.1.50 или "
-"10.0.0.0/24)"
-
-#: src/ui/rule_dialog.rs:149
-msgid "IP Address or CIDR Subnet"
-msgstr "IP-адрес или CIDR-подсеть"
-
-#: src/ui/rule_dialog.rs:153
-msgid ""
-"Remote binary compiled rule-set URL (e.g. https://example.com/ruleset.srs)"
-msgstr ""
-"URL удаленного скомпилированного набора правил (например, https://"
-"example.com/ruleset.srs)"
-
-#: src/ui/rule_dialog.rs:156
-msgid "Rule-Set URL (.srs)"
-msgstr "URL набора правил (.srs)"
-
-#: src/ui/rule_dialog.rs:160
-msgid ""
-"Matches domain and all its subdomains (e.g. example.com matches example.com "
-"and sub.example.com; .org matches all .org domains)"
-msgstr ""
-"Сопоставляет домен и все его поддомены (например, example.com сопоставит "
-"example.com и sub.example.com; .org сопоставит все домены зоны .org)"
-
-#: src/ui/rule_dialog.rs:163
-msgid "Domain Name or Suffix"
-msgstr "Доменное имя или суффикс"
-
-#: src/ui/rule_dialog.rs:206
-msgid "Please enter a rule value"
-msgstr "Пожалуйста, введите значение правила"
-
-#: src/ui/rule_dialog.rs:218
-msgid "Value contains forbidden control characters or quotes"
-msgstr "Значение содержит недопустимые управляющие символы или кавычки"
-
-#: src/ui/rule_dialog.rs:229
-msgid ""
-"Invalid domain format. Enter domain name without protocol or path (e.g. "
-"example.com or .org)"
-msgstr ""
-"Некорректный формат домена. Введите доменное имя без протокола или пути "
-"(например, example.com или .org)"
-
-#: src/ui/rule_dialog.rs:238
-msgid ""
-"Domain contains invalid characters. Use letters, numbers, dots and hyphens"
-msgstr ""
-"Домен содержит недопустимые символы. Используйте буквы, цифры, точки и дефисы"
-
-#: src/ui/rule_dialog.rs:250
-msgid ""
-"CIDR subnet prefix length exceeds valid range (0-32 for IPv4, 0-128 for IPv6)"
-msgstr ""
-"Длина маски CIDR выходит за допустимый диапазон (0-32 для IPv4, 0-128 для "
-"IPv6)"
-
-#: src/ui/rule_dialog.rs:254
-msgid "Invalid CIDR prefix format"
-msgstr "Некорректный формат маски CIDR"
-
-#: src/ui/rule_dialog.rs:257
-msgid "Invalid IP address in CIDR expression"
-msgstr "Некорректный IP-адрес в выражении CIDR"
-
-#: src/ui/rule_dialog.rs:261
-msgid "Invalid IP address format (e.g. 192.168.1.1 or 10.0.0.0/24)"
-msgstr "Некорректный формат IP-адреса (например, 192.168.1.1 или 10.0.0.0/24)"
-
-#: src/ui/rule_dialog.rs:268
-msgid "Rule-Set URL must start with http:// or https://"
-msgstr "URL набора правил должен начинаться с http:// или https://"
-
-#: src/ui/rule_dialog.rs:272
-msgid "URL must not contain spaces"
-msgstr "URL не должен содержать пробелы"
-
-#: src/ui/rule_dialog.ui:58
-msgid "How routing rules work"
-msgstr "Как работают правила маршрутизации"
-
-#: src/ui/rule_dialog.ui:59
-msgid "Examples and instructions for custom routing"
-msgstr "Примеры и инструкции по настройке маршрутизации"
-
-#: src/ui/rule_dialog.ui:68 src/ui/tests.rs:161
-msgid "Direct Bypass (Direct Connection)"
-msgstr "Прямой обход (Прямое подключение)"
-
-#: src/ui/rule_dialog.ui:69
-msgid ""
-"Useful for domestic or trusted services to connect directly without exposing "
-"VPN IP."
-msgstr ""
-"Полезно для доверенных или локальных сервисов: прямое подключение без "
-"использования VPN-туннеля."
-
-#: src/ui/rule_dialog.ui:75
-msgid "VPN Tunnel (Proxy)"
-msgstr "VPN-туннель (Прокси)"
-
-#: src/ui/rule_dialog.ui:76
-msgid ""
-"Routes specific websites or IP ranges through your active encrypted VPN "
-"tunnel."
-msgstr ""
-"Направляет указанные сайты или диапазоны IP через активный зашифрованный VPN-"
-"туннель."
-
-#: src/ui/rule_dialog.ui:92
-msgid "Description (Optional)"
-msgstr "Описание (необязательно)"
-
-#: src/ui/rule_dialog.ui:100
-msgid "Rule Type"
-msgstr "Тип правила"
-
-#: src/ui/rule_dialog.ui:104
-msgid "Domain / Subdomains (e.g. example.com, .org)"
-msgstr "Домен / Поддомены (например, vk.com, .ru)"
-
-#: src/ui/rule_dialog.ui:105
-msgid "IP Address / CIDR (e.g. 192.168.1.1, 10.0.0.0/24)"
-msgstr "IP-адрес / CIDR (например, 192.168.1.1, 10.0.0.0/24)"
-
-#: src/ui/rule_dialog.ui:106
-msgid "Rule-Set (.srs URL)"
-msgstr "Набор правил (.srs URL)"
-
-#: src/ui/rule_dialog.ui:117
-msgid "Value (Domain, IP, or URL)"
-msgstr "Значение (домен, IP или URL)"
-
-#: src/ui/rule_dialog.ui:125
-msgid "Action"
-msgstr "Действие"
-
-#: src/ui/rule_dialog.ui:129
-msgid "Direct (Bypass VPN)"
-msgstr "Напрямую (Обход VPN)"
-
-#: src/ui/rule_dialog.ui:130
-msgid "Proxy (Route via VPN)"
-msgstr "Через VPN (Проксирование)"
-
-#: src/ui/rule_dialog.ui:131
-msgid "Block (Reject Connection)"
-msgstr "Блокировать (Сброс соединения)"
-
-#: src/window.rs:393
+#: src/window.rs:438
 msgid "Unknown Location"
 msgstr "Неизвестная локация"
 
-#: src/window.rs:415
+#: src/window.rs:460
 msgid "TUN Mode"
 msgstr "Режим TUN"
 
-#: src/window.rs:417
+#: src/window.rs:462
 msgid "Proxy Mode"
 msgstr "Режим Proxy"
 
-#: src/window.rs:422 src/window.rs:544
+#: src/window.rs:467 src/window.rs:589
 msgid "Ping"
 msgstr "Пинг"
 
-#: src/window.rs:500
+#: src/window.rs:545
 msgid "Connection Error"
 msgstr "Ошибка соединения"
 
@@ -1540,389 +1905,197 @@ msgstr "Vrxx"
 msgid "VPN Keys"
 msgstr "Ключи VPN"
 
-#: src/window.ui:272
+#: src/window.ui:275
 msgid "Active Connection"
 msgstr "Активное подключение"
 
-#: src/window.ui:542
+#: src/window.ui:547
 msgid "Content"
 msgstr "Контент"
 
-#: src/ui/menus.ui:56
-msgid "_Close Window"
-msgstr "_Закрыть"
-
-#: src/application.rs:426
-msgid "Quit Vrxx"
-msgstr "Выход из Vrxx"
-
-#: src/application.rs:427
-msgid ""
-"This will disconnect any active VPN connection and terminate both the "
-"application and the background service."
-msgstr ""
-"Это действие остановит активное VPN-соединение, службу демона и полностью "
-"завершит работу программы."
-
-#: src/ui/pages/settings_page.ui:85
-msgid "Application interface, startup, and notification preferences"
-msgstr "Параметры интерфейса, автозапуска и системных уведомлений"
-
-#: src/ui/pages/settings_page.ui:90
-msgid "Select the interface language. Changing the language requires restarting the application."
-msgstr "Выберите язык интерфейса. Для применения нового языка потребуется перезапуск приложения."
-
-#: src/ui/pages/settings_page.ui:105
-msgid "Starts VRXX in the background minimized when your system boots up."
-msgstr "Запускает VRXX в фоновом режиме в системном трее при включении компьютера."
-
-#: src/ui/pages/settings_page.ui:113
-msgid "Automatically connects to the last active VPN server when the application starts."
-msgstr "Автоматически подключается к последнему использованному серверу при запуске VRXX."
-
-#: src/ui/pages/settings_page.ui:120
-msgid "Show desktop notifications on connection events"
-msgstr "Показывать системные уведомления о событиях подключения"
-
-#: src/ui/pages/settings_page.ui:121
-msgid "Displays system notifications when connection status changes or when errors occur."
-msgstr "Отображает всплывающие уведомления при смене статуса сети или возникновении ошибок."
-
-#: src/ui/pages/settings_page.ui:129
-msgid "Masks IP addresses, server domains, and configuration keys in the interface to prevent accidental exposure during screen recording or live streaming."
-msgstr "Скрывает IP-адреса, доменные имена и секретные ключи в интерфейсе для предотвращения их случайного раскрытия при трансляции или записи экрана."
-
-#: src/ui/pages/settings_page.ui:137
-msgid "Network and Core"
-msgstr "Сеть и ядро"
-
-#: src/ui/pages/settings_page.ui:138
-msgid "Core protocol engine parameters and transparent traffic routing"
-msgstr "Параметры сетевого протокола ядра и прозрачная маршрутизация трафика"
-
-#: src/ui/pages/settings_page.ui:143
-msgid "Route all system traffic through virtual adapter (requires root)"
-msgstr "Маршрутизировать весь трафик системы через виртуальный адаптер (требуются права root)"
-
-#: src/ui/pages/settings_page.ui:144
-msgid "Creates a virtual network card (vrxx-tun) to route all system traffic transparently, without needing proxy settings in individual apps."
-msgstr "Создает виртуальный сетевой интерфейс (vrxx-tun) для прозрачного проксирования всего трафика без настройки прокси в отдельных приложениях."
-
-#: src/ui/pages/settings_page.ui:151
-msgid "Extract destination domain from TLS SNI and HTTP headers"
-msgstr "Извлекать целевой домен из заголовков TLS SNI и HTTP"
-
-#: src/ui/pages/settings_page.ui:152
-msgid "Inspects outgoing packets to identify actual domain names for accurate routing and bypass rules."
-msgstr "Анализирует исходящие пакеты для точного определения доменов в правилах маршрутизации и обхода."
-
-#: src/ui/pages/settings_page.ui:159
-msgid "Force browsers to use TCP to prevent connection drops"
-msgstr "Принудительно переключать браузеры на TCP для предотвращения обрывов"
-
-#: src/ui/pages/settings_page.ui:160
-msgid "Blocks HTTP/3 (QUIC over UDP 443), forcing web browsers like Chrome and Firefox to use TCP. Prevents streaming buffering and connection stalls on restricted networks."
-msgstr "Блокирует трафик QUIC (UDP 443), вынуждая браузеры (Chrome, Firefox) использовать TCP. Предотвращает зависания и буферизацию на ограниченных сетях."
-
-#: src/ui/pages/settings_page.ui:168
-msgid "Directs local network subnets (192.168.x.x, 10.x.x.x, local printers, smart home devices) directly to your local router instead of through the VPN tunnel."
-msgstr "Направляет трафик локальных адресов (192.168.x.x, 10.x.x.x, принтеры, умный дом) напрямую в локальную сеть в обход VPN."
-
-#: src/ui/pages/settings_page.ui:176
-msgid "Return synthetic local IPs for ultra-fast domain resolution"
-msgstr "Возвращать фиктивные локальные IP для мгновенного отклика DNS"
-
-#: src/ui/pages/settings_page.ui:177
-msgid "Assigns synthetic IP addresses (198.18.0.0/15) locally for instant response, while resolving real IPs on the remote proxy server. Speeds up connection opening significantly."
-msgstr "Локально возвращает синтетические IP-адреса (198.18.0.0/15) для ускорения ответа, в то время как реальные IP разрешаются на прокси-сервере."
-
-#: src/ui/pages/settings_page.ui:185
-msgid "Advanced Connection"
-msgstr "Расширенная оптимизация"
-
-#: src/ui/pages/settings_page.ui:186
-msgid "TCP stream multiplexing and connection optimization"
-msgstr "Мультиплексирование TCP-потоков и оптимизация соединений"
-
-#: src/ui/pages/settings_page.ui:191
-msgid "Combine multiple TCP streams into a single connection (h2mux)"
-msgstr "Объединять несколько TCP-потоков в одно соединение (h2mux)"
-
-#: src/ui/pages/settings_page.ui:192
-msgid "Reuses a single persistent TCP connection for multiple streams, reducing latency when opening many connections simultaneously. May cause jitter on high-packet-loss networks."
-msgstr "Переиспользует одно TCP-соединение для множества потоков, снижая задержку при открытии страниц. Может вызывать джиттер на сетях с потерями пакетов."
-
-#: src/ui/pages/settings_page.ui:199
-msgid "Maximum concurrent multiplexed streams (1–128)"
-msgstr "Максимальное число параллельных потоков на соединение (1–128)"
-
-#: src/ui/pages/settings_page.ui:200
-msgid "Defines how many concurrent streams can be transmitted simultaneously over one TCP connection. Default value is 8."
-msgstr "Задает максимальное число одновременных потоков через одно TCP-соединение. Рекомендуемое значение: 8."
-
-#: src/ui/pages/settings_page.ui:216
-msgid "Geo Data"
-msgstr "Базы гео-данных"
-
-#: src/ui/pages/settings_page.ui:217
-msgid "Precompiled binary rule-sets (GeoIP and GeoSite) for domain and IP routing"
-msgstr "Скомпилированные бинарные наборы правил (GeoIP и GeoSite) для маршрутизации"
-
-#: src/ui/pages/settings_page.ui:222
-msgid "Download latest GeoIP and GeoSite binary rule-sets (.srs)"
-msgstr "Загрузить актуальные бинарные наборы правил GeoIP и GeoSite (.srs)"
-
-#: src/ui/pages/settings_page.ui:223
-msgid "Fetches the latest compiled binary rule-sets for GeoIP and GeoSite databases to keep regional bypass lists up to date."
-msgstr "Загружает свежие скомпилированные базы правил для GeoIP и GeoSite для поддержания списков обхода в актуальном состоянии."
-
-#: src/ui/pages/settings_page.ui:232
-msgid "Download latest geo-databases now"
-msgstr "Загрузить актуальные гео-базы сейчас"
-
-#: src/ui/pages/settings_page.ui:250
-msgid "Methods and parameters for measuring server response time"
-msgstr "Методы и параметры замера времени отклика серверов"
-
-#: src/ui/pages/settings_page.ui:255
-msgid "Method used for measuring server response time"
-msgstr "Метод измерения времени отклика сервера"
-
-#: src/ui/pages/settings_page.ui:256
-msgid "Choose measurement method: TCP Handshake (fast, connects to port), ICMP Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test through tunnel)."
-msgstr "Выберите метод проверки: TCP Handshake (быстро, проверка порта), ICMP Ping (проверка IP хоста) или HTTP GET/HEAD через прокси (сквозной тест через туннель)."
-
-#: src/ui/pages/settings_page.ui:274
-msgid "The lightweight URL requested during HTTP proxy latency measurements (default is Google generate_204)."
-msgstr "Легковесный URL, запрашиваемый при замере задержки через прокси (по умолчанию Google generate_204)."
-
-#: src/ui/pages/settings_page.ui:283
-msgid "Core version information, logs, and troubleshooting tools"
-msgstr "Информация о версии ядра, журналы и средства диагностики"
-
-#: src/ui/pages/settings_page.ui:289
-msgid "Displays the currently installed binary version and compilation tags of the sing-box core."
-msgstr "Отображает версию и флаги сборки установленного исполняемого файла sing-box."
-
-#: src/ui/pages/settings_page.ui:296
-msgid "Verbosity of core output messages"
-msgstr "Степень подробности вывода сообщений ядра"
-
-#: src/ui/pages/settings_page.ui:297
-msgid "Controls how detailed the core log messages are: Error (critical only), Warning (potential issues), Info (standard connection events), Debug (detailed packet diagnostics)."
-msgstr "Управляет детализацией логов ядра: Error (только критические ошибки), Warning (предупреждения), Info (стандартные события), Debug (подробная диагностика пакетов)."
-
-#: src/ui/pages/settings_page.ui:314
-msgid "Open real-time console log viewer"
-msgstr "Открыть окно просмотра логов в реальном времени"
-
-#: src/ui/pages/settings_page.ui:315
-msgid "Opens the integrated live log viewer window with real-time filtering, pause, search, and export options."
-msgstr "Открывает встроенное окно журнала с фильтрацией в реальном времени, паузой, поиском и экспортом."
-
-#: src/ui/pages/settings_page.ui:328
-msgid "Open system directory containing log files"
-msgstr "Открыть системный каталог с файлами журналов"
-
-#: src/ui/pages/settings_page.ui:329
-msgid "Opens the local system directory containing persistent log files in your file manager."
-msgstr "Открывает директорию с файлами логов в системном файловом менеджере."
-
-#: src/ui/pages/settings_page.ui:344
-msgid "Export and import application settings and VPN profiles"
-msgstr "Экспорт и импорт настроек приложения и профилей VPN"
-
-#: src/ui/pages/settings_page.ui:349
-msgid "Restore settings and profiles from a backup file"
-msgstr "Восстановить настройки и профили из файла резервной копии"
-
-#: src/ui/pages/settings_page.ui:350
-msgid "Loads application settings, custom routing rules, and VPN profiles from a JSON backup file."
-msgstr "Загружает настройки программы, пользовательские правила маршрутизации и профили VPN из файла резервной копии JSON."
-
-#: src/ui/pages/settings_page.ui:363
-msgid "Save current configuration and profiles to a backup file"
-msgstr "Сохранить текущую конфигурацию и профили в файл резервной копии"
-
-#: src/ui/pages/settings_page.ui:364
-msgid "Exports all application settings, routing rules, and VPN profiles to a portable JSON backup file."
-msgstr "Экспортирует все настройки, правила маршрутизации и профили VPN в файл резервной копии JSON."
-
-#: src/ui/pages/settings_page.ui:378
-msgid "Danger Zone"
-msgstr "Опасная зона"
-
-#: src/ui/pages/settings_page.ui:379
-msgid "Irreversible actions and complete configuration reset"
-msgstr "Необратимые действия и полный сброс конфигурации"
-
-#: src/ui/pages/settings_page.ui:384
-msgid "Erase all profiles and restore factory defaults"
-msgstr "Удалить все профили и вернуть настройки по умолчанию"
-
-#: src/ui/pages/settings_page.ui:385
-msgid "Permanently erases all saved VPN keys, custom rules, and configuration settings, returning the application to its default state."
-msgstr "Безвозвратно удаляет все сохраненные VPN-профили, правила и настройки, возвращая программу к начальному состоянию."
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#: src/ui/components/log_window.rs:148
+msgid "All levels"
+msgstr "Все уровни"
+
+#: src/ui/components/log_window.ui:45
+msgid "Sort: Chronological"
+msgstr "Сортировка: По времени"
+
+#: src/ui/components/log_window.ui:49
+msgid "Sort: By Severity (Errors first)"
+msgstr "Сортировка: По важности (Сначала ошибки)"
+
+#: src/ui/components/log_window.ui:53
+msgid "Sort: Newest First"
+msgstr "Сортировка: Сначала новые"
+
+#: src/ui/components/log_window.ui:111
+msgid "Filter by source"
+msgstr "Фильтр по источнику"
+
+#: src/ui/components/log_window.ui:118
+msgid "Filter by log level"
+msgstr "Фильтр по уровню"
+
+#: src/ui/components/log_window.rs:882
+msgid "Save Logs As"
+msgstr "Сохранить логи как"
+
+#: src/ui/components/log_window.rs:886
+msgid "Text File (*.txt)"
+msgstr "Текстовый файл (*.txt)"
+
+#: src/ui/components/log_window.rs:891
+msgid "Log File (*.log)"
+msgstr "Файл лога (*.log)"
+
+#~ msgid "Shortcuts"
+#~ msgstr "Горячие клавиши"
+
+#~ msgid ""
+#~ "A VPN profile configuration link was received. Would you like to import "
+#~ "it?"
+#~ msgstr ""
+#~ "Получена ссылка на конфигурацию VPN профиля. Хотите импортировать её?"
+
+#~ msgid "Import Profile"
+#~ msgstr "Импортировать профиль"
+
+#~ msgid "Show notifications on connection status change"
+#~ msgstr "Показывать уведомления при смене статуса подключения"
+
+#~ msgid ""
+#~ "Hides IP addresses, domain names, and secret URLs in the interface to "
+#~ "prevent accidental disclosure during screen sharing or streaming."
+#~ msgstr ""
+#~ "Скрывает IP-адреса, доменные имена и секретные URL в интерфейсе для "
+#~ "предотвращения случайного раскрытия при демонстрации экрана или стриминге."
+
+#~ msgid "Core"
+#~ msgstr "Ядро (Core)"
+
+#~ msgid "Select the routing engine used for connection"
+#~ msgstr "Выберите движок маршрутизации, используемый для подключения"
+
+#~ msgid "Network and Routing"
+#~ msgstr "Сеть и Маршрутизация"
+
+#~ msgid "Requires root privileges"
+#~ msgstr "Требуются права Root"
+
+#~ msgid ""
+#~ "Creates a virtual network interface to route all system traffic "
+#~ "transparently, bypassing application-specific proxy settings."
+#~ msgstr ""
+#~ "Создает виртуальный сетевой интерфейс для прозрачной маршрутизации всего "
+#~ "системного трафика без необходимости настраивать прокси в приложениях."
+
+#~ msgid "Determine domain from traffic (required for routing)"
+#~ msgstr "Определять домен из трафика (требуется для маршрутизации)"
+
+#~ msgid ""
+#~ "Inspects encrypted SNI and HTTP headers from traffic to identify "
+#~ "destination domains for accurate rule matching."
+#~ msgstr ""
+#~ "Анализирует шифрованный SNI и заголовки HTTP для точного определения "
+#~ "целевых доменов и применения правил."
+
+#~ msgid "Disables HTTP/3 over UDP to force TCP and prevent VPN drops"
+#~ msgstr ""
+#~ "Отключает HTTP/3 поверх UDP для принудительного использования TCP и "
+#~ "защиты от разрывов VPN"
+
+#~ msgid ""
+#~ "Blocks QUIC (UDP 443) traffic, forcing browsers like Chrome to use TCP. "
+#~ "Prevents connection drops on restricted networks."
+#~ msgstr ""
+#~ "Блокирует трафик QUIC (UDP 443), заставляя браузеры использовать TCP. "
+#~ "Предотвращает разрывы соединения в сетях с ограничениями."
+
+#~ msgid "Download latest geoip and geosite data"
+#~ msgstr "Загрузить актуальные базы geoip и geosite"
+
+#~ msgid ""
+#~ "Directs traffic for local network addresses (192.168.x.x, 10.x.x.x, local "
+#~ "printers) away from the VPN so local devices remain accessible."
+#~ msgstr ""
+#~ "Направляет трафик локальных адресов (192.168.x.x, 10.x.x.x, локальные "
+#~ "принтеры) в обход VPN, сохраняя доступ к локальным устройствам."
+
+#~ msgid "Return fake IPs (improves speed but breaks some apps)"
+#~ msgstr ""
+#~ "Возвращать поддельные IP (улучшает скорость, но ломает некоторые "
+#~ "приложения)"
+
+#~ msgid ""
+#~ "Returns synthetic local IP addresses (198.18.0.0/15) for fast domain "
+#~ "responses while resolving real target IPs remotely on the proxy server."
+#~ msgstr ""
+#~ "Возвращает синтетические локальные IP-адреса (198.18.0.0/15) для быстрых "
+#~ "DNS-ответов, резолвя реальные IP удаленно на стороне прокси-сервера."
+
+#~ msgid "Advanced Settings"
+#~ msgstr "Расширенные настройки"
+
+#~ msgid "Speeds up connections but may cause instability"
+#~ msgstr "Ускоряет соединения, но может вызвать нестабильность"
+
+#~ msgid ""
+#~ "Reduces handshake latency by reusing a single TCP connection for multiple "
+#~ "streams. May increase jitter or trigger DPI traffic detection."
+#~ msgstr ""
+#~ "Уменьшает задержку рукопожатия путем мультиплексирования потоков в одно "
+#~ "TCP-соединение. Может увеличивать джиттер или детектироваться системами "
+#~ "DPI."
+
+#~ msgid "Load profiles and settings from file"
+#~ msgstr "Загрузить профили и настройки из файла"
+
+#~ msgid "Save current configuration to file"
+#~ msgstr "Сохранить текущую конфигурацию в файл"
+
+#~ msgid "Method used for measuring server latency"
+#~ msgstr "Метод, используемый для измерения задержки до серверов"
+
+#~ msgid "Open console with real-time logs"
+#~ msgstr "Открыть консоль с логами в реальном времени"
+
+#~ msgid "Open system folder with log files"
+#~ msgstr "Открыть системную папку с файлами журналов"
+
+#~ msgid "Delete all saved data (danger zone)"
+#~ msgstr "Удалить все сохраненные данные (опасная зона)"
+
+#~ msgid "Name"
+#~ msgstr "Имя"
+
+#~ msgid "Connection"
+#~ msgstr "Соединение"
+
+#~ msgid ""
+#~ "Creates a virtual network card (vrxx-tun) to route all system traffic "
+#~ "transparently, without needing proxy settings in individual apps."
+#~ msgstr ""
+#~ "Создает виртуальный сетевой интерфейс (vrxx-tun) для прозрачного "
+#~ "проксирования всего трафика без настройки прокси в отдельных приложениях."
+
+#~ msgid ""
+#~ "Reuses a single persistent TCP connection for multiple streams, reducing "
+#~ "latency when opening many connections simultaneously. May cause jitter on "
+#~ "high-packet-loss networks."
+#~ msgstr ""
+#~ "Переиспользует одно TCP-соединение для множества потоков, снижая задержку "
+#~ "при открытии страниц. Может вызывать джиттер на сетях с потерями пакетов."
+
+#~ msgid "Method used for measuring server response time"
+#~ msgstr "Метод измерения времени отклика сервера"
+
+#~ msgid ""
+#~ "Choose measurement method: TCP Handshake (fast, connects to port), ICMP "
+#~ "Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test "
+#~ "through tunnel)."
+#~ msgstr ""
+#~ "Выберите метод проверки: TCP Handshake (быстро, проверка порта), ICMP "
+#~ "Ping (проверка IP хоста) или HTTP GET/HEAD через прокси (сквозной тест "
+#~ "через туннель)."
 
