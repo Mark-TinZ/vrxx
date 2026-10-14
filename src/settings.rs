@@ -42,6 +42,39 @@ pub struct RoutingRule {
     pub action: String,
 }
 
+/// Структура метаданных пользовательской группы VPN-профилей.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct VpnGroupData {
+    /// Уникальный идентификатор группы
+    pub id: String,
+    /// Пользовательское название группы
+    pub name: String,
+    /// Развернута ли группа в списке (аккордеон)
+    #[serde(default = "default_expanded")]
+    pub is_expanded: bool,
+}
+
+/// Структура метаданных подписки VPN (удаленный источник ключей по URL).
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct VpnSubscriptionData {
+    /// Уникальный идентификатор подписки
+    pub id: String,
+    /// Отображаемое название подписки
+    pub name: String,
+    /// URL-адрес подписки (HTTP/HTTPS)
+    pub url: String,
+    /// Время последнего успешного обновления в читаемом виде
+    #[serde(default)]
+    pub last_updated: String,
+    /// Развернута ли подписка в списке (аккордеон)
+    #[serde(default = "default_expanded")]
+    pub is_expanded: bool,
+}
+
+fn default_expanded() -> bool {
+    true
+}
+
 /// Структура метаданных сохраненного VPN-профиля / ключа.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct VpnKeyData {
@@ -73,12 +106,16 @@ pub struct VpnKeyData {
     /// Сырой URI ключ подключения (например, "vless://...")
     #[serde(default)]
     pub url: String,
+    /// Идентификатор группы или подписки (пусто = без группы)
+    #[serde(default)]
+    pub group: String,
 }
 
 /// Глобальные настройки приложения VRXX.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct AppSettings {
     /// Цветовая схема интерфейса ("default", "force-light", "force-dark")
+    #[serde(default = "default_theme")]
     pub theme: String,
     /// Язык интерфейса ("system", "en", "ru")
     #[serde(default = "default_language")]
@@ -160,6 +197,12 @@ pub struct AppSettings {
     /// Целевой URL для замера HTTP задержки
     #[serde(default = "default_ping_target_url")]
     pub ping_target_url: String,
+    /// Автоматический замер задержки всех ключей при старте приложения
+    #[serde(default = "default_auto_ping_startup")]
+    pub auto_ping_on_startup: bool,
+    /// Периодический автопинг по кулдауну в секундах (0 = выключен, 300 = 5 мин, 600 = 10 мин, 900 = 15 мин, 1800 = 30 мин, 3600 = 1 час)
+    #[serde(default = "default_auto_ping_interval")]
+    pub auto_ping_interval: u64,
 
     /// Список сохраненных профилей VPN (сохраняется в зашифрованном виде в data.dat)
     #[serde(skip, default)]
@@ -211,6 +254,12 @@ pub struct AppSettings {
     /// Блокировать рекламные домены (GeoSite category-ads-all)
     #[serde(default)]
     pub block_ads: bool,
+    /// Автоматически обновлять базы гео-данных (GeoIP / GeoSite .srs)
+    #[serde(default = "default_auto_update_geodata")]
+    pub auto_update_geodata: bool,
+    /// Интервал обновления баз гео-данных в днях (1, 7, 14, 30)
+    #[serde(default = "default_geodata_update_interval_days")]
+    pub geodata_update_interval_days: u32,
 
     /// Принудительно отключить IPv6
     #[serde(default = "default_disable_ipv6")]
@@ -218,9 +267,18 @@ pub struct AppSettings {
     /// Список пользовательских правил маршрутизации
     #[serde(default)]
     pub routing_rules: Vec<RoutingRule>,
+    /// Пользовательские группы для организации ключей
+    #[serde(default)]
+    pub groups: Vec<VpnGroupData>,
+    /// Подписки на удаленные списки VPN-ключей
+    #[serde(default)]
+    pub subscriptions: Vec<VpnSubscriptionData>,
 }
 
 // Функции значений по умолчанию для serde
+fn default_theme() -> String {
+    "default".to_string()
+}
 fn default_language() -> String {
     "system".to_string()
 }
@@ -296,6 +354,18 @@ fn default_ping_algorithm() -> String {
 fn default_ping_target_url() -> String {
     "https://www.gstatic.com/generate_204".to_string()
 }
+fn default_auto_ping_startup() -> bool {
+    true
+}
+fn default_auto_ping_interval() -> u64 {
+    0
+}
+fn default_auto_update_geodata() -> bool {
+    false
+}
+fn default_geodata_update_interval_days() -> u32 {
+    7
+}
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -332,6 +402,8 @@ impl AppSettings {
             enable_fragment: false,
             ping_algorithm: default_ping_algorithm(),
             ping_target_url: default_ping_target_url(),
+            auto_ping_on_startup: default_auto_ping_startup(),
+            auto_ping_interval: default_auto_ping_interval(),
             keys: vec![],
             whitelist: vec![],
             enable_routing: default_enable_routing(),
@@ -348,7 +420,11 @@ impl AppSettings {
             route_cn_ips: false,
             route_antifilter: false,
             block_ads: false,
+            auto_update_geodata: default_auto_update_geodata(),
+            geodata_update_interval_days: default_geodata_update_interval_days(),
             disable_ipv6: default_disable_ipv6(),
+            groups: Vec::new(),
+            subscriptions: Vec::new(),
         }
     }
 }
@@ -385,6 +461,30 @@ impl SettingsManager {
             config_path,
             data_path,
         }
+    }
+
+    /// Загружает список пользовательских групп.
+    pub fn load_groups(&self) -> Vec<VpnGroupData> {
+        self.load().groups
+    }
+
+    /// Сохраняет список пользовательских групп.
+    pub fn save_groups(&self, groups: &[VpnGroupData]) {
+        let mut settings = self.load();
+        settings.groups = groups.to_vec();
+        self.save_settings_only(&settings);
+    }
+
+    /// Загружает список подписок.
+    pub fn load_subscriptions(&self) -> Vec<VpnSubscriptionData> {
+        self.load().subscriptions
+    }
+
+    /// Сохраняет список подписок.
+    pub fn save_subscriptions(&self, subs: &[VpnSubscriptionData]) {
+        let mut settings = self.load();
+        settings.subscriptions = subs.to_vec();
+        self.save_settings_only(&settings);
     }
 
     /// Загружает настройки из JSON файла на диске и профили из зашифрованного `data.dat`.
@@ -632,6 +732,7 @@ mod tests {
             location: "DE".to_string(),
             timezone: "UTC+1".to_string(),
             url: "vless://test@1.1.1.1:443#Test".to_string(),
+            group: String::new(),
         });
 
         manager.save(&settings);
@@ -672,6 +773,7 @@ mod tests {
             location: "NL".to_string(),
             timezone: "UTC+1".to_string(),
             url: "trojan://test@1.1.1.1:443#Trojan".to_string(),
+            group: String::new(),
         });
         manager.save(&updated);
 
@@ -735,5 +837,24 @@ mod tests {
             !cleaned_json.contains("vless://"),
             "settings.json больше не должен содержать открытых ключей"
         );
+    }
+
+    #[test]
+    fn test_settings_geo_data_fields() {
+        let defaults = AppSettings::new();
+        assert_eq!(defaults.auto_update_geodata, false);
+        assert_eq!(defaults.geodata_update_interval_days, 7);
+
+        // Проверяем десериализацию из JSON без этих полей (обратная совместимость)
+        let json_without_geo = "{}";
+        let parsed: AppSettings = serde_json::from_str(json_without_geo).unwrap();
+        assert_eq!(parsed.auto_update_geodata, false);
+        assert_eq!(parsed.geodata_update_interval_days, 7);
+
+        // Проверяем явные значения
+        let json_with_geo = r#"{"auto_update_geodata": true, "geodata_update_interval_days": 14}"#;
+        let parsed_with_geo: AppSettings = serde_json::from_str(json_with_geo).unwrap();
+        assert_eq!(parsed_with_geo.auto_update_geodata, true);
+        assert_eq!(parsed_with_geo.geodata_update_interval_days, 14);
     }
 }

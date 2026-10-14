@@ -71,6 +71,9 @@ mod imp_vpn {
         /// Сырой URI ключ подключения
         #[property(get, set)]
         pub url: RefCell<String>,
+        /// Идентификатор группы или подписки (пусто = без группы)
+        #[property(get, set)]
+        pub group: RefCell<String>,
     }
 
     #[glib::object_subclass]
@@ -147,8 +150,14 @@ glib::wrapper! {
 }
 
 impl VpnKeyObject {
-    /// Создает новый объект VPN-ключа со значениями по умолчанию.
-    pub fn new(name: &str, protocol: &str, active: bool, url: &str) -> Self {
+    /// Создает новый объект VPN-ключа с указанием группы.
+    pub fn new_with_group(
+        name: &str,
+        protocol: &str,
+        active: bool,
+        url: &str,
+        group: &str,
+    ) -> Self {
         let server_info = if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(url) {
             if !parsed.host.is_empty() {
                 parsed.host
@@ -168,13 +177,19 @@ impl VpnKeyObject {
             .property("traffic-down", "0.0 MB")
             .property("traffic-up", "0.0 MB")
             .property("time-connected", "00:00:00")
-            .property("ping", "0 ms")
+            .property("ping", "")
             .property("server-info", server_info)
             .property("location", "Unknown")
             .property("timezone", "UTC")
             .property("hide-ip", false)
             .property("url", url)
+            .property("group", group)
             .build()
+    }
+
+    /// Создает новый объект VPN-ключа со значениями по умолчанию без группы.
+    pub fn new(name: &str, protocol: &str, active: bool, url: &str) -> Self {
+        Self::new_with_group(name, protocol, active, url, "")
     }
 }
 

@@ -187,6 +187,7 @@ mod tests {
                 timezone: "UTC+1".to_string(),
                 url: "vless://test-uuid@1.2.3.4:443?security=reality&sni=example.com#Germany"
                     .to_string(),
+                group: String::new(),
             },
             VpnKeyData {
                 name: "Netherlands Backup".to_string(),
@@ -200,6 +201,7 @@ mod tests {
                 timezone: "UTC+1".to_string(),
                 url: "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNz@5.6.7.8:8388#Netherlands"
                     .to_string(),
+                group: String::new(),
             },
         ]
     }
