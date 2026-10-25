@@ -14,6 +14,9 @@
 //! Модуль включает:
 //! - [`ping`]: Измерение задержки соединений (TCP Handshake, ICMP Ping, HTTP GET/HEAD via Proxy) и E2E Warm-Up валидацию
 //! - [`geo_updater`]: Фоновое обновление бинарных баз правил GeoIP и GeoSite (`.srs`) с поддержкой CDN fallback
+//! - [`geoip`]: Резолвинг геолокации и метаданных узлов (страна, город, провайдер)
 
 pub mod geo_updater;
+pub mod geoip;
 pub mod ping;
+

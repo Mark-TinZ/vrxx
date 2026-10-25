@@ -43,11 +43,9 @@ mod imp {
         #[template_child]
         pub lbl_time: TemplateChild<gtk::Label>,
         #[template_child]
-        pub lbl_ping: TemplateChild<gtk::Label>,
+        pub lbl_location: TemplateChild<gtk::Label>,
         #[template_child]
         pub lbl_row_ping: TemplateChild<gtk::Label>,
-        #[template_child]
-        pub btn_refresh_ping: TemplateChild<gtk::Button>,
 
         pub item: RefCell<Option<VpnKeyObject>>,
     }
@@ -154,9 +152,21 @@ impl VrxxVpnKeyRow {
         item.bind_property("time-connected", &*imp.lbl_time, "label")
             .sync_create()
             .build();
-        item.bind_property("ping", &*imp.lbl_ping, "label")
-            .sync_create()
-            .build();
+
+        // Привязка локации сервера с учетом режима стримера
+        let row_weak_loc = self.downgrade();
+        let update_loc = move |item: &VpnKeyObject| {
+            if let Some(r) = row_weak_loc.upgrade() {
+                r.update_location_label(item);
+            }
+        };
+
+        let loc_clone1 = update_loc.clone();
+        item.connect_location_notify(move |item| loc_clone1(item));
+        let loc_clone2 = update_loc;
+        item.connect_hide_ip_notify(move |item| loc_clone2(item));
+
+        self.update_location_label(item);
 
         // Отслеживание изменений задержки для отображения пинга в заголовке строки (GNOME HIG)
         let row_weak_ping = self.downgrade();
@@ -245,13 +255,21 @@ impl VrxxVpnKeyRow {
             }
         });
 
-        // 4. Кнопка ручного обновления пинга
-        let row_weak_ping = self.downgrade();
-        self.imp().btn_refresh_ping.connect_clicked(move |_| {
-            if let Some(row) = row_weak_ping.upgrade() {
-                row.emit_by_name::<()>("request-ping", &[]);
+    }
+
+    /// Обновляет отображение локации сервера с учетом маскирования в режиме стримера.
+    fn update_location_label(&self, item: &VpnKeyObject) {
+        let text = if item.hide_ip() {
+            "***".to_string()
+        } else {
+            let loc = item.location();
+            if loc.trim().is_empty() {
+                "Unknown".to_string()
+            } else {
+                loc
             }
-        });
+        };
+        self.imp().lbl_location.set_label(&text);
     }
 
     /// Обновляет подзаголовок строки: выводит только наименование протокола по стандартам GNOME HIG.

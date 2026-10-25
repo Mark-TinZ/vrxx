@@ -167,10 +167,23 @@ impl VrxxVpnPage {
             key_obj.set_traffic_up(k.traffic_up);
             key_obj.set_time_connected(k.time_connected);
             key_obj.set_ping(k.ping);
-            key_obj.set_location(k.location);
+            key_obj.set_location(k.location.clone());
+            key_obj.set_country_code(k.country_code);
+            key_obj.set_city(k.city);
+            key_obj.set_isp(k.isp);
             key_obj.set_timezone(k.timezone);
             key_obj.set_hide_ip(streamer_mode);
             model.append(&key_obj);
+
+            if let Some(from_name) = crate::services::geoip::parse_location_from_name(&k.name) {
+                key_obj.set_location(from_name.format_display());
+                key_obj.set_country_code(from_name.country_code);
+                if !from_name.city.is_empty() {
+                    key_obj.set_city(from_name.city);
+                }
+            } else if k.location.is_empty() || k.location == "Unknown" {
+                self.resolve_location_for_key(&key_obj);
+            }
 
             if auto_connect && k.is_active {
                 let key_clone = key_obj.clone();
@@ -1309,6 +1322,7 @@ impl VrxxVpnPage {
                                 item_clone.set_is_error(false);
                                 item_clone.set_ping(format!("{latency_ms} ms"));
                                 page.save_current_keys();
+                                page.resolve_live_egress_location(&item_clone, socks_port);
                                 page.update_disconnect_action_state();
                                 let subtitle =
                                     format!("{} {}", item_clone.name(), gettext("Connected"));
@@ -1490,6 +1504,10 @@ impl VrxxVpnPage {
 
     /// Инициирует асинхронный замер задержки (ping) для указанного ключа.
     pub fn trigger_ping_key(&self, item_clone: &VpnKeyObject) {
+        if item_clone.location().is_empty() || item_clone.location() == "Unknown" {
+            self.resolve_location_for_key(item_clone);
+        }
+
         let raw_url = item_clone.url();
         let (sender, receiver) = async_channel::unbounded::<crate::services::ping::PingResult>();
         let item_ui = item_clone.clone();
@@ -1590,6 +1608,9 @@ impl VrxxVpnPage {
                         time_connected: item.time_connected(),
                         ping: item.ping(),
                         location: item.location(),
+                        country_code: item.country_code(),
+                        city: item.city(),
+                        isp: item.isp(),
                         timezone: item.timezone(),
                         url: item.url(),
                         group: item.group(),
@@ -1628,12 +1649,95 @@ impl VrxxVpnPage {
             );
             model.append(&new_key);
             self.save_current_keys();
+            self.resolve_location_for_key(&new_key);
             self.rebuild_ui();
 
             if connect {
                 self.set_active_key_internal(&new_key, true);
             }
         }
+    }
+
+    /// Разрешает геолокацию сервера: в приоритете эвристический парсинг названия
+    /// (включая цепочки серверов и флаги), а при его отсутствии — GeoIP по входному хосту.
+    pub fn resolve_location_for_key(&self, key_obj: &VpnKeyObject) {
+        let name = key_obj.name();
+
+        // 1. Приоритет: парсинг названия (защищает от Anycast и релейных цепочек вроде "Россия - Нидерланды")
+        if let Some(info) = crate::services::geoip::parse_location_from_name(&name) {
+            key_obj.set_location(info.format_display());
+            key_obj.set_country_code(info.country_code);
+            key_obj.set_city(info.city);
+            self.save_current_keys();
+            if let Some(w) = self.root().and_downcast::<crate::window::VrxxWindow>() {
+                w.update_active_connection_widget();
+            }
+            return;
+        }
+
+        // 2. Резерв: асинхронный GeoIP-запрос по входному хосту
+        let host = key_obj.server_info();
+        if host.is_empty() || host == "0.0.0.0" {
+            return;
+        }
+
+        let key_weak = key_obj.downgrade();
+        let page_weak = self.downgrade();
+
+        glib::spawn_future_local(async move {
+            if let Some(info) = crate::services::geoip::resolve_host_location(&host).await {
+                if let Some(key) = key_weak.upgrade() {
+                    key.set_location(info.format_display());
+                    key.set_country_code(info.country_code);
+                    key.set_city(info.city);
+                    key.set_isp(info.isp);
+                    if !info.timezone.is_empty() {
+                        key.set_timezone(info.timezone);
+                    }
+
+                    if let Some(page) = page_weak.upgrade() {
+                        page.save_current_keys();
+                        if let Some(w) = page.root().and_downcast::<crate::window::VrxxWindow>() {
+                            w.update_active_connection_widget();
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /// Асинхронно определяет истинную точку выхода (Egress IP) через активный туннель прокси
+    /// и обновляет метаданные ключа 100% подтвержденными данными.
+    pub fn resolve_live_egress_location(&self, key_obj: &VpnKeyObject, socks_port: u16) {
+        let key_weak = key_obj.downgrade();
+        let page_weak = self.downgrade();
+
+        glib::spawn_future_local(async move {
+            if let Some(info) = crate::services::geoip::resolve_egress_location(socks_port).await {
+                if let Some(key) = key_weak.upgrade() {
+                    tracing::info!(
+                        "Live egress location verified for key '{}': {} ({})",
+                        key.name(),
+                        info.format_display(),
+                        info.country_code
+                    );
+                    key.set_location(info.format_display());
+                    key.set_country_code(info.country_code);
+                    key.set_city(info.city);
+                    key.set_isp(info.isp);
+                    if !info.timezone.is_empty() {
+                        key.set_timezone(info.timezone);
+                    }
+
+                    if let Some(page) = page_weak.upgrade() {
+                        page.save_current_keys();
+                        if let Some(w) = page.root().and_downcast::<crate::window::VrxxWindow>() {
+                            w.update_active_connection_widget();
+                        }
+                    }
+                }
+            }
+        });
     }
 
     // =========================================================================
@@ -1683,6 +1787,15 @@ impl VrxxVpnPage {
             gettext("Protocol"),
             key.protocol()
         );
+
+        if !key.isp().is_empty() {
+            let display_isp = if hide {
+                "***".to_string()
+            } else {
+                key.isp()
+            };
+            body.push_str(&format!("\n<b>{}</b>: {}", gettext("ISP / Host"), display_isp));
+        }
 
         if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&key.url()) {
             let display_port = if hide {
@@ -1923,6 +2036,7 @@ impl VrxxVpnPage {
                                         );
                                         model.append(&new_key);
                                         p.save_current_keys();
+                                        p.resolve_location_for_key(&new_key);
                                         p.rebuild_ui();
                                     }
                                 }
@@ -2393,6 +2507,7 @@ impl VrxxVpnPage {
                                     &s_id,
                                 );
                                 model.append(&new_key);
+                                page.resolve_location_for_key(&new_key);
                             }
                         }
 

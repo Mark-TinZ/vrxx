@@ -184,6 +184,9 @@ mod tests {
                 time_connected: "00:00:00".to_string(),
                 ping: "45 ms".to_string(),
                 location: "DE".to_string(),
+                country_code: "DE".to_string(),
+                city: "Frankfurt".to_string(),
+                isp: "Hetzner".to_string(),
                 timezone: "UTC+1".to_string(),
                 url: "vless://test-uuid@1.2.3.4:443?security=reality&sni=example.com#Germany"
                     .to_string(),
@@ -198,6 +201,9 @@ mod tests {
                 time_connected: "01:23:45".to_string(),
                 ping: "38 ms".to_string(),
                 location: "NL".to_string(),
+                country_code: "NL".to_string(),
+                city: "Amsterdam".to_string(),
+                isp: "DigitalOcean".to_string(),
                 timezone: "UTC+1".to_string(),
                 url: "ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNz@5.6.7.8:8388#Netherlands"
                     .to_string(),

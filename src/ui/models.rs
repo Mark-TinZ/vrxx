@@ -62,6 +62,15 @@ mod imp_vpn {
         /// Географическая локация (страна/город)
         #[property(get, set)]
         pub location: RefCell<String>,
+        /// Двухбуквенный код страны (например, "DE")
+        #[property(get, set)]
+        pub country_code: RefCell<String>,
+        /// Город сервера
+        #[property(get, set)]
+        pub city: RefCell<String>,
+        /// Провайдер хостинга сервера (ISP)
+        #[property(get, set)]
+        pub isp: RefCell<String>,
         /// Часовой пояс сервера
         #[property(get, set)]
         pub timezone: RefCell<String>,
@@ -180,6 +189,9 @@ impl VpnKeyObject {
             .property("ping", "")
             .property("server-info", server_info)
             .property("location", "Unknown")
+            .property("country-code", "")
+            .property("city", "")
+            .property("isp", "")
             .property("timezone", "UTC")
             .property("hide-ip", false)
             .property("url", url)

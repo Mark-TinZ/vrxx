@@ -100,6 +100,15 @@ pub struct VpnKeyData {
     /// Географическая локация сервера (страна/город)
     #[serde(default)]
     pub location: String,
+    /// Двухбуквенный ISO-код страны (например, "DE", "NL")
+    #[serde(default)]
+    pub country_code: String,
+    /// Город сервера (например, "Frankfurt", "Amsterdam")
+    #[serde(default)]
+    pub city: String,
+    /// Провайдер или хостинг сервера (ISP)
+    #[serde(default)]
+    pub isp: String,
     /// Часовой пояс сервера
     #[serde(default)]
     pub timezone: String,
@@ -730,6 +739,9 @@ mod tests {
             time_connected: "00:00:00".to_string(),
             ping: "50 ms".to_string(),
             location: "DE".to_string(),
+            country_code: "DE".to_string(),
+            city: "Frankfurt".to_string(),
+            isp: "Hetzner".to_string(),
             timezone: "UTC+1".to_string(),
             url: "vless://test@1.1.1.1:443#Test".to_string(),
             group: String::new(),
@@ -771,6 +783,9 @@ mod tests {
             time_connected: "00:00:00".to_string(),
             ping: "30 ms".to_string(),
             location: "NL".to_string(),
+            country_code: "NL".to_string(),
+            city: "Amsterdam".to_string(),
+            isp: "DigitalOcean".to_string(),
             timezone: "UTC+1".to_string(),
             url: "trojan://test@1.1.1.1:443#Trojan".to_string(),
             group: String::new(),
@@ -842,19 +857,19 @@ mod tests {
     #[test]
     fn test_settings_geo_data_fields() {
         let defaults = AppSettings::new();
-        assert_eq!(defaults.auto_update_geodata, false);
+        assert!(!defaults.auto_update_geodata);
         assert_eq!(defaults.geodata_update_interval_days, 7);
 
         // Проверяем десериализацию из JSON без этих полей (обратная совместимость)
         let json_without_geo = "{}";
         let parsed: AppSettings = serde_json::from_str(json_without_geo).unwrap();
-        assert_eq!(parsed.auto_update_geodata, false);
+        assert!(!parsed.auto_update_geodata);
         assert_eq!(parsed.geodata_update_interval_days, 7);
 
         // Проверяем явные значения
         let json_with_geo = r#"{"auto_update_geodata": true, "geodata_update_interval_days": 14}"#;
         let parsed_with_geo: AppSettings = serde_json::from_str(json_with_geo).unwrap();
-        assert_eq!(parsed_with_geo.auto_update_geodata, true);
+        assert!(parsed_with_geo.auto_update_geodata);
         assert_eq!(parsed_with_geo.geodata_update_interval_days, 14);
     }
 }

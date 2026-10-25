@@ -1090,7 +1090,7 @@ mod tests {
 
     #[test]
     fn test_log_sorting_logic() {
-        let mut entries = vec![
+        let mut entries = [
             LogEntryItem {
                 source: LogSource::App,
                 level: "info".to_string(),
@@ -1139,7 +1139,7 @@ mod tests {
 
     #[test]
     fn test_reverse_chronological_sorting() {
-        let mut entries = vec![
+        let mut entries = [
             LogEntryItem {
                 source: LogSource::App,
                 level: "info".to_string(),
