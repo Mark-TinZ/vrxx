@@ -87,6 +87,7 @@ assets = [
 ]
 
 [package.metadata.generate-rpm]
+version = "26.1.0~beta.3"
 assets = [
     { source = "target/release/vrxx", dest = "/usr/bin/vrxx", mode = "755" },
     { source = "target/release/vrxx-tui", dest = "/usr/bin/vrxx-tui", mode = "755" },

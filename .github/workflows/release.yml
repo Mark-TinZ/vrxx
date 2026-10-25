@@ -61,7 +61,30 @@ jobs:
 
       - name: Build RPM Package
         run: |
+          # RPM versions cannot contain hyphens ('-'). Ensure version in [package.metadata.generate-rpm] replaces '-' with '~'
+          python3 -c '
+          import re
+          with open("Cargo.toml", "r", encoding="utf-8") as f:
+              content = f.read()
+          pkg_ver_match = re.search(r"^\[package\][\s\S]*?^version\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
+          if pkg_ver_match:
+              pkg_ver = pkg_ver_match.group(1)
+              rpm_ver = pkg_ver.replace("-", "~")
+              if "[package.metadata.generate-rpm]" in content:
+                  if not re.search(r"^\[package\.metadata\.generate-rpm\][\s\S]*?^version\s*=", content, re.MULTILINE):
+                      content = content.replace("[package.metadata.generate-rpm]", f"[package.metadata.generate-rpm]\nversion = \"{rpm_ver}\"")
+                  else:
+                      content = re.sub(
+                          r"(^\[package\.metadata\.generate-rpm\][\s\S]*?^version\s*=\s*\")[^\"]+(\")",
+                          rf"\g<1>{rpm_ver}\g<2>",
+                          content,
+                          flags=re.MULTILINE
+                      )
+                  with open("Cargo.toml", "w", encoding="utf-8") as f:
+                      f.write(content)
+          '
           cargo generate-rpm
+          mkdir -p release-assets
           cp target/generate-rpm/*.rpm release-assets/
 
       - name: Prepare Universal Archive & Arch PKGBUILD
