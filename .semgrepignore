@@ -1,0 +1,10 @@
+# Semgrep ignore paths
+target/
+.git/
+.agents/
+.github/
+data/
+po/
+locale/
+*.min.js
+Cargo.lock

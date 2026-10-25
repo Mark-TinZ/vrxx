@@ -192,6 +192,8 @@ jobs:
 
       - name: Extract Release Notes
         if: startsWith(github.ref, 'refs/tags/')
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
           python3 -c '
           import sys, re
@@ -211,7 +213,7 @@ jobs:
 
           with open("RELEASE_NOTES.md", "w", encoding="utf-8") as out:
               out.write(notes + "\n")
-          ' "${{ github.ref_name }}"
+          ' "$REF_NAME"
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/') && !env.ACT

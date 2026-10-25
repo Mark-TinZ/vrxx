@@ -1,0 +1,17 @@
+title = "Gitleaks Configuration for VRXX"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore build artifacts, agent skills documentation, and false positives in build scripts"
+paths = [
+    '''target/''',
+    '''\.git/''',
+    '''\.agents/''',
+    '''data/icons/meson\.build''',
+    '''Cargo\.lock''',
+    '''po/.*\.po''',
+    '''po/.*\.pot''',
+    '''locale/''',
+]

@@ -1,0 +1,164 @@
+name: Security & Quality Analysis (DevSecOps)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Weekly scan on Mondays at 04:00 UTC for new CVEs and supply-chain threats
+    - cron: '0 4 * * 1'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  # ==========================================
+  # 1. GITLEAKS - Secret & Credential Scanning
+  # ==========================================
+  gitleaks:
+    name: Gitleaks (Secrets Detection)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Gitleaks
+        run: |
+          GITLEAKS_VERSION="8.24.0"
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | sudo tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Run Gitleaks
+        run: |
+          gitleaks detect --source . -v --redact --config .gitleaks.toml --report-format json --report-path gitleaks-report.json
+
+      - name: Upload Gitleaks Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+          if-no-files-found: ignore
+
+  # ==========================================
+  # 2. SEMGREP - Static Application Security Testing
+  # ==========================================
+  semgrep:
+    name: Semgrep SAST (OWASP, Secrets, Hardening)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep SAST
+        run: |
+          semgrep scan \
+            --config "p/secrets" \
+            --config "p/owasp-top-ten" \
+            --sarif-output=semgrep.sarif \
+            --error \
+            --metrics=off
+
+      - name: Upload Semgrep SARIF Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          if-no-files-found: ignore
+
+  # ==========================================
+  # 3. CARGO AUDIT - RustSec Vulnerability Scanner
+  # ==========================================
+  cargo-audit:
+    name: Cargo Audit (RustSec CVEs)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install cargo-audit standalone binary
+        run: |
+          AUDIT_VERSION="0.22.2"
+          curl -sSL "https://github.com/rustsec/rustsec/releases/download/cargo-audit%2Fv${AUDIT_VERSION}/cargo-audit-x86_64-unknown-linux-musl-v${AUDIT_VERSION}.tgz" | sudo tar -xz -C /usr/local/bin
+          cargo audit --version
+
+      - name: Run Cargo Audit
+        run: cargo audit
+
+  # ==========================================
+  # 4. TRIVY - CVE & SCA Vulnerability Scanner
+  # ==========================================
+  trivy:
+    name: Trivy (SCA & Filesystem CVEs)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Trivy
+        run: |
+          TRIVY_VERSION="0.76.0"
+          curl -sSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | sudo tar -xz -C /usr/local/bin trivy
+          trivy version
+
+      - name: Run Trivy Vulnerability Scanner
+        run: |
+          trivy fs --severity CRITICAL,HIGH --format sarif --output trivy.sarif .
+          trivy fs --severity CRITICAL,HIGH .
+
+      - name: Upload Trivy SARIF Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-sarif
+          path: trivy.sarif
+          if-no-files-found: ignore
+
+  # ==========================================
+  # 5. CODE QUALITY & LINTING (Clippy & Check)
+  # ==========================================
+  clippy-and-check:
+    name: Clippy & Cargo Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Install GTK4 dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev gettext xvfb libssl-dev pkg-config locales locales-all
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run Cargo Check
+        run: cargo check --verbose
+
+      - name: Run Cargo Clippy
+        run: cargo clippy -- -D warnings
