@@ -124,13 +124,13 @@ mod imp {
             if app_settings.connect_on_startup {
                 if let Some(active_key) = app_settings.keys.iter().find(|k| k.is_active) {
                     if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&active_key.url) {
-                        let config_json = crate::domain::singbox_config::build_singbox_config(
-                            &parsed,
+                        let options = crate::protocol::DaemonConfigOptions::from_settings(
                             &app_settings,
+                            app_settings.tun_mode,
                         );
                         let backend = crate::backend::CoreBackend::new();
                         std::thread::spawn(move || {
-                            let _ = backend.start(&config_json);
+                            let _ = backend.start(&parsed, &options);
                         });
                     }
                 }
@@ -475,19 +475,34 @@ impl VrxxApplication {
             let app_clone = self.clone();
             dialog.connect_response(None, move |_, response| {
                 if response == "quit" {
-                    // Остановка VPN ядра перед выходом
-                    let backend = crate::backend::CoreBackend::new();
-                    let _ = backend.stop();
-                    app_clone.quit();
+                    app_clone.shutdown_and_quit();
                 }
             });
 
             dialog.present(Some(&window));
         } else {
-            let backend = crate::backend::CoreBackend::new();
-            let _ = backend.stop();
-            self.quit();
+            self.shutdown_and_quit();
         }
+    }
+
+    /// Асинхронно и неблокирующе останавливает прокси-ядро и корректно завершает работу приложения.
+    fn shutdown_and_quit(&self) {
+        if let Some(window) = self.active_window() {
+            window.set_visible(false);
+        }
+        let app = self.clone();
+        glib::spawn_future_local(async move {
+            if tokio::runtime::Handle::try_current().is_ok() {
+                let client = crate::ipc::DaemonClient::new();
+                let _ = tokio::time::timeout(
+                    std::time::Duration::from_millis(800),
+                    client.stop_proxy(),
+                )
+                .await;
+            }
+            crate::backend::CoreBackend::update_system_proxy(false);
+            app.quit();
+        });
     }
 
     /// Загружает CSS таблицу стилей из GResource

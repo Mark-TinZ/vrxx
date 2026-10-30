@@ -65,7 +65,9 @@ fn main() {
         println!("cargo:rerun-if-changed=data/icons/custom/symbolic/actions/key5-symbolic.svg");
         println!("cargo:rerun-if-changed=data/icons/custom/symbolic/actions/preferences-system-network-proxy-symbolic.svg");
         println!("cargo:rerun-if-changed=data/icons/custom/symbolic/actions/funnel-symbolic.svg");
-        println!("cargo:rerun-if-changed=data/icons/custom/symbolic/actions/cogged-wheel-symbolic.svg");
+        println!(
+            "cargo:rerun-if-changed=data/icons/custom/symbolic/actions/cogged-wheel-symbolic.svg"
+        );
     }
 
     // 2. Компиляция файлов переводов gettext (.po -> .mo) для cargo run
@@ -121,7 +123,8 @@ fn main() {
 
                         // Также копируем .mo каталог в директорию целевого бинарника (target/{debug,release}/locale)
                         if let Some(target_dir) = out_dir.ancestors().nth(3) {
-                            let target_locale = target_dir.join(format!("locale/{lang}/LC_MESSAGES"));
+                            let target_locale =
+                                target_dir.join(format!("locale/{lang}/LC_MESSAGES"));
                             let _ = fs::create_dir_all(&target_locale);
                             let _ = fs::copy(&mo_path, target_locale.join("vrxx.mo"));
                         }

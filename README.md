@@ -177,7 +177,7 @@ VRXX предназначен для удобного управления VPN-�
 - Сброс настроек к значениям по умолчанию
 
 **Инфраструктура и пакеты:**
-- Привилегированный демон с REST API (Axum, 127.0.0.1:13337)
+- Привилегированный демон с REST API (Axum, Unix Domain Socket /run/vrxx/daemon.sock)
 - Пакеты для Linux: `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), `PKGBUILD` (Arch Linux / AUR), Универсальный `.tar.gz` (со встроенным ядром `sing-box 1.13.18` и скриптами `install.sh` / `uninstall.sh`)
 - Безопасное хранилище ключей с привязкой к хосту (Host-Bound AES-256-GCM Keystore)
 - SSD-friendly асинхронное логирование с разделением на потоки (`tracing` + `tracing-appender`)
@@ -356,7 +356,7 @@ sudo ./target/release/vrxx --daemon &
 
 ## REST API демона
 
-Демон запускается на `127.0.0.1:13337` (только localhost) и предоставляет следующие эндпоинты:
+Демон запускается на Unix Domain Socket `/run/vrxx/daemon.sock` с проверкой `SO_PEERCRED` и предоставляет следующие эндпоинты:
 
 | Метод | Маршрут | Описание |
 | --- | --- | --- |

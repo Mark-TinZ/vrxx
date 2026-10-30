@@ -93,7 +93,7 @@ sudo ./target/debug/vrxx --daemon &
    - Отвечает *только* за отображение данных и взаимодействие с пользователем.
 2. **Слой Backend (Daemon & REST API / SSE IPC)**:
    - `src/daemon/` и `src/ipc.rs`.
-   - Запускается от `root` (системная служба `vrxx-daemon.service`), слушает локальный порт `http://127.0.0.1:13337` и управляет процессом ядра `sing-box`.
+   - Запускается от `root` (системная служба `vrxx-daemon.service`), слушает Unix Domain Socket `/run/vrxx/daemon.sock` и управляет процессом ядра `sing-box`.
    - Передает события, изменение статуса и логи клиентам через Server-Sent Events (`/api/events`).
 3. **Слой Domain (Бизнес-логика)**:
    - `src/domain/key_parser.rs`: парсинг ссылок протоколов (VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard) и валидация.

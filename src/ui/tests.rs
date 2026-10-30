@@ -177,7 +177,7 @@ mod ui_testing {
             log_window.append_log("info", "[Vrxx] Important event");
             log_window.append_log_batch(&[crate::daemon::DaemonEvent::Log {
                 source: crate::daemon::events::LogSource::Core,
-                level: "info".to_string(),
+                level: crate::protocol::LogLevel::Info,
                 message: "Random core message".to_string(),
             }]);
 
@@ -204,9 +204,18 @@ mod ui_testing {
             assert!(!log_window.imp().text_view.is_cursor_visible());
 
             // Добавляем тестовые события разных уровней
-            log_window.append_log("info", "2026-09-25 12:00:00 INFO [ui]: Standard info message");
-            log_window.append_log("error", "2026-09-25 12:00:01 ERROR [vpn]: Critical error occurred");
-            log_window.append_log("warning", "2026-09-25 12:00:02 WARN [dns]: DNS server unreachable");
+            log_window.append_log(
+                "info",
+                "2026-09-25 12:00:00 INFO [ui]: Standard info message",
+            );
+            log_window.append_log(
+                "error",
+                "2026-09-25 12:00:01 ERROR [vpn]: Critical error occurred",
+            );
+            log_window.append_log(
+                "warning",
+                "2026-09-25 12:00:02 WARN [dns]: DNS server unreachable",
+            );
 
             // 1. Фильтр "Только ошибки" (индекс 1)
             log_window.imp().dropdown_level.set_selected(1);
@@ -234,17 +243,26 @@ mod ui_testing {
             assert_eq!(log_window.transient_for().as_ref(), Some(&parent_win));
 
             // 4. Проверка действий сортировки (win.sort_severity, win.sort_reverse_chronological и win.sort_chronological)
-            let _ = gtk::prelude::WidgetExt::activate_action(&log_window, "win.sort_severity", None);
+            let _ =
+                gtk::prelude::WidgetExt::activate_action(&log_window, "win.sort_severity", None);
             assert_eq!(
                 *log_window.imp().sort_mode.borrow(),
                 crate::ui::components::log_window::LogSortMode::Severity
             );
-            let _ = gtk::prelude::WidgetExt::activate_action(&log_window, "win.sort_reverse_chronological", None);
+            let _ = gtk::prelude::WidgetExt::activate_action(
+                &log_window,
+                "win.sort_reverse_chronological",
+                None,
+            );
             assert_eq!(
                 *log_window.imp().sort_mode.borrow(),
                 crate::ui::components::log_window::LogSortMode::ReverseChronological
             );
-            let _ = gtk::prelude::WidgetExt::activate_action(&log_window, "win.sort_chronological", None);
+            let _ = gtk::prelude::WidgetExt::activate_action(
+                &log_window,
+                "win.sort_chronological",
+                None,
+            );
             assert_eq!(
                 *log_window.imp().sort_mode.borrow(),
                 crate::ui::components::log_window::LogSortMode::Chronological
@@ -581,6 +599,10 @@ mod ui_testing {
             use adw::subclass::prelude::*;
             use gtk::prelude::*;
 
+            let temp_config_dir = tempfile::tempdir().unwrap();
+            let orig_xdg = std::env::var("XDG_CONFIG_HOME").ok();
+            std::env::set_var("XDG_CONFIG_HOME", temp_config_dir.path());
+
             // 1. Проверка страницы VrxxVpnPage (AdwBreakpointBin)
             let vpn_page = crate::ui::pages::VrxxVpnPage::new();
             assert_eq!(vpn_page.width_request(), 360);
@@ -599,49 +621,45 @@ mod ui_testing {
             assert!(vpn_page.imp().header_actions_box.is_visible());
             assert!(!vpn_page.imp().btn_add_compact_menu.is_visible());
 
-            // Тестирование адаптивной точки останова AdwBreakpoint (max-width: 450sp)
-            // При сжатии до <= 450px: кнопки скрываются, компактное меню отображается
+            // Проверка пустого состояния (TASK-UI-04): при отсутствии подключений отображается страница "empty"
+            assert_eq!(
+                vpn_page.imp().main_stack.visible_child_name().as_deref(),
+                Some("empty"),
+                "При отсутствии ключей/групп main_stack должен показывать 'empty'"
+            );
+
+            // Тестирование адаптивной точки останова AdwBreakpoint (max-width: 720sp)
+            // При сжатии до <= 720px: кнопки скрываются, компактное меню отображается
             vpn_page.allocate(400, 300, -1, None);
             assert!(
                 !vpn_page.imp().header_actions_box.is_visible(),
-                "header_actions_box should be hidden at <= 500sp (400px)"
+                "header_actions_box should be hidden at <= 720sp (400px)"
             );
             assert!(
                 vpn_page.imp().btn_add_compact_menu.is_visible(),
-                "btn_add_compact_menu should be visible at <= 500sp (400px)"
+                "btn_add_compact_menu should be visible at <= 720sp (400px)"
             );
 
-            vpn_page.allocate(500, 300, -1, None);
+            vpn_page.allocate(720, 300, -1, None);
             assert!(
                 !vpn_page.imp().header_actions_box.is_visible(),
-                "header_actions_box should be hidden at <= 500sp (500px)"
+                "header_actions_box should be hidden at <= 720sp (720px)"
             );
             assert!(
                 vpn_page.imp().btn_add_compact_menu.is_visible(),
-                "btn_add_compact_menu should be visible at <= 500sp (500px)"
+                "btn_add_compact_menu should be visible at <= 720sp (720px)"
             );
 
-            // При ширине контента > 500sp (например, 520px или 800px):
+            // При ширине контента > 720sp (например, 800px):
             // кнопки панели раскрываются, компактное меню скрыто
-            vpn_page.allocate(520, 300, -1, None);
-            assert!(
-                vpn_page.imp().header_actions_box.is_visible(),
-                "header_actions_box should be visible at 520px (> 500sp)"
-            );
-            assert!(
-                !vpn_page.imp().btn_add_compact_menu.is_visible(),
-                "btn_add_compact_menu should be hidden at 520px (> 500sp)"
-            );
-
-            // При расширении > 500px: кнопки возвращаются, компактное меню скрывается
             vpn_page.allocate(800, 300, -1, None);
             assert!(
                 vpn_page.imp().header_actions_box.is_visible(),
-                "header_actions_box should be visible at > 500sp"
+                "header_actions_box should be visible at > 720sp (800px)"
             );
             assert!(
                 !vpn_page.imp().btn_add_compact_menu.is_visible(),
-                "btn_add_compact_menu should be hidden at > 500sp"
+                "btn_add_compact_menu should be hidden at > 720sp (800px)"
             );
 
             // 2. Проверка остальных контентных страниц GtkStack
@@ -734,9 +752,15 @@ mod ui_testing {
             for &width in &[1200, 960, 720, 600, 500, 360, 480, 720, 1000] {
                 window.set_default_size(width, 600);
                 let (win_min_w, _, _, _) = window.measure(gtk::Orientation::Horizontal, -1);
-                assert!(win_min_w >= 360, "Window min_w ({win_min_w}) should be >= 360");
+                assert!(
+                    win_min_w >= 360,
+                    "Window min_w ({win_min_w}) should be >= 360"
+                );
                 let (win_min_h, _, _, _) = window.measure(gtk::Orientation::Vertical, -1);
-                assert!(win_min_h >= 500, "Window min_h ({win_min_h}) should be >= 500");
+                assert!(
+                    win_min_h >= 500,
+                    "Window min_h ({win_min_h}) should be >= 500"
+                );
             }
 
             // Проверка точки останова окна (max-width: 720sp -> split_view collapsed)
@@ -767,7 +791,12 @@ mod ui_testing {
                 !window.imp().split_view.is_collapsed(),
                 "split_view should be uncollapsed at > 720sp"
             );
+
+            if let Some(orig) = orig_xdg {
+                std::env::set_var("XDG_CONFIG_HOME", orig);
+            } else {
+                std::env::remove_var("XDG_CONFIG_HOME");
+            }
         });
     }
 }
-

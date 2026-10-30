@@ -65,7 +65,7 @@ pub fn is_valid_uuid(s: &str) -> bool {
 }
 
 /// Структурированное представление распарсенного VPN-профиля.
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq)]
 pub struct ParsedKey {
     /// Тип протокола (VLESS, VMess, Trojan, Shadowsocks, Hysteria2, TUIC, WireGuard)
     pub protocol: String,

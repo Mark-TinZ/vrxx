@@ -15,6 +15,8 @@
 //! привилегированного демона `vrxx-daemon` по HTTP REST API и Server-Sent Events (SSE).
 
 use crate::daemon::DaemonEvent;
+use crate::domain::key_parser::ParsedKey;
+use crate::protocol::{CoreType, DaemonConfigOptions, DaemonStatus, StartProxyRequest};
 use reqwest::Client;
 use reqwest_eventsource::{Event, EventSource};
 use tokio_stream::StreamExt;
@@ -30,6 +32,8 @@ pub enum DaemonConnectionState {
     Connected,
 }
 
+pub const DEFAULT_SOCKET_PATH: &str = "/run/vrxx/daemon.sock";
+
 /// Клиент для взаимодействия с привилегированным демоном через REST API и SSE.
 #[derive(Clone, Debug)]
 pub struct DaemonClient {
@@ -44,18 +48,26 @@ impl Default for DaemonClient {
 }
 
 impl DaemonClient {
-    /// Создает новый экземпляр клиента.
+    /// Создает новый экземпляр клиента, подключающегося к демону через Unix Domain Socket.
+    /// Путь к сокету определяется переменной окружения VRXX_DAEMON_SOCKET или DEFAULT_SOCKET_PATH.
     pub fn new() -> Self {
-        // Явно отключаем системные прокси, чтобы локальный трафик до демона
-        // не маршрутизировался через VPN и не блокировался ядром.
+        let socket_path =
+            std::env::var("VRXX_DAEMON_SOCKET").unwrap_or_else(|_| DEFAULT_SOCKET_PATH.to_string());
+        Self::with_socket_path(socket_path)
+    }
+
+    /// Создает новый экземпляр клиента с явно указанным путем к сокету.
+    pub fn with_socket_path(socket_path: impl Into<String>) -> Self {
+        let path = socket_path.into();
         let client = Client::builder()
             .no_proxy()
+            .unix_socket(path)
             .build()
             .unwrap_or_else(|_| Client::new());
 
         Self {
             client,
-            base_url: "http://127.0.0.1:13337",
+            base_url: "http://localhost",
         }
     }
 
@@ -80,19 +92,20 @@ impl DaemonClient {
     /// Отправляет команду на запуск ядра прокси.
     ///
     /// # Аргументы
-    /// * `core_type` - тип ядра (например, "sing-box").
-    /// * `config_json` - JSON конфигурация.
-    /// * `tun_mode` - флаг включения TUN-режима.
+    /// Отправляет команду на запуск ядра прокси с валидированным профилем и типизированными параметрами.
+    ///
+    /// # Аргументы
+    /// * `profile` - распарсенный профиль VPN-ключа ([`ParsedKey`]).
+    /// * `options` - строго типизированные параметры конфигурации ([`DaemonConfigOptions`]).
     pub async fn start_proxy(
         &self,
-        core_type: String,
-        config_json: String,
-        tun_mode: bool,
+        profile: &ParsedKey,
+        options: &DaemonConfigOptions,
     ) -> anyhow::Result<String> {
-        let payload = crate::daemon::StartProxyRequest {
-            core_type,
-            config_json,
-            tun_mode,
+        let payload = StartProxyRequest {
+            core_type: CoreType::SingBox,
+            profile: profile.clone(),
+            options: options.clone(),
         };
         let resp = self
             .client
@@ -141,14 +154,14 @@ impl DaemonClient {
         Ok(res)
     }
 
-    /// Запрашивает текущий текстовый статус демона.
-    pub async fn status(&self) -> anyhow::Result<String> {
+    /// Запрашивает текущий типизированный статус демона.
+    pub async fn status(&self) -> anyhow::Result<DaemonStatus> {
         let res = self
             .client
             .get(format!("{}/api/status", self.base_url))
             .send()
             .await?
-            .text()
+            .json::<DaemonStatus>()
             .await?;
         Ok(res)
     }
@@ -170,6 +183,7 @@ impl DaemonClient {
     pub fn subscribe_events(&self) -> async_channel::Receiver<DaemonEvent> {
         let (sender, receiver) = async_channel::unbounded();
         let url = format!("{}/api/events", self.base_url);
+        let client = self.client.clone();
 
         let task = async move {
             let mut retry_count = 0;
@@ -177,7 +191,15 @@ impl DaemonClient {
             let mut delay_secs = 2u64;
 
             loop {
-                let mut es = EventSource::get(&url);
+                let mut es = match EventSource::new(client.get(&url)) {
+                    Ok(es) => es,
+                    Err(err) => {
+                        tracing::error!("Failed to initialize SSE EventSource: {}", err);
+                        tokio::time::sleep(std::time::Duration::from_secs(delay_secs)).await;
+                        delay_secs = (delay_secs * 2).min(30);
+                        continue;
+                    }
+                };
                 while let Some(event) = es.next().await {
                     match event {
                         Ok(Event::Open) => {
@@ -248,14 +270,29 @@ mod tests {
 
     #[test]
     fn test_daemon_connection_state_enum() {
-        assert_eq!(DaemonConnectionState::Disconnected, DaemonConnectionState::Disconnected);
-        assert_ne!(DaemonConnectionState::Disconnected, DaemonConnectionState::Connected);
-        assert_ne!(DaemonConnectionState::Connecting, DaemonConnectionState::Connected);
+        assert_eq!(
+            DaemonConnectionState::Disconnected,
+            DaemonConnectionState::Disconnected
+        );
+        assert_ne!(
+            DaemonConnectionState::Disconnected,
+            DaemonConnectionState::Connected
+        );
+        assert_ne!(
+            DaemonConnectionState::Connecting,
+            DaemonConnectionState::Connected
+        );
     }
 
     #[test]
     fn test_daemon_client_initialization() {
         let client = DaemonClient::new();
-        assert_eq!(client.base_url, "http://127.0.0.1:13337");
+        assert_eq!(client.base_url, "http://localhost");
+    }
+
+    #[test]
+    fn test_daemon_client_custom_socket() {
+        let client = DaemonClient::with_socket_path("/tmp/custom.sock");
+        assert_eq!(client.base_url, "http://localhost");
     }
 }

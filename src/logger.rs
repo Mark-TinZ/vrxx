@@ -36,6 +36,16 @@ use tracing_subscriber::{reload, EnvFilter, Layer};
 pub type LogFilterReloadHandle = reload::Handle<EnvFilter, tracing_subscriber::Registry>;
 static RELOAD_HANDLE: OnceLock<LogFilterReloadHandle> = OnceLock::new();
 
+/// Очищает строку от терминальных управляющих ANSI escape-кодов.
+pub fn clean_ansi(input: &str) -> String {
+    static ANSI_RE: OnceLock<regex::Regex> = OnceLock::new();
+    let re = ANSI_RE.get_or_init(|| {
+        regex::Regex::new(r"\x1B\[[0-9;?]*[a-zA-Z]|\x1B\([A-Z0-9]")
+            .unwrap_or_else(|_| regex::Regex::new("$^").unwrap_or_else(|_| unreachable!()))
+    });
+    re.replace_all(input, "").to_string()
+}
+
 /// Элемент лога для UI виртуальной консоли и межпоточного вещания
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct LogEntryItem {

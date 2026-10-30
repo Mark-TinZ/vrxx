@@ -27,20 +27,17 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libgtk-4-dev libadwaita-1-dev gettext xvfb libssl-dev pkg-config locales locales-all
 
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2
 
     - name: Run Cargo Check
-      run: cargo check --verbose
+      run: cargo check --all-targets --verbose
+
+    - name: Build All Targets
+      run: cargo build --all-targets --verbose
 
     - name: Run Cargo Test
-      run: xvfb-run cargo test --verbose
+      run: xvfb-run cargo test --all-targets --verbose
 
     - name: Run Cargo Clippy
-      run: cargo clippy -- -D warnings
+      run: cargo clippy --all-targets -- -D warnings

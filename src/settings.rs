@@ -455,7 +455,12 @@ impl SettingsManager {
     pub fn new() -> Self {
         let mut path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
         path.push("vrxx");
-        fs::create_dir_all(&path).ok();
+        let _ = fs::create_dir_all(&path);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(&path, std::fs::Permissions::from_mode(0o700));
+        }
         let config_path = path.join("settings.json");
         let data_path = path.join("data.dat");
         Self {
@@ -595,6 +600,15 @@ impl SettingsManager {
             let bak_path = self.config_path.with_extension("json.bak");
 
             let write_res = (|| -> std::io::Result<()> {
+                if let Some(parent) = self.config_path.parent() {
+                    let _ = fs::create_dir_all(parent);
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::PermissionsExt;
+                        let _ = fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700));
+                    }
+                }
+
                 #[cfg(unix)]
                 {
                     use std::io::Write;
@@ -614,6 +628,12 @@ impl SettingsManager {
 
                 std::fs::rename(&tmp_path, &self.config_path)?;
                 let _ = std::fs::copy(&self.config_path, &bak_path);
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let _ =
+                        std::fs::set_permissions(&bak_path, std::fs::Permissions::from_mode(0o600));
+                }
                 Ok(())
             })();
 
@@ -634,19 +654,31 @@ impl SettingsManager {
     }
 
     /// Загружает и расшифровывает список VPN-профилей из `data.dat` (с fallback на `data.dat.bak`).
+    /// При обнаружении устаревшего контейнера VRXXDAT1 автоматически выполняет прозрачную миграцию в VRXXDAT2.
     pub fn load_keys(&self) -> Vec<VpnKeyData> {
         // 1. Попытка чтения и дешифрования основного файла data.dat
         if self.data_path.exists() {
             match fs::read(&self.data_path) {
-                Ok(bytes) => match crate::crypto::keystore::decrypt_keys(&bytes) {
-                    Ok(keys) => return keys,
-                    Err(e) => {
-                        tracing::warn!(
-                            "Failed to decrypt {:?}: {e}. Attempting backup restore...",
-                            self.data_path
-                        );
+                Ok(bytes) => {
+                    let is_legacy = bytes.starts_with(crate::crypto::keystore::MAGIC_HEADER_V1);
+                    match crate::crypto::keystore::decrypt_keys(&bytes) {
+                        Ok(keys) => {
+                            if is_legacy {
+                                tracing::info!(
+                                    "Migrated legacy VRXXDAT1 keys to user-isolated VRXXDAT2 container format"
+                                );
+                                self.save_keys(&keys);
+                            }
+                            return keys;
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to decrypt {:?}: {e}. Attempting backup restore...",
+                                self.data_path
+                            );
+                        }
                     }
-                },
+                }
                 Err(e) => {
                     tracing::warn!("Failed to read file {:?}: {e}", self.data_path);
                 }
@@ -657,12 +689,28 @@ impl SettingsManager {
         let bak_path = self.data_path.with_extension("dat.bak");
         if bak_path.exists() {
             if let Ok(bak_bytes) = fs::read(&bak_path) {
+                let is_bak_legacy = bak_bytes.starts_with(crate::crypto::keystore::MAGIC_HEADER_V1);
                 if let Ok(keys) = crate::crypto::keystore::decrypt_keys(&bak_bytes) {
-                    tracing::info!(
-                        "Encrypted keys successfully restored from backup {:?}",
-                        bak_path
-                    );
-                    let _ = fs::copy(&bak_path, &self.data_path);
+                    if is_bak_legacy {
+                        tracing::info!(
+                            "Migrated legacy VRXXDAT1 keys to user-isolated VRXXDAT2 container format"
+                        );
+                        self.save_keys(&keys);
+                    } else {
+                        tracing::info!(
+                            "Encrypted keys successfully restored from backup {:?}",
+                            bak_path
+                        );
+                        let _ = fs::copy(&bak_path, &self.data_path);
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::fs::PermissionsExt;
+                            let _ = fs::set_permissions(
+                                &self.data_path,
+                                std::fs::Permissions::from_mode(0o600),
+                            );
+                        }
+                    }
                     return keys;
                 }
             }
@@ -685,6 +733,15 @@ impl SettingsManager {
         let bak_path = self.data_path.with_extension("dat.bak");
 
         let write_res = (|| -> std::io::Result<()> {
+            if let Some(parent) = self.data_path.parent() {
+                let _ = fs::create_dir_all(parent);
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let _ = fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700));
+                }
+            }
+
             #[cfg(unix)]
             {
                 use std::io::Write;
@@ -703,7 +760,20 @@ impl SettingsManager {
             }
 
             std::fs::rename(&tmp_path, &self.data_path)?;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let _ = std::fs::set_permissions(
+                    &self.data_path,
+                    std::fs::Permissions::from_mode(0o600),
+                );
+            }
             let _ = std::fs::copy(&self.data_path, &bak_path);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let _ = std::fs::set_permissions(&bak_path, std::fs::Permissions::from_mode(0o600));
+            }
             Ok(())
         })();
 
@@ -797,6 +867,27 @@ mod tests {
             bak_path.exists(),
             "Резервная копия data.dat.bak должна быть создана"
         );
+        let cfg_bak_path = config_path.with_extension("json.bak");
+        assert!(
+            cfg_bak_path.exists(),
+            "Резервная копия settings.json.bak должна быть создана"
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let meta = std::fs::metadata(&bak_path).unwrap();
+            assert_eq!(
+                meta.permissions().mode() & 0o777,
+                0o600,
+                "Права на backup файл data.dat.bak должны быть 0600"
+            );
+            let cfg_meta = std::fs::metadata(&cfg_bak_path).unwrap();
+            assert_eq!(
+                cfg_meta.permissions().mode() & 0o777,
+                0o600,
+                "Права на backup файл settings.json.bak должны быть 0600"
+            );
+        }
 
         // Симулируем повреждение основного data.dat -> должен восстановиться из .bak
         std::fs::write(&data_path, b"corrupted data").unwrap();
@@ -871,5 +962,136 @@ mod tests {
         let parsed_with_geo: AppSettings = serde_json::from_str(json_with_geo).unwrap();
         assert!(parsed_with_geo.auto_update_geodata);
         assert_eq!(parsed_with_geo.geodata_update_interval_days, 14);
+    }
+
+    #[test]
+    fn test_settings_manager_vrxxdat1_auto_migration_to_vrxxdat2() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let config_path = temp_dir.path().join("settings.json");
+        let data_path = temp_dir.path().join("data.dat");
+        let bak_path = temp_dir.path().join("data.dat.bak");
+        let manager = SettingsManager::with_paths(config_path, data_path.clone());
+
+        // 1. Prepare legacy V1 encrypted container using machine_id
+        let legacy_machine_id = crate::crypto::keystore::get_machine_id()
+            .unwrap_or_else(|_| "0123456789abcdef0123456789abcdef".to_string());
+        let initial_keys = vec![VpnKeyData {
+            name: "Legacy Germany Server".to_string(),
+            protocol: "VLESS".to_string(),
+            is_active: false,
+            traffic_down: "0 MB".to_string(),
+            traffic_up: "0 MB".to_string(),
+            time_connected: "00:00:00".to_string(),
+            ping: "45 ms".to_string(),
+            location: "DE".to_string(),
+            country_code: "DE".to_string(),
+            city: "Frankfurt".to_string(),
+            isp: "Hetzner".to_string(),
+            timezone: "UTC+1".to_string(),
+            url: "vless://test-uuid@1.2.3.4:443?security=reality&sni=example.com#Germany"
+                .to_string(),
+            group: String::new(),
+        }];
+
+        let legacy_encrypted =
+            crate::crypto::keystore::encrypt_keys_with_id(&initial_keys, &legacy_machine_id)
+                .expect("Legacy encryption should succeed");
+        assert_eq!(
+            &legacy_encrypted[0..8],
+            crate::crypto::keystore::MAGIC_HEADER_V1
+        );
+
+        // Write legacy container to data.dat
+        fs::write(&data_path, &legacy_encrypted).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&data_path, fs::Permissions::from_mode(0o600)).unwrap();
+        }
+
+        // 2. Call load_keys() -> should detect VRXXDAT1, decrypt, re-encrypt as VRXXDAT2, and persist
+        let loaded_keys = manager.load_keys();
+        assert_eq!(loaded_keys.len(), 1);
+        assert_eq!(loaded_keys[0].name, "Legacy Germany Server");
+        assert_eq!(loaded_keys[0].url, initial_keys[0].url);
+
+        // 3. Verify data.dat on disk is now VRXXDAT2 with 0600 permissions
+        let migrated_bytes = fs::read(&data_path).unwrap();
+        assert_eq!(
+            &migrated_bytes[0..8],
+            crate::crypto::keystore::MAGIC_HEADER_V2
+        );
+        assert_eq!(
+            crate::crypto::keystore::container_version(&migrated_bytes).unwrap(),
+            2
+        );
+
+        // 4. Verify data.dat.bak is also created/updated with VRXXDAT2 and 0600
+        assert!(bak_path.exists());
+        let bak_bytes = fs::read(&bak_path).unwrap();
+        assert_eq!(&bak_bytes[0..8], crate::crypto::keystore::MAGIC_HEADER_V2);
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(&data_path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600);
+            let bak_mode = fs::metadata(&bak_path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(bak_mode, 0o600);
+        }
+    }
+
+    #[test]
+    fn test_settings_manager_backup_vrxxdat1_auto_migration() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let config_path = temp_dir.path().join("settings.json");
+        let data_path = temp_dir.path().join("data.dat");
+        let bak_path = temp_dir.path().join("data.dat.bak");
+        let manager = SettingsManager::with_paths(config_path, data_path.clone());
+
+        let legacy_machine_id = crate::crypto::keystore::get_machine_id()
+            .unwrap_or_else(|_| "0123456789abcdef0123456789abcdef".to_string());
+        let initial_keys = vec![VpnKeyData {
+            name: "Backup Recovered Server".to_string(),
+            protocol: "Shadowsocks".to_string(),
+            is_active: false,
+            traffic_down: "0 MB".to_string(),
+            traffic_up: "0 MB".to_string(),
+            time_connected: "00:00:00".to_string(),
+            ping: "30 ms".to_string(),
+            location: "NL".to_string(),
+            country_code: "NL".to_string(),
+            city: "Amsterdam".to_string(),
+            isp: "DigitalOcean".to_string(),
+            timezone: "UTC+1".to_string(),
+            url: "ss://test@5.6.7.8:8388#Backup".to_string(),
+            group: String::new(),
+        }];
+
+        let legacy_encrypted =
+            crate::crypto::keystore::encrypt_keys_with_id(&initial_keys, &legacy_machine_id)
+                .expect("Legacy encryption should succeed");
+
+        // Primary data.dat is corrupted
+        fs::write(&data_path, b"corrupted garbage bytes").unwrap();
+        // Backup is legacy V1
+        fs::write(&bak_path, &legacy_encrypted).unwrap();
+
+        let loaded_keys = manager.load_keys();
+        assert_eq!(loaded_keys.len(), 1);
+        assert_eq!(loaded_keys[0].name, "Backup Recovered Server");
+
+        // Now data.dat should be migrated to V2
+        let restored_bytes = fs::read(&data_path).unwrap();
+        assert_eq!(
+            &restored_bytes[0..8],
+            crate::crypto::keystore::MAGIC_HEADER_V2
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(&data_path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600);
+        }
     }
 }

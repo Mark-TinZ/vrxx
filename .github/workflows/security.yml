@@ -13,6 +13,7 @@ on:
 permissions:
   contents: read
   actions: read
+  security-events: write
 
 jobs:
   # ==========================================
@@ -30,7 +31,11 @@ jobs:
       - name: Install Gitleaks
         run: |
           GITLEAKS_VERSION="8.24.0"
-          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | sudo tar -xz -C /usr/local/bin gitleaks
+          GITLEAKS_SHA256="cb49b7de5ee986510fe8666ca0273a6cc15eb82571f2f14832c9e8920751f3a4"
+          curl -sSL -o gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          sudo tar -xz -C /usr/local/bin -f gitleaks.tar.gz gitleaks
+          rm -f gitleaks.tar.gz
           gitleaks version
 
       - name: Run Gitleaks
@@ -49,7 +54,7 @@ jobs:
   # 2. SEMGREP - Static Application Security Testing
   # ==========================================
   semgrep:
-    name: Semgrep SAST (OWASP, Secrets, Hardening)
+    name: Semgrep SAST (Rust Security & Secrets)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -67,7 +72,7 @@ jobs:
         run: |
           semgrep scan \
             --config "p/secrets" \
-            --config "p/owasp-top-ten" \
+            --config "p/security-audit" \
             --sarif-output=semgrep.sarif \
             --error \
             --metrics=off
@@ -90,17 +95,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install cargo-audit standalone binary
-        run: |
-          AUDIT_VERSION="0.22.2"
-          curl -sSL "https://github.com/rustsec/rustsec/releases/download/cargo-audit%2Fv${AUDIT_VERSION}/cargo-audit-x86_64-unknown-linux-musl-v${AUDIT_VERSION}.tgz" | sudo tar -xz -C /usr/local/bin
-          cargo audit --version
-
       - name: Run Cargo Audit
-        run: cargo audit
+        uses: rustsec/audit-check@v1.4.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # ==========================================
-  # 4. TRIVY - CVE & SCA Vulnerability Scanner
+  # 4. CARGO DENY - Licenses & Bans
+  # ==========================================
+  cargo-deny:
+    name: Cargo Deny (Licenses & Dependencies)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+
+  # ==========================================
+  # 5. TRIVY - CVE & SCA Vulnerability Scanner
   # ==========================================
   trivy:
     name: Trivy (SCA & Filesystem CVEs)
@@ -109,16 +125,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Trivy
-        run: |
-          TRIVY_VERSION="0.76.0"
-          curl -sSL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" | sudo tar -xz -C /usr/local/bin trivy
-          trivy version
-
       - name: Run Trivy Vulnerability Scanner
-        run: |
-          trivy fs --severity CRITICAL,HIGH --format sarif --output trivy.sarif .
-          trivy fs --severity CRITICAL,HIGH .
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy.sarif'
 
       - name: Upload Trivy SARIF Artifact
         if: always()
@@ -129,10 +142,10 @@ jobs:
           if-no-files-found: ignore
 
   # ==========================================
-  # 5. CODE QUALITY & LINTING (Clippy & Check)
+  # 6. BINARY HARDENING (checksec)
   # ==========================================
-  clippy-and-check:
-    name: Clippy & Cargo Check
+  checksec:
+    name: Binary Hardening Verification (checksec)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -140,25 +153,19 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
 
-      - name: Install GTK4 dependencies
+      - name: Install dependencies & checksec
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev gettext xvfb libssl-dev pkg-config locales locales-all
+          sudo apt-get install -y libgtk-4-dev libadwaita-1-dev gettext xvfb libssl-dev pkg-config checksec
 
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
 
-      - name: Run Cargo Check
-        run: cargo check --verbose
+      - name: Build Release Binaries
+        run: cargo build --release --bin vrxx --bin vrxx-tui
 
-      - name: Run Cargo Clippy
-        run: cargo clippy -- -D warnings
+      - name: Verify Binary Hardening with checksec
+        run: |
+          checksec --file=target/release/vrxx --format=json
+          checksec --file=target/release/vrxx-tui --format=json

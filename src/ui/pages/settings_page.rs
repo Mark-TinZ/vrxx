@@ -397,7 +397,8 @@ impl VrxxSettingsPage {
                 _ => 1,
             };
             imp.geo_interval_row.set_selected(geo_interval_idx);
-            imp.geo_interval_row.set_sensitive(snapshot.auto_update_geodata);
+            imp.geo_interval_row
+                .set_sensitive(snapshot.auto_update_geodata);
 
             *imp.is_initializing.borrow_mut() = false;
             *imp.has_changes.borrow_mut() = false;
@@ -475,7 +476,8 @@ impl VrxxSettingsPage {
             _ => 1,
         };
         imp.geo_interval_row.set_selected(geo_interval_idx);
-        imp.geo_interval_row.set_sensitive(settings.auto_update_geodata);
+        imp.geo_interval_row
+            .set_sensitive(settings.auto_update_geodata);
 
         self.update_core_info(None);
         self.refresh_geo_status();
@@ -525,19 +527,19 @@ impl VrxxSettingsPage {
         connect_switch(&imp.auto_update_geo_row, self);
 
         let p_weak_geo_int = self.downgrade();
-        imp.geo_interval_row
-            .connect_selected_notify(move |_| {
-                if let Some(p) = p_weak_geo_int.upgrade() {
-                    p.check_changes();
-                }
-            });
-
-        let geo_int_row_weak = imp.geo_interval_row.downgrade();
-        imp.auto_update_geo_row.connect_active_notify(move |switch| {
-            if let Some(row) = geo_int_row_weak.upgrade() {
-                row.set_sensitive(switch.is_active());
+        imp.geo_interval_row.connect_selected_notify(move |_| {
+            if let Some(p) = p_weak_geo_int.upgrade() {
+                p.check_changes();
             }
         });
+
+        let geo_int_row_weak = imp.geo_interval_row.downgrade();
+        imp.auto_update_geo_row
+            .connect_active_notify(move |switch| {
+                if let Some(row) = geo_int_row_weak.upgrade() {
+                    row.set_sensitive(switch.is_active());
+                }
+            });
 
         let p_weak_auto_ping = self.downgrade();
         imp.auto_ping_interval_row

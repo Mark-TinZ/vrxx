@@ -274,7 +274,10 @@ impl VrxxLogWindow {
 
         let level_lower = entry.level.to_lowercase();
         let level_match = match level_filter_idx {
-            1 => matches!(level_lower.as_str(), "error" | "err" | "fatal" | "panic" | "critical"),
+            1 => matches!(
+                level_lower.as_str(),
+                "error" | "err" | "fatal" | "panic" | "critical"
+            ),
             2 => matches!(level_lower.as_str(), "warning" | "warn"),
             3 => matches!(level_lower.as_str(), "info" | "app"),
             4 => matches!(level_lower.as_str(), "debug" | "trace"),
@@ -307,12 +310,7 @@ impl VrxxLogWindow {
 
     /// Очищает строку лога от терминальных управляющих ANSI escape-кодов.
     pub fn clean_ansi(input: &str) -> String {
-        static ANSI_RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-        let re = ANSI_RE.get_or_init(|| {
-            regex::Regex::new(r"\x1B\[[0-9;?]*[a-zA-Z]|\x1B\([A-Z0-9]")
-                .unwrap_or_else(|_| regex::Regex::new("$^").unwrap_or_else(|_| unreachable!()))
-        });
-        re.replace_all(input, "").to_string()
+        crate::logger::clean_ansi(input)
     }
 
     /// Вставляет форматированную строку в буфер TextView с цветной структурированной подсветкой по формату.
@@ -348,8 +346,10 @@ impl VrxxLogWindow {
 
         static TARGET_RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
         let target_re = TARGET_RE.get_or_init(|| {
-            regex::Regex::new(r"^(?P<space>\s+)(?P<target>\[[^\]]+\](?::)?|[a-zA-Z0-9_\-\./]+:)(?P<msg>.*)$")
-                .unwrap_or_else(|_| regex::Regex::new("$^").unwrap_or_else(|_| unreachable!()))
+            regex::Regex::new(
+                r"^(?P<space>\s+)(?P<target>\[[^\]]+\](?::)?|[a-zA-Z0-9_\-\./]+:)(?P<msg>.*)$",
+            )
+            .unwrap_or_else(|_| regex::Regex::new("$^").unwrap_or_else(|_| unreachable!()))
         });
 
         if let Some(caps) = re.captures(line) {
@@ -470,7 +470,9 @@ impl VrxxLogWindow {
         // 1. Фильтрация
         let mut filtered: Vec<&LogEntryItem> = logs
             .iter()
-            .filter(|entry| Self::entry_matches_full(entry, source_filter_idx, level_filter_idx, &query))
+            .filter(|entry| {
+                Self::entry_matches_full(entry, source_filter_idx, level_filter_idx, &query)
+            })
             .collect();
 
         // 2. Сортировка по выбранному режиму
@@ -717,13 +719,11 @@ impl VrxxLogWindow {
             });
 
         let window_weak_level = self.downgrade();
-        self.imp()
-            .dropdown_level
-            .connect_selected_notify(move |_| {
-                if let Some(window) = window_weak_level.upgrade() {
-                    window.rebuild_buffer();
-                }
-            });
+        self.imp().dropdown_level.connect_selected_notify(move |_| {
+            if let Some(window) = window_weak_level.upgrade() {
+                window.rebuild_buffer();
+            }
+        });
 
         let window_weak_search = self.downgrade();
         self.imp().search_entry.connect_search_changed(move |_| {
@@ -765,13 +765,13 @@ impl VrxxLogWindow {
                     Ok(entry) => {
                         let mut batch = vec![crate::daemon::DaemonEvent::Log {
                             source: entry.source,
-                            level: entry.level,
+                            level: crate::protocol::LogLevel::from(entry.level.as_str()),
                             message: entry.message,
                         }];
                         while let Ok(next) = rx.try_recv() {
                             batch.push(crate::daemon::DaemonEvent::Log {
                                 source: next.source,
-                                level: next.level,
+                                level: crate::protocol::LogLevel::from(next.level.as_str()),
                                 message: next.message,
                             });
                             if batch.len() >= 100 {
@@ -781,7 +781,9 @@ impl VrxxLogWindow {
                         if let Some(window) = window_weak.upgrade() {
                             window.append_log_batch(&batch);
                         } else {
-                            tracing::debug!("Log window closed, terminating in-process logs subscription");
+                            tracing::debug!(
+                                "Log window closed, terminating in-process logs subscription"
+                            );
                             break;
                         }
                         glib::timeout_future(std::time::Duration::from_millis(30)).await;
@@ -809,7 +811,7 @@ impl VrxxLogWindow {
 
         self.append_log_batch(&[crate::daemon::DaemonEvent::Log {
             source,
-            level: level.to_string(),
+            level: crate::protocol::LogLevel::from(level),
             message: message.to_string(),
         }]);
     }
@@ -835,7 +837,7 @@ impl VrxxLogWindow {
             {
                 let entry = LogEntryItem {
                     source: *source,
-                    level: level.clone(),
+                    level: level.as_str().to_string(),
                     message: message.clone(),
                 };
 
@@ -1084,8 +1086,12 @@ mod tests {
 
         // Комбинированный фильтр: Source + Level + Query
         assert!(VrxxLogWindow::entry_matches_full(&err_entry, 2, 1, "fatal"));
-        assert!(!VrxxLogWindow::entry_matches_full(&err_entry, 1, 1, "fatal")); // не Core
-        assert!(!VrxxLogWindow::entry_matches_full(&err_entry, 2, 1, "hello")); // несовпадение запроса
+        assert!(!VrxxLogWindow::entry_matches_full(
+            &err_entry, 1, 1, "fatal"
+        )); // не Core
+        assert!(!VrxxLogWindow::entry_matches_full(
+            &err_entry, 2, 1, "hello"
+        )); // несовпадение запроса
     }
 
     #[test]
@@ -1219,7 +1225,10 @@ mod tests {
 
         let line1 = "2026-09-25 12:00:00 INFO [vrxx::ui]: App startup\n";
         let caps1 = ts_re.captures(line1).expect("line1 should match");
-        assert_eq!(caps1.name("time").unwrap().as_str().trim(), "2026-09-25 12:00:00");
+        assert_eq!(
+            caps1.name("time").unwrap().as_str().trim(),
+            "2026-09-25 12:00:00"
+        );
         assert_eq!(caps1.name("level").unwrap().as_str(), "INFO");
 
         let line2 = "+0600 2026-09-25 12:00:01 WARN [dns]: Server timeout\n";
@@ -1232,7 +1241,8 @@ mod tests {
 
         let bracket_re = regex::Regex::new(
             r"^(?:\[(?P<level1>[A-Za-z]+)\]|(?P<level2>[A-Za-z]+)\[\d+\])(?P<rest>.*)$",
-        ).unwrap();
+        )
+        .unwrap();
         let line4 = "[INFO] [vrxx::test]: Bracketed log line";
         let caps4 = bracket_re.captures(line4).expect("line4 should match");
         assert_eq!(caps4.name("level1").unwrap().as_str(), "INFO");

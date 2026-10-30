@@ -60,9 +60,25 @@ fi
 if command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
     info "🛑 Остановка и отключение службы vrxx-daemon..."
     ${SUDO_CMD} systemctl disable --now vrxx-daemon.service 2>/dev/null || true
+fi
+
+if [[ -f /etc/systemd/system/vrxx-daemon.service ]]; then
     ${SUDO_CMD} rm -f /etc/systemd/system/vrxx-daemon.service
-    ${SUDO_CMD} systemctl daemon-reload 2>/dev/null || true
-    success "Служба vrxx-daemon остановлена и удалена."
+    if command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
+        ${SUDO_CMD} systemctl daemon-reload 2>/dev/null || true
+        ${SUDO_CMD} systemctl reset-failed 2>/dev/null || true
+    fi
+    success "Служба vrxx-daemon удалена."
+fi
+
+# Очистка среды выполнения демона и сетевых интерфейсов
+if [[ -d /run/vrxx ]]; then
+    ${SUDO_CMD} rm -rf /run/vrxx
+fi
+
+if command -v ip >/dev/null 2>&1 && ip link show vrxx-tun >/dev/null 2>&1; then
+    info "Удаление сетевого интерфейса vrxx-tun..."
+    ${SUDO_CMD} ip link del vrxx-tun 2>/dev/null || true
 fi
 
 # 2. Удаление исполняемого файла

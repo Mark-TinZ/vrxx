@@ -17,7 +17,9 @@
 //! - Безопасную установку и сброс системного прокси GNOME GSettings без зависания UI
 //! - Экспорт переменных окружения `HTTP_PROXY` и `HTTPS_PROXY` для текущего процесса
 
+use crate::domain::key_parser::ParsedKey;
 use crate::ipc::DaemonClient;
+use crate::protocol::DaemonConfigOptions;
 use crate::settings::SettingsManager;
 use anyhow::Result;
 use std::sync::Arc;
@@ -25,9 +27,9 @@ use tokio::runtime::Runtime;
 
 /// Интерфейс для абстрактного управления ядром VPN.
 pub trait VpnCore: Send + Sync + std::fmt::Debug {
-    /// Запуск ядра с заданной JSON конфигурацией.
+    /// Запуск ядра с заданным VPN-профилем и типизированными параметрами демона.
     #[allow(dead_code)]
-    fn start(&self, config_json: &str) -> Result<()>;
+    fn start(&self, profile: &ParsedKey, options: &DaemonConfigOptions) -> Result<()>;
     /// Остановка запущенного ядра.
     #[allow(dead_code)]
     fn stop(&self) -> Result<()>;
@@ -327,19 +329,17 @@ impl CoreBackend {
 }
 
 impl VpnCore for CoreBackend {
-    /// Отправляет команду демону на запуск ядра sing-box с переданной JSON-конфигурацией.
-    fn start(&self, config_json: &str) -> Result<()> {
-        let settings = SettingsManager::new().load();
-        let tun_mode = settings.tun_mode;
-
-        tracing::debug!("Preparing to start sing-box core. TUN mode: {}", tun_mode);
-        tracing::debug!("Generated sing-box JSON config:\n{}", config_json);
-
+    /// Отправляет команду демону на запуск ядра sing-box с переданным профилем и параметрами.
+    fn start(&self, profile: &ParsedKey, options: &DaemonConfigOptions) -> Result<()> {
+        tracing::debug!(
+            "Preparing to start sing-box core. TUN mode: {}",
+            options.tun_mode
+        );
         tracing::info!("Sending request to daemon to start proxy (sing-box core)...");
 
         self.rt.block_on(async {
             self.client
-                .start_proxy("sing-box".to_string(), config_json.to_string(), tun_mode)
+                .start_proxy(profile, options)
                 .await
                 .map_err(|e| {
                     tracing::error!("Failed to start proxy via daemon REST API: {}", e);

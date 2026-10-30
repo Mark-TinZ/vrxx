@@ -69,8 +69,16 @@ static COUNTRIES: &[CountryDef] = &[
         code: "NL",
         name_en: "Netherlands",
         keywords: &[
-            "нидерланды", "нидерланд", "netherlands", "голландия", "голланд", "holland",
-            "амстердам", "amsterdam", "rotterdam", "роттердам",
+            "нидерланды",
+            "нидерланд",
+            "netherlands",
+            "голландия",
+            "голланд",
+            "holland",
+            "амстердам",
+            "amsterdam",
+            "rotterdam",
+            "роттердам",
         ],
         cities: &[
             ("амстердам", "Amsterdam"),
@@ -83,8 +91,19 @@ static COUNTRIES: &[CountryDef] = &[
         code: "DE",
         name_en: "Germany",
         keywords: &[
-            "германия", "герман", "germany", "deutschland", "доичланд", "франкфурт",
-            "frankfurt", "берлин", "berlin", "дюссельдорф", "dusseldorf", "мюнхен", "munich",
+            "германия",
+            "герман",
+            "germany",
+            "deutschland",
+            "доичланд",
+            "франкфурт",
+            "frankfurt",
+            "берлин",
+            "berlin",
+            "дюссельдорф",
+            "dusseldorf",
+            "мюнхен",
+            "munich",
         ],
         cities: &[
             ("франкфурт", "Frankfurt"),
@@ -101,9 +120,25 @@ static COUNTRIES: &[CountryDef] = &[
         code: "US",
         name_en: "United States",
         keywords: &[
-            "сша", "usa", "америка", "united states", "штаты", "нью-йорк", "new york",
-            "майами", "miami", "лос-анджелес", "los angeles", "чикаго", "chicago",
-            "сиэтл", "seattle", "даллас", "dallas", "атланта", "atlanta",
+            "сша",
+            "usa",
+            "америка",
+            "united states",
+            "штаты",
+            "нью-йорк",
+            "new york",
+            "майами",
+            "miami",
+            "лос-анджелес",
+            "los angeles",
+            "чикаго",
+            "chicago",
+            "сиэтл",
+            "seattle",
+            "даллас",
+            "dallas",
+            "атланта",
+            "atlanta",
         ],
         cities: &[
             ("нью-йорк", "New York"),
@@ -127,8 +162,18 @@ static COUNTRIES: &[CountryDef] = &[
         code: "RU",
         name_en: "Russia",
         keywords: &[
-            "россия", "росси", "russia", "рф", "москва", "moscow", "петербург", "питер",
-            "spb", "новосибирск", "екатеринбург", "владивосток",
+            "россия",
+            "росси",
+            "russia",
+            "рф",
+            "москва",
+            "moscow",
+            "петербург",
+            "питер",
+            "spb",
+            "новосибирск",
+            "екатеринбург",
+            "владивосток",
         ],
         cities: &[
             ("москва", "Moscow"),
@@ -144,8 +189,17 @@ static COUNTRIES: &[CountryDef] = &[
         code: "GB",
         name_en: "United Kingdom",
         keywords: &[
-            "великобритания", "united kingdom", "британия", "англия", "uk", "britain",
-            "england", "лондон", "london", "манчестер", "manchester",
+            "великобритания",
+            "united kingdom",
+            "британия",
+            "англия",
+            "uk",
+            "britain",
+            "england",
+            "лондон",
+            "london",
+            "манчестер",
+            "manchester",
         ],
         cities: &[
             ("лондон", "London"),
@@ -158,8 +212,17 @@ static COUNTRIES: &[CountryDef] = &[
         code: "TR",
         name_en: "Turkey",
         keywords: &[
-            "турция", "турци", "turkey", "стамбул", "istanbul", "анталья", "antalya",
-            "измир", "izmir", "анкара", "ankara",
+            "турция",
+            "турци",
+            "turkey",
+            "стамбул",
+            "istanbul",
+            "анталья",
+            "antalya",
+            "измир",
+            "izmir",
+            "анкара",
+            "ankara",
         ],
         cities: &[
             ("стамбул", "Istanbul"),
@@ -185,20 +248,48 @@ static COUNTRIES: &[CountryDef] = &[
     CountryDef {
         code: "FR",
         name_en: "France",
-        keywords: &["франция", "франци", "france", "париж", "paris", "марсель", "marseille"],
+        keywords: &[
+            "франция",
+            "франци",
+            "france",
+            "париж",
+            "paris",
+            "марсель",
+            "marseille",
+        ],
         cities: &[("париж", "Paris"), ("paris", "Paris")],
     },
     CountryDef {
         code: "PL",
         name_en: "Poland",
-        keywords: &["польша", "польш", "poland", "варшава", "warsaw", "краков", "krakow"],
+        keywords: &[
+            "польша",
+            "польш",
+            "poland",
+            "варшава",
+            "warsaw",
+            "краков",
+            "krakow",
+        ],
         cities: &[("варшава", "Warsaw"), ("warsaw", "Warsaw")],
     },
     CountryDef {
         code: "KZ",
         name_en: "Kazakhstan",
-        keywords: &["казахстан", "kazakhstan", "алматы", "almaty", "астана", "astana"],
-        cities: &[("алматы", "Almaty"), ("almaty", "Almaty"), ("астана", "Astana"), ("astana", "Astana")],
+        keywords: &[
+            "казахстан",
+            "kazakhstan",
+            "алматы",
+            "almaty",
+            "астана",
+            "astana",
+        ],
+        cities: &[
+            ("алматы", "Almaty"),
+            ("almaty", "Almaty"),
+            ("астана", "Astana"),
+            ("astana", "Astana"),
+        ],
     },
     CountryDef {
         code: "SG",
@@ -209,8 +300,21 @@ static COUNTRIES: &[CountryDef] = &[
     CountryDef {
         code: "JP",
         name_en: "Japan",
-        keywords: &["япония", "япони", "japan", "токио", "tokyo", "осака", "osaka"],
-        cities: &[("токио", "Tokyo"), ("tokyo", "Tokyo"), ("осака", "Osaka"), ("osaka", "Osaka")],
+        keywords: &[
+            "япония",
+            "япони",
+            "japan",
+            "токио",
+            "tokyo",
+            "осака",
+            "osaka",
+        ],
+        cities: &[
+            ("токио", "Tokyo"),
+            ("tokyo", "Tokyo"),
+            ("осака", "Osaka"),
+            ("osaka", "Osaka"),
+        ],
     },
     CountryDef {
         code: "HK",
@@ -269,26 +373,67 @@ static COUNTRIES: &[CountryDef] = &[
     CountryDef {
         code: "CH",
         name_en: "Switzerland",
-        keywords: &["швейцария", "швейцари", "switzerland", "цюрих", "zurich", "женева", "geneva"],
-        cities: &[("цюрих", "Zurich"), ("zurich", "Zurich"), ("женева", "Geneva"), ("geneva", "Geneva")],
+        keywords: &[
+            "швейцария",
+            "швейцари",
+            "switzerland",
+            "цюрих",
+            "zurich",
+            "женева",
+            "geneva",
+        ],
+        cities: &[
+            ("цюрих", "Zurich"),
+            ("zurich", "Zurich"),
+            ("женева", "Geneva"),
+            ("geneva", "Geneva"),
+        ],
     },
     CountryDef {
         code: "ES",
         name_en: "Spain",
-        keywords: &["испания", "испани", "spain", "мадрид", "madrid", "барселона", "barcelona"],
+        keywords: &[
+            "испания",
+            "испани",
+            "spain",
+            "мадрид",
+            "madrid",
+            "барселона",
+            "barcelona",
+        ],
         cities: &[("мадрид", "Madrid"), ("madrid", "Madrid")],
     },
     CountryDef {
         code: "IT",
         name_en: "Italy",
         keywords: &["италия", "итали", "italy", "рим", "rome", "милан", "milan"],
-        cities: &[("рим", "Rome"), ("rome", "Rome"), ("милан", "Milan"), ("milan", "Milan")],
+        cities: &[
+            ("рим", "Rome"),
+            ("rome", "Rome"),
+            ("милан", "Milan"),
+            ("milan", "Milan"),
+        ],
     },
     CountryDef {
         code: "CA",
         name_en: "Canada",
-        keywords: &["канада", "канад", "canada", "торонто", "toronto", "монреаль", "montreal", "ванкувер", "vancouver"],
-        cities: &[("торонто", "Toronto"), ("toronto", "Toronto"), ("ванкувер", "Vancouver"), ("vancouver", "Vancouver")],
+        keywords: &[
+            "канада",
+            "канад",
+            "canada",
+            "торонто",
+            "toronto",
+            "монреаль",
+            "montreal",
+            "ванкувер",
+            "vancouver",
+        ],
+        cities: &[
+            ("торонто", "Toronto"),
+            ("toronto", "Toronto"),
+            ("ванкувер", "Vancouver"),
+            ("vancouver", "Vancouver"),
+        ],
     },
     CountryDef {
         code: "AE",
@@ -317,7 +462,15 @@ static COUNTRIES: &[CountryDef] = &[
     CountryDef {
         code: "IN",
         name_en: "India",
-        keywords: &["индия", "инди", "india", "мумбаи", "mumbai", "дели", "delhi"],
+        keywords: &[
+            "индия",
+            "инди",
+            "india",
+            "мумбаи",
+            "mumbai",
+            "дели",
+            "delhi",
+        ],
         cities: &[("мумбаи", "Mumbai"), ("дели", "Delhi")],
     },
     CountryDef {
@@ -329,7 +482,15 @@ static COUNTRIES: &[CountryDef] = &[
     CountryDef {
         code: "AU",
         name_en: "Australia",
-        keywords: &["австралия", "австрали", "australia", "сидней", "sydney", "мельбурн", "melbourne"],
+        keywords: &[
+            "австралия",
+            "австрали",
+            "australia",
+            "сидней",
+            "sydney",
+            "мельбурн",
+            "melbourne",
+        ],
         cities: &[("сидней", "Sydney"), ("мельбурн", "Melbourne")],
     },
     CountryDef {
@@ -353,7 +514,14 @@ static COUNTRIES: &[CountryDef] = &[
     CountryDef {
         code: "MD",
         name_en: "Moldova",
-        keywords: &["молдова", "молдови", "молдавия", "moldova", "кишинев", "chisinau"],
+        keywords: &[
+            "молдова",
+            "молдови",
+            "молдавия",
+            "moldova",
+            "кишинев",
+            "chisinau",
+        ],
         cities: &[("кишинев", "Chisinau")],
     },
     CountryDef {
@@ -455,7 +623,9 @@ fn match_country_in_text(text: &str) -> Option<GeoLocationInfo> {
     }
 
     // 3. Поиск двухбуквенного ISO-кода (например, [NL], [DE], [US], (NL), NL_, NL-)
-    let delimiters = [' ', '[', ']', '(', ')', '{', '}', '-', '_', '/', '|', ':', '#'];
+    let delimiters = [
+        ' ', '[', ']', '(', ')', '{', '}', '-', '_', '/', '|', ':', '#',
+    ];
     for word in text.split(&delimiters[..]) {
         let trimmed = word.trim();
         if trimmed.len() == 2 && trimmed.chars().all(|ch| ch.is_ascii_uppercase()) {
@@ -523,7 +693,11 @@ pub fn parse_location_from_name(name: &str) -> Option<GeoLocationInfo> {
     // Рекурсивно или последовательно делим строку по разделителям цепочек
     for sep in &chain_separators {
         if current_segment.contains(sep) {
-            segments = current_segment.split(sep).map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+            segments = current_segment
+                .split(sep)
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .collect();
             break;
         }
     }

@@ -19,6 +19,7 @@
 //! - Генерацию изолированных микро-конфигураций (L7 Probe) для проверки работоспособности ключей
 
 use crate::domain::key_parser::ParsedKey;
+use crate::protocol::{DaemonConfigOptions, RoutingMode};
 use crate::settings::AppSettings;
 use serde_json::json;
 use std::str::FromStr;
@@ -349,8 +350,51 @@ pub fn build_proxy_outbound_and_endpoints(
     (proxy_outbound, endpoints)
 }
 
-/// Генерирует полную JSON-конфигурацию для sing-box 1.13.18+ на основе ключа и настроек приложения.
-pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> String {
+/// Источник опций конфигурации для поддержки как прямого заимствования, так и конвертации из AppSettings.
+pub enum ConfigOptionsSource<'a> {
+    Borrowed(&'a DaemonConfigOptions),
+    Owned(DaemonConfigOptions),
+}
+
+impl<'a> std::ops::Deref for ConfigOptionsSource<'a> {
+    type Target = DaemonConfigOptions;
+    fn deref(&self) -> &DaemonConfigOptions {
+        match self {
+            Self::Borrowed(r) => r,
+            Self::Owned(ref o) => o,
+        }
+    }
+}
+
+/// Трейт-адаптор для бесшовной передачи либо &DaemonConfigOptions, либо &AppSettings.
+pub trait IntoConfigOptions<'a> {
+    fn into_config_options(self) -> ConfigOptionsSource<'a>;
+}
+
+impl<'a> IntoConfigOptions<'a> for &'a DaemonConfigOptions {
+    fn into_config_options(self) -> ConfigOptionsSource<'a> {
+        ConfigOptionsSource::Borrowed(self)
+    }
+}
+
+impl<'a> IntoConfigOptions<'a> for DaemonConfigOptions {
+    fn into_config_options(self) -> ConfigOptionsSource<'a> {
+        ConfigOptionsSource::Owned(self)
+    }
+}
+
+impl<'a> IntoConfigOptions<'a> for &'a AppSettings {
+    fn into_config_options(self) -> ConfigOptionsSource<'a> {
+        ConfigOptionsSource::Owned(DaemonConfigOptions::from(self))
+    }
+}
+
+/// Генерирует полную JSON-конфигурацию для sing-box 1.13.18+ на основе ключа и настроек приложения/демона.
+pub fn build_singbox_config<'a, O: IntoConfigOptions<'a>>(
+    parsed_key: &ParsedKey,
+    options: O,
+) -> String {
+    let settings = options.into_config_options();
     let socks_port = settings.socks_port;
     let http_port = if settings.http_port == settings.socks_port {
         settings.http_port + 1
@@ -700,7 +744,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         }
     }
 
-    let default_outbound = if settings.routing_mode == "bypass" {
+    let default_outbound = if settings.routing_mode == RoutingMode::Bypass {
         "proxy"
     } else {
         "direct"
@@ -792,18 +836,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
         "final": "remote-dns"
     });
 
-    let strategy_lower = match settings
-        .domain_strategy
-        .to_lowercase()
-        .replace('-', "_")
-        .as_str()
-    {
-        "preferipv4" | "prefer_ipv4" => "prefer_ipv4",
-        "preferipv6" | "prefer_ipv6" => "prefer_ipv6",
-        "ipv4only" | "ipv4_only" => "ipv4_only",
-        "ipv6only" | "ipv6_only" => "ipv6_only",
-        _ => "",
-    };
+    let strategy_lower = settings.domain_strategy.singbox_strategy();
 
     if !strategy_lower.is_empty() {
         dns_obj["strategy"] = json!(strategy_lower);
@@ -814,7 +847,7 @@ pub fn build_singbox_config(parsed_key: &ParsedKey, settings: &AppSettings) -> S
     // =========================================================================
     let mut root = json!({
         "log": {
-            "level": settings.log_level,
+            "level": settings.log_level.singbox_level(),
             "timestamp": true
         },
         "inbounds": inbounds,
@@ -1253,5 +1286,38 @@ mod tests {
 
             let _ = std::fs::remove_file(&temp_file);
         }
+    }
+
+    #[test]
+    fn test_build_config_from_daemon_config_options_directly() {
+        use crate::domain::key_parser::parse_vpn_key;
+        use crate::protocol::{DaemonConfigOptions, DomainStrategy, LogLevel, RoutingMode};
+
+        let key = parse_vpn_key("vless://a0a0a0a0-a0a0-a0a0-a0a0-a0a0a0a0a0a0@1.1.1.1:443?security=reality&pbk=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&sid=abcd&sni=gateway.example.com#TestKey").unwrap();
+
+        let options = DaemonConfigOptions {
+            tun_mode: true,
+            socks_port: 10808,
+            http_port: 10809,
+            enable_mux: true,
+            mux_concurrency: 16,
+            domain_strategy: DomainStrategy::PreferIpv4,
+            routing_mode: RoutingMode::Proxy,
+            log_level: LogLevel::Debug,
+            ..Default::default()
+        };
+
+        let config_str = build_singbox_config(&key, &options);
+        assert!(!config_str.is_empty());
+
+        let val: serde_json::Value = serde_json::from_str(&config_str).unwrap();
+        assert_eq!(val["log"]["level"], "debug");
+        assert_eq!(val["dns"]["strategy"], "prefer_ipv4");
+        assert_eq!(val["route"]["final"], "direct");
+        assert!(val["inbounds"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|i| i["type"] == "tun"));
     }
 }

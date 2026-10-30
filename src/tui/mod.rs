@@ -77,7 +77,6 @@ async fn run_app(
     sse_receiver: async_channel::Receiver<crate::daemon::DaemonEvent>,
 ) -> Result<()> {
     let mut status_ticker = interval(Duration::from_secs(2));
-    let mut traffic_ticker = interval(Duration::from_millis(500));
 
     loop {
         // Рендерим интерфейс
@@ -94,31 +93,32 @@ async fn run_app(
         while let Ok(event) = sse_receiver.try_recv() {
             match event {
                 crate::daemon::DaemonEvent::Log { level, message, .. } => {
-                    app.push_log(format!("[{}] {}", level.to_uppercase(), message));
+                    app.push_log(format!("[{}] {}", level.as_str().to_uppercase(), message));
                 }
                 crate::daemon::DaemonEvent::StatusChanged(status) => {
-                    app.status = status;
+                    app.status = status.to_string();
+                    if status != crate::protocol::DaemonStatus::Connected {
+                        app.is_connected = false;
+                        app.reset_traffic();
+                    } else {
+                        app.is_connected = true;
+                    }
+                }
+                crate::daemon::DaemonEvent::Traffic {
+                    down_speed,
+                    up_speed,
+                    down_total,
+                    up_total,
+                } => {
+                    app.apply_traffic(down_speed, up_speed, down_total, up_total);
                 }
             }
         }
 
-        // Фоновое обновление статуса демона и телеметрии трафика
+        // Фоновое обновление статуса демона
         tokio::select! {
             _ = status_ticker.tick() => {
                 let _ = app.refresh_status().await;
-            }
-            _ = traffic_ticker.tick() => {
-                if app.is_connected {
-                    let now = std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map(|d| d.as_millis())
-                        .unwrap_or(0);
-                    let down_speed = 1000 + (now % 7000) as u64;
-                    let up_speed = 200 + (now % 1000) as u64;
-                    app.push_traffic_sample(down_speed, up_speed);
-                } else {
-                    app.push_traffic_sample(0, 0);
-                }
             }
             else => {}
         }

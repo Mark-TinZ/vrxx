@@ -21,9 +21,13 @@
 //! - `GET /api/events`: SSE-поток событий в реальном времени
 
 use axum::{
-    extract::State,
+    extract::{Request, State},
     http::StatusCode,
-    response::sse::{Event, KeepAlive, Sse},
+    middleware::{self, Next},
+    response::{
+        sse::{Event, KeepAlive, Sse},
+        Response,
+    },
     routing::{get, post},
     Json, Router,
 };
@@ -31,8 +35,9 @@ use std::sync::Arc;
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::StreamExt as _;
 
-use super::core::{ProxyManager, StartProxyRequest};
+use super::core::ProxyManager;
 use super::events::EventManager;
+use crate::protocol::{DaemonStatus, StartProxyRequest};
 
 /// Состояние API демона, разделяемое между всеми обработчиками запросов.
 pub struct ApiState {
@@ -46,11 +51,11 @@ async fn ping() -> &'static str {
     "pong"
 }
 
-/// Возвращает текущий статус ядра.
-async fn get_status(State(state): State<Arc<ApiState>>) -> String {
+/// Возвращает текущий статус ядра в формате JSON DaemonStatus.
+async fn get_status(State(state): State<Arc<ApiState>>) -> Json<DaemonStatus> {
     let status = state.proxy_manager.get_status().await;
-    tracing::debug!("REST API GET /api/status: {}", status);
-    status
+    tracing::debug!("REST API GET /api/status: {:?}", status);
+    Json(status)
 }
 
 /// Проверяет, запущен ли процесс ядра.
@@ -60,30 +65,33 @@ async fn is_running(State(state): State<Arc<ApiState>>) -> Json<bool> {
     Json(running)
 }
 
-/// Обработчик запуска прокси.
+/// Обработчик запуска прокси с 4-уровневой валидацией.
 async fn start_proxy_handler(
     State(state): State<Arc<ApiState>>,
     Json(payload): Json<StartProxyRequest>,
-) -> Result<&'static str, (StatusCode, String)> {
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     tracing::info!(
-        "REST API POST /api/proxy/start: core_type={}, tun_mode={}",
+        "REST API POST /api/proxy/start: core_type={:?}, proto={}, tun_mode={}",
         payload.core_type,
-        payload.tun_mode
+        payload.profile.protocol,
+        payload.options.tun_mode
     );
-    match state
-        .proxy_manager
-        .start_proxy(&payload.core_type, &payload.config_json, payload.tun_mode)
-        .await
-    {
+    match state.proxy_manager.start_proxy(payload).await {
         Ok(_) => {
             tracing::info!("REST API POST /api/proxy/start: proxy successfully started");
-            Ok("Proxy started successfully")
+            Ok(Json(serde_json::json!({
+                "status": "started",
+                "message": "Proxy started successfully"
+            })))
         }
         Err(e) => {
-            tracing::error!("REST API POST /api/proxy/start failed: {}", e);
+            let err_msg = format!("Failed to start proxy: {}", e);
+            tracing::error!("REST API POST /api/proxy/start failed: {}", err_msg);
             Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to start proxy: {}", e),
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({
+                    "error": err_msg
+                })),
             ))
         }
     }
@@ -92,18 +100,24 @@ async fn start_proxy_handler(
 /// Обработчик остановки прокси.
 async fn stop_proxy_handler(
     State(state): State<Arc<ApiState>>,
-) -> Result<&'static str, (StatusCode, String)> {
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     tracing::info!("REST API POST /api/proxy/stop: stopping proxy");
     match state.proxy_manager.stop_proxy().await {
         Ok(_) => {
             tracing::info!("REST API POST /api/proxy/stop: proxy successfully stopped");
-            Ok("Proxy stopped successfully")
+            Ok(Json(serde_json::json!({
+                "status": "stopped",
+                "message": "Proxy stopped successfully"
+            })))
         }
         Err(e) => {
-            tracing::error!("REST API POST /api/proxy/stop failed: {}", e);
+            let err_msg = format!("Failed to stop proxy: {}", e);
+            tracing::error!("REST API POST /api/proxy/stop failed: {}", err_msg);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to stop proxy: {}", e),
+                Json(serde_json::json!({
+                    "error": err_msg
+                })),
             ))
         }
     }
@@ -135,6 +149,48 @@ async fn events_handler(
     Sse::new(stream).keep_alive(KeepAlive::default())
 }
 
+use axum::response::IntoResponse;
+
+/// Middleware аутентификации вызывающего процесса через SO_PEERCRED и systemd-logind.
+async fn auth_middleware(request: Request, next: Next) -> Response {
+    let connect_info = request
+        .extensions()
+        .get::<axum::extract::ConnectInfo<super::auth::CallerIdentity>>();
+
+    let identity = match connect_info {
+        Some(ci) if ci.0.is_authenticated => ci.0.clone(),
+        _ => {
+            tracing::warn!(
+                "Rejecting unauthenticated connection: missing or unauthenticated ConnectInfo"
+            );
+            return (
+                StatusCode::FORBIDDEN,
+                Json(serde_json::json!({
+                    "error": "Caller connection is unauthenticated"
+                })),
+            )
+                .into_response();
+        }
+    };
+
+    if !super::auth::is_caller_authorized(&identity).await {
+        tracing::warn!(
+            "Rejecting unauthorized request from UID {} (PID {:?}): access denied",
+            identity.uid,
+            identity.pid
+        );
+        return (
+            StatusCode::FORBIDDEN,
+            Json(serde_json::json!({
+                "error": format!("Caller UID {} is not authorized: no active login session", identity.uid)
+            })),
+        )
+            .into_response();
+    }
+
+    next.run(request).await
+}
+
 /// Создает маршрутизатор Axum с зарегистрированными эндпоинтами демона.
 pub fn create_router(state: Arc<ApiState>) -> Router {
     Router::new()
@@ -145,5 +201,6 @@ pub fn create_router(state: Arc<ApiState>) -> Router {
         .route("/api/proxy/stop", post(stop_proxy_handler))
         .route("/api/history", get(get_history))
         .route("/api/events", get(events_handler))
+        .layer(middleware::from_fn(auth_middleware))
         .with_state(state)
 }

@@ -119,9 +119,13 @@ fi
 # 8. Настройка и запуск системного демона vrxx-daemon
 info "⚙️  Настройка системной службы systemd vrxx-daemon..."
 ${SUDO_CMD} mkdir -p /etc/systemd/system
+if [[ -f "data/vrxx-daemon.service" ]]; then
+    ${SUDO_CMD} cp data/vrxx-daemon.service /etc/systemd/system/vrxx-daemon.service
+else
 cat << 'EOF' | ${SUDO_CMD} tee /etc/systemd/system/vrxx-daemon.service > /dev/null
 [Unit]
 Description=VRXX Privileged VPN & Proxy Daemon
+Documentation=https://github.com/Mark-TinZ/vrxx
 After=network.target network-online.target systemd-resolved.service
 Wants=network-online.target
 
@@ -132,9 +136,41 @@ Restart=always
 RestartSec=3s
 KillMode=process
 
+# Linux Capability Bounding & Ambient Privileges
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+
+# Privilege Escalation Lockdown
+NoNewPrivileges=true
+
+# Filesystem Sandboxing
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+
+# Device Access Restrictions (TUN only)
+DevicePolicy=closed
+DeviceAllow=/dev/net/tun rw
+
+# Socket Address Families (IPC, IPv4, IPv6, Netlink)
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+# Memory Protection: Keep false for Go runtime (sing-box) compatibility
+MemoryDenyWriteExecute=false
+
+# Socket Directory Management (/run/vrxx for daemon.sock)
+RuntimeDirectory=vrxx
+RuntimeDirectoryMode=0755
+
 [Install]
 WantedBy=multi-user.target
 EOF
+fi
 ${SUDO_CMD} chmod 644 /etc/systemd/system/vrxx-daemon.service
 
 if command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then

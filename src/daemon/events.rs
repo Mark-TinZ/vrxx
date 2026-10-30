@@ -17,6 +17,7 @@
 //! - Менеджер событий [`EventManager`] с кольцевым буфером истории фиксированной емкости
 //! - Слой `tracing_subscriber::Layer` ([`SseTracingLayer`]) для прозрачной пересылки всех логов приложения в SSE
 
+use crate::protocol::{DaemonStatus, LogLevel};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -36,16 +37,23 @@ pub enum LogSource {
 }
 
 /// События, которые демон отправляет подписчикам (клиентам UI).
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum DaemonEvent {
     /// Изменение статуса подключения.
-    StatusChanged(String),
+    StatusChanged(DaemonStatus),
     /// Лог-сообщение (источник, уровень и текст).
     Log {
         #[serde(default)]
         source: LogSource,
-        level: String,
+        level: LogLevel,
         message: String,
+    },
+    /// Данные телеметрии сетевого трафика (скорость в байт/сек, общий объем в байтах).
+    Traffic {
+        down_speed: u64,
+        up_speed: u64,
+        down_total: u64,
+        up_total: u64,
     },
 }
 
@@ -122,7 +130,8 @@ where
             return;
         }
 
-        let level = metadata.level().to_string().to_lowercase();
+        let level_str = metadata.level().to_string();
+        let log_level = LogLevel::from(level_str.as_str());
 
         // Извлекаем сообщение из события
         let mut visitor = MessageVisitor::new();
@@ -130,13 +139,13 @@ where
 
         if let Some(raw_msg) = visitor.message {
             let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-            let level_upper = level.to_uppercase();
+            let level_upper = log_level.as_str().to_uppercase();
             let target = metadata.target();
             let formatted_msg = format!("{now} {level_upper} [{target}]: {raw_msg}");
 
             self.event_manager.broadcast(DaemonEvent::Log {
                 source: LogSource::App,
-                level,
+                level: log_level,
                 message: formatted_msg,
             });
         }
@@ -169,6 +178,41 @@ impl tracing::field::Visit for MessageVisitor {
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
         if field.name() == "message" {
             self.message = Some(value.to_string());
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_daemon_event_traffic_roundtrip() {
+        let event = DaemonEvent::Traffic {
+            down_speed: 1048576,
+            up_speed: 524288,
+            down_total: 104857600,
+            up_total: 52428800,
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        let parsed: DaemonEvent = serde_json::from_str(&json).unwrap();
+        assert_eq!(event, parsed);
+    }
+
+    #[test]
+    fn test_traffic_event_not_in_history() {
+        let (manager, mut rx) = EventManager::new(10);
+        manager.broadcast(DaemonEvent::Traffic {
+            down_speed: 100,
+            up_speed: 50,
+            down_total: 1000,
+            up_total: 500,
+        });
+        assert!(manager.get_history().is_empty());
+        let received = rx.try_recv().unwrap();
+        match received {
+            DaemonEvent::Traffic { down_speed, .. } => assert_eq!(down_speed, 100),
+            _ => panic!("Expected Traffic event"),
         }
     }
 }

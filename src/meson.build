@@ -55,18 +55,21 @@ cargo_build = custom_target(
   'cargo-build',
   build_by_default: true,
   build_always_stale: true,
-  output: meson.project_name(),
+  output: [meson.project_name(), 'vrxx-tui'],
   console: true,
   install: true,
   install_dir: get_option('bindir'),
   command: [
     sh, '-c',
-    'VRXX_CONFIG_RS_PATH="@0@" @1@ build @2@ && cp "@3@" "@4@"'.format(
+    'VRXX_CONFIG_RS_PATH="@0@" @1@ build @2@ --bin @3@ --bin vrxx-tui && cp "@4@" "@5@" && cp "@6@" "@7@"'.format(
       config_rs_path,
       cargo_bin.full_path(),
       ' '.join(cargo_opt),
+      meson.project_name(),
       meson.project_build_root() / 'src' / rust_target / meson.project_name(),
-      '@OUTPUT@'
+      '@OUTPUT0@',
+      meson.project_build_root() / 'src' / rust_target / 'vrxx-tui',
+      '@OUTPUT1@'
     )
   ]
 )

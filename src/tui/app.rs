@@ -20,8 +20,8 @@
 
 use crate::daemon::DaemonEvent;
 use crate::domain::key_parser::ParsedKey;
-use crate::domain::singbox_config::build_singbox_config;
 use crate::ipc::DaemonClient;
+use crate::protocol::DaemonConfigOptions;
 use crate::settings::{AppSettings, SettingsManager};
 use anyhow::Result;
 
@@ -31,6 +31,9 @@ pub enum ViewMode {
     Main,
     Logs,
 }
+
+/// Емкость кольцевого буфера истории трафика (60 замеров = 1 минута при частоте 1 Гц).
+pub const TRAFFIC_HISTORY_CAPACITY: usize = 60;
 
 /// Состояние TUI приложения
 pub struct App {
@@ -42,6 +45,10 @@ pub struct App {
     pub tun_mode: bool,
     pub download_history: Vec<u64>,
     pub upload_history: Vec<u64>,
+    pub current_down_speed: u64,
+    pub current_up_speed: u64,
+    pub total_down: u64,
+    pub total_up: u64,
     pub logs: Vec<String>,
     pub view_mode: ViewMode,
     pub ipc_client: DaemonClient,
@@ -67,8 +74,12 @@ impl App {
             status: "Disconnected".to_string(),
             active_server: None,
             tun_mode,
-            download_history: vec![0; 40],
-            upload_history: vec![0; 40],
+            download_history: vec![0; TRAFFIC_HISTORY_CAPACITY],
+            upload_history: vec![0; TRAFFIC_HISTORY_CAPACITY],
+            current_down_speed: 0,
+            current_up_speed: 0,
+            total_down: 0,
+            total_up: 0,
             logs: Vec::new(),
             view_mode: ViewMode::Main,
             ipc_client: DaemonClient::new(),
@@ -82,20 +93,21 @@ impl App {
             Ok(running) => {
                 self.is_connected = running;
                 if running {
-                    let status_str = self
-                        .ipc_client
-                        .status()
-                        .await
-                        .unwrap_or_else(|_| "Connected".to_string());
+                    let status_str = match self.ipc_client.status().await {
+                        Ok(st) => st.to_string(),
+                        Err(_) => "Connected".to_string(),
+                    };
                     self.status = status_str;
                 } else {
                     self.status = "Disconnected".to_string();
                     self.active_server = None;
+                    self.reset_traffic();
                 }
             }
             Err(_) => {
                 self.is_connected = false;
                 self.status = "Error (Daemon Offline)".to_string();
+                self.reset_traffic();
             }
         }
         Ok(())
@@ -106,7 +118,7 @@ impl App {
         if let Ok(history) = self.ipc_client.get_history().await {
             for event in history {
                 if let DaemonEvent::Log { level, message, .. } = event {
-                    self.push_log(format!("[{}] {}", level.to_uppercase(), message));
+                    self.push_log(format!("[{}] {}", level.as_str().to_uppercase(), message));
                 }
             }
         }
@@ -120,6 +132,7 @@ impl App {
             self.is_connected = false;
             self.status = "Disconnected".to_string();
             self.active_server = None;
+            self.reset_traffic();
             self.push_log("[INFO] Proxy stopped via TUI".to_string());
         } else {
             // Запуск выбранного сервера
@@ -155,12 +168,8 @@ impl App {
                 return Ok(());
             }
 
-            let config_json = build_singbox_config(&parsed_key, &self.settings);
-            match self
-                .ipc_client
-                .start_proxy("sing-box".to_string(), config_json, self.tun_mode)
-                .await
-            {
+            let options = DaemonConfigOptions::from_settings(&self.settings, self.tun_mode);
+            match self.ipc_client.start_proxy(&parsed_key, &options).await {
                 Ok(_) => {
                     self.push_log(
                         "[INFO] Core started. Verifying end-to-end proxy connectivity..."
@@ -183,6 +192,9 @@ impl App {
                             self.is_connected = true;
                             self.status = "Connected".to_string();
                             self.active_server = Some(key_name.clone());
+                            self.total_down = 0;
+                            self.total_up = 0;
+                            self.reset_traffic();
                             self.push_log(format!(
                                 "[INFO] Successfully connected to {} ({} ms)",
                                 key_name, latency
@@ -192,6 +204,7 @@ impl App {
                             let _ = self.ipc_client.stop_proxy().await;
                             self.is_connected = false;
                             self.status = "Error (Server/Auth Failed)".to_string();
+                            self.reset_traffic();
                             self.push_log(format!("[ERROR] Connectivity verification failed: {e}"));
                         }
                     }
@@ -199,6 +212,7 @@ impl App {
                 Err(e) => {
                     self.is_connected = false;
                     self.status = "Error".to_string();
+                    self.reset_traffic();
                     self.push_log(format!("[ERROR] Start proxy failed: {e}"));
                 }
             }
@@ -235,13 +249,42 @@ impl App {
     /// Добавление замера трафика (входящая / исходящая скорость)
     pub fn push_traffic_sample(&mut self, down: u64, up: u64) {
         self.download_history.push(down);
-        if self.download_history.len() > 40 {
+        if self.download_history.len() > TRAFFIC_HISTORY_CAPACITY {
             self.download_history.remove(0);
         }
         self.upload_history.push(up);
-        if self.upload_history.len() > 40 {
+        if self.upload_history.len() > TRAFFIC_HISTORY_CAPACITY {
             self.upload_history.remove(0);
         }
+    }
+
+    /// Применение телеметрии трафика из события демона через SSE.
+    pub fn apply_traffic(
+        &mut self,
+        down_speed: u64,
+        up_speed: u64,
+        down_total: u64,
+        up_total: u64,
+    ) {
+        if self.is_connected {
+            self.current_down_speed = down_speed;
+            self.current_up_speed = up_speed;
+            self.total_down = down_total;
+            self.total_up = up_total;
+            self.push_traffic_sample(down_speed, up_speed);
+        } else {
+            self.current_down_speed = 0;
+            self.current_up_speed = 0;
+            self.push_traffic_sample(0, 0);
+        }
+    }
+
+    /// Сброс текущей скорости и обнуление буферов трафика при отключении.
+    pub fn reset_traffic(&mut self) {
+        self.current_down_speed = 0;
+        self.current_up_speed = 0;
+        self.download_history.fill(0);
+        self.upload_history.fill(0);
     }
 
     /// Навигация по списку профилей вверх
@@ -272,5 +315,77 @@ impl App {
             ViewMode::Main => ViewMode::Logs,
             ViewMode::Logs => ViewMode::Main,
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app_initial_state() {
+        let app = App::new();
+        assert!(!app.is_connected);
+        assert_eq!(app.current_down_speed, 0);
+        assert_eq!(app.current_up_speed, 0);
+        assert_eq!(app.total_down, 0);
+        assert_eq!(app.total_up, 0);
+        assert_eq!(app.download_history.len(), TRAFFIC_HISTORY_CAPACITY);
+        assert_eq!(app.upload_history.len(), TRAFFIC_HISTORY_CAPACITY);
+        assert!(app.download_history.iter().all(|&v| v == 0));
+        assert!(app.upload_history.iter().all(|&v| v == 0));
+    }
+
+    #[test]
+    fn test_app_push_traffic_sample_capacity() {
+        let mut app = App::new();
+        for i in 1..=80 {
+            app.push_traffic_sample(i, i * 2);
+        }
+        assert_eq!(app.download_history.len(), TRAFFIC_HISTORY_CAPACITY);
+        assert_eq!(app.upload_history.len(), TRAFFIC_HISTORY_CAPACITY);
+        assert_eq!(app.download_history.last(), Some(&80));
+        assert_eq!(app.upload_history.last(), Some(&160));
+        assert_eq!(app.download_history.first(), Some(&21)); // 80 - 60 + 1
+    }
+
+    #[test]
+    fn test_app_apply_traffic_when_connected() {
+        let mut app = App::new();
+        app.is_connected = true;
+        app.apply_traffic(1_048_576, 524_288, 100_000_000, 50_000_000);
+
+        assert_eq!(app.current_down_speed, 1_048_576);
+        assert_eq!(app.current_up_speed, 524_288);
+        assert_eq!(app.total_down, 100_000_000);
+        assert_eq!(app.total_up, 50_000_000);
+        assert_eq!(app.download_history.last(), Some(&1_048_576));
+        assert_eq!(app.upload_history.last(), Some(&524_288));
+    }
+
+    #[test]
+    fn test_app_apply_traffic_when_disconnected() {
+        let mut app = App::new();
+        app.is_connected = false;
+        app.apply_traffic(1_048_576, 524_288, 100_000_000, 50_000_000);
+
+        assert_eq!(app.current_down_speed, 0);
+        assert_eq!(app.current_up_speed, 0);
+        assert_eq!(app.download_history.last(), Some(&0));
+        assert_eq!(app.upload_history.last(), Some(&0));
+    }
+
+    #[test]
+    fn test_app_reset_traffic() {
+        let mut app = App::new();
+        app.is_connected = true;
+        app.apply_traffic(5000, 2000, 50000, 20000);
+        assert_eq!(app.current_down_speed, 5000);
+
+        app.reset_traffic();
+        assert_eq!(app.current_down_speed, 0);
+        assert_eq!(app.current_up_speed, 0);
+        assert!(app.download_history.iter().all(|&v| v == 0));
+        assert!(app.upload_history.iter().all(|&v| v == 0));
     }
 }

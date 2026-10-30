@@ -38,6 +38,8 @@ mod imp {
     #[template(resource = "/ru/mark/vrxx/ui/pages/vpn_page.ui")]
     pub struct VrxxVpnPage {
         #[template_child]
+        pub main_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
         pub keys_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         pub window_title: TemplateChild<adw::WindowTitle>,
@@ -50,7 +52,6 @@ mod imp {
         pub btn_add_compact_menu: TemplateChild<gtk::MenuButton>,
 
         pub model: RefCell<Option<gio::ListStore>>,
-        pub backend: RefCell<crate::backend::CoreBackend>,
         pub action_group: RefCell<Option<gio::SimpleActionGroup>>,
 
         pub start_time: RefCell<Option<std::time::Instant>>,
@@ -76,6 +77,9 @@ mod imp {
             adw::ExpanderRow::static_type();
             adw::Breakpoint::static_type();
             adw::BreakpointBin::static_type();
+            gtk::Stack::static_type();
+            gtk::StackPage::static_type();
+            adw::StatusPage::static_type();
             klass.bind_template();
         }
 
@@ -91,9 +95,6 @@ mod imp {
             // Явное задание минимальных размеров для AdwBreakpointBin во избежание предупреждений Libadwaita
             self.obj().set_width_request(360);
             self.obj().set_height_request(200);
-
-            // Инициализация бэкенда ядра
-            self.backend.replace(crate::backend::CoreBackend::new());
 
             self.obj().setup_model();
             self.obj().setup_actions();
@@ -204,16 +205,6 @@ impl VrxxVpnPage {
         }
 
         self.imp().model.replace(Some(model.clone()));
-
-        // Устанавливаем заглушку (empty state) для пустого списка по HIG
-        let status_page = adw::StatusPage::builder()
-            .icon_name("network-vpn-symbolic")
-            .title(gettext("No VPN Connections"))
-            .description(gettext(
-                "Add a new connection using the buttons above to get started.",
-            ))
-            .build();
-        self.imp().keys_list.set_placeholder(Some(&status_page));
 
         // Первичное построение дерева ключей, групп и подписок
         self.rebuild_ui();
@@ -361,13 +352,23 @@ impl VrxxVpnPage {
 
         let model = match imp.model.borrow().as_ref() {
             Some(m) => m.clone(),
-            None => return,
+            None => {
+                imp.main_stack.set_visible_child_name("empty");
+                return;
+            }
         };
 
         let total_items = model.n_items();
         let settings_mgr = SettingsManager::new();
         let groups = settings_mgr.load_groups();
         let subscriptions = settings_mgr.load_subscriptions();
+
+        if total_items == 0 && groups.is_empty() && subscriptions.is_empty() {
+            imp.main_stack.set_visible_child_name("empty");
+            return;
+        }
+
+        imp.main_stack.set_visible_child_name("list");
 
         // Собираем все объекты ключей из модели
         let mut all_keys: Vec<VpnKeyObject> = Vec::with_capacity(total_items as usize);
@@ -742,7 +743,7 @@ impl VrxxVpnPage {
             let client = crate::ipc::DaemonClient::new();
             if let Ok(status) = client.status().await {
                 if let Some(page) = page_weak.upgrade() {
-                    page.handle_daemon_status_change(&status);
+                    page.handle_daemon_status_change(status);
                 }
             }
 
@@ -750,7 +751,7 @@ impl VrxxVpnPage {
             while let Ok(event) = events.recv().await {
                 if let crate::daemon::DaemonEvent::StatusChanged(status) = event {
                     if let Some(page) = page_weak.upgrade() {
-                        page.handle_daemon_status_change(&status);
+                        page.handle_daemon_status_change(status);
                     } else {
                         tracing::debug!("VPN page destroyed, terminating daemon event listener");
                         break;
@@ -763,13 +764,14 @@ impl VrxxVpnPage {
     // =========================================================================
     // 3. УПРАВЛЕНИЕ СОСТОЯНИЕМ СОЕДИНЕНИЯ (STATE MANAGEMENT)
     // =========================================================================
-    fn handle_daemon_status_change(&self, status: &str) {
+    fn handle_daemon_status_change(&self, status: crate::protocol::DaemonStatus) {
+        use crate::protocol::DaemonStatus;
         let imp = self.imp();
-        let is_conn = status == "Connected";
+        let is_conn = status == DaemonStatus::Connected;
         imp.is_connected.set(is_conn);
 
         match status {
-            "Connected" => {
+            DaemonStatus::Connected => {
                 // Если идет процедура E2E-верификации для конкретного ключа,
                 // не вмешиваемся в состояние ключей до завершения проверки
                 if imp.connecting_target_url.borrow().is_some() {
@@ -827,7 +829,7 @@ impl VrxxVpnPage {
                     w.update_status_state("Connected", Some(&active_name));
                 }
             }
-            "Disconnected" => {
+            DaemonStatus::Disconnected => {
                 // Проверяем, находимся ли мы в процессе подключения или переключения профиля
                 let is_connecting_target = imp.connecting_target_url.borrow().is_some();
                 let is_switching_loading = imp.model.borrow().as_ref().is_some_and(|model| {
@@ -869,16 +871,16 @@ impl VrxxVpnPage {
                     crate::backend::CoreBackend::update_system_proxy(false);
                 }
             }
-            "Connecting" => {
+            DaemonStatus::Connecting => {
                 imp.window_title.set_subtitle(&gettext("Connecting..."));
                 if let Some(w) = self.root().and_downcast::<crate::window::VrxxWindow>() {
                     w.update_status_state("Connecting", None);
                 }
             }
-            "Disconnecting" => {
+            DaemonStatus::Disconnecting => {
                 imp.window_title.set_subtitle(&gettext("Disconnecting..."));
             }
-            "Error" => {
+            DaemonStatus::Error => {
                 imp.connecting_target_url.replace(None);
                 imp.window_title.set_subtitle(&gettext("Connection error"));
                 if let Some(w) = self.root().and_downcast::<crate::window::VrxxWindow>() {
@@ -924,7 +926,6 @@ impl VrxxVpnPage {
                     dialog.present(Some(&root));
                 }
             }
-            _ => {}
         }
 
         self.update_disconnect_action_state();
@@ -1178,11 +1179,11 @@ impl VrxxVpnPage {
                 return;
             }
 
-            let config_json =
-                crate::domain::singbox_config::build_singbox_config(&parsed, &app_settings);
+            let options = crate::protocol::DaemonConfigOptions::from_settings(
+                &app_settings,
+                app_settings.tun_mode,
+            );
 
-            let core_type = "sing-box".to_string();
-            let tun_mode = app_settings.tun_mode;
             let page_weak = self.downgrade();
             let item_clone = active_item.clone();
             let socks_port = app_settings.socks_port;
@@ -1225,7 +1226,7 @@ impl VrxxVpnPage {
                                 &gettext(
                                     "VRXX system daemon is not running. Please start vrxx-daemon to enable VPN.",
                                 ),
-                                "vrxx-daemon not reachable at http://127.0.0.1:13337",
+                                "vrxx-daemon not reachable at /run/vrxx/daemon.sock",
                             );
                         }
                     }
@@ -1233,7 +1234,7 @@ impl VrxxVpnPage {
                 }
 
                 tracing::info!("Connecting to VPN key via REST API: {}", item_clone.name());
-                if let Err(e) = proxy.start_proxy(core_type, config_json, tun_mode).await {
+                if let Err(e) = proxy.start_proxy(&parsed, &options).await {
                     tracing::error!("Failed to start core via REST API: {}", e);
                     if let Some(page) = page_weak.upgrade() {
                         if page.imp().connecting_target_url.borrow().as_deref()
@@ -1292,7 +1293,7 @@ impl VrxxVpnPage {
                             );
 
                             // Управление системным прокси GNOME: включаем только если не используется TUN
-                            if !tun_mode {
+                            if !options.tun_mode {
                                 let current_settings =
                                     crate::settings::SettingsManager::new().load();
                                 if current_settings.set_system_proxy {
@@ -1789,12 +1790,12 @@ impl VrxxVpnPage {
         );
 
         if !key.isp().is_empty() {
-            let display_isp = if hide {
-                "***".to_string()
-            } else {
-                key.isp()
-            };
-            body.push_str(&format!("\n<b>{}</b>: {}", gettext("ISP / Host"), display_isp));
+            let display_isp = if hide { "***".to_string() } else { key.isp() };
+            body.push_str(&format!(
+                "\n<b>{}</b>: {}",
+                gettext("ISP / Host"),
+                display_isp
+            ));
         }
 
         if let Ok(parsed) = crate::domain::key_parser::parse_vpn_key(&key.url()) {
@@ -2119,7 +2120,7 @@ impl VrxxVpnPage {
                 tracing::error!("Failed to stop backend via REST API: {}", e);
             }
             if let Some(page) = page_weak.upgrade() {
-                page.handle_daemon_status_change("Disconnected");
+                page.handle_daemon_status_change(crate::protocol::DaemonStatus::Disconnected);
                 crate::backend::CoreBackend::update_system_proxy(false);
             }
         });
