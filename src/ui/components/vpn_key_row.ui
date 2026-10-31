@@ -254,7 +254,7 @@
         <attribute name="action">row.key_share</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">Move to _Group…</attribute>
+        <attribute name="label" translatable="yes">Move to _Group</attribute>
         <attribute name="action">row.key_move_group</attribute>
       </item>
       <item>

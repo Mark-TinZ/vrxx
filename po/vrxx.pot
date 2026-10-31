@@ -288,6 +288,10 @@ msgstr ""
 msgid "_Share"
 msgstr ""
 
+#: src/ui/components/vpn_key_row.ui:257
+msgid "Move to _Group"
+msgstr ""
+
 #: src/ui/components/vpn_key_row.ui:220
 msgid "_Delete"
 msgstr ""
@@ -1746,6 +1750,10 @@ msgstr ""
 
 #: src/ui/pages/vpn_page.rs:1575
 msgid "Please wait before disconnecting again"
+msgstr ""
+
+#: src/ui/pages/vpn_page.rs:2641
+msgid "Move to Group"
 msgstr ""
 
 #: src/ui/pages/vpn_page.ui:45

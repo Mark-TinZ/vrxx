@@ -294,6 +294,10 @@ msgstr "_Edit"
 msgid "_Share"
 msgstr "_Share"
 
+#: src/ui/components/vpn_key_row.ui:257
+msgid "Move to _Group"
+msgstr "Move to _Group"
+
 #: src/ui/components/vpn_key_row.ui:220
 msgid "_Delete"
 msgstr "_Delete"
@@ -1842,6 +1846,10 @@ msgstr "Delete"
 #: src/ui/pages/vpn_page.rs:1575
 msgid "Please wait before disconnecting again"
 msgstr "Please wait before disconnecting again"
+
+#: src/ui/pages/vpn_page.rs:2641
+msgid "Move to Group"
+msgstr "Move to Group"
 
 #: src/ui/pages/vpn_page.ui:45
 msgid "VPN"

@@ -295,6 +295,10 @@ msgstr "Редактировать"
 msgid "_Share"
 msgstr "_Поделиться"
 
+#: src/ui/components/vpn_key_row.ui:257
+msgid "Move to _Group"
+msgstr "Переместить в _группу"
+
 #: src/ui/components/vpn_key_row.ui:220
 msgid "_Delete"
 msgstr "Удалить"
@@ -1844,6 +1848,10 @@ msgstr "Удалить"
 #: src/ui/pages/vpn_page.rs:1575
 msgid "Please wait before disconnecting again"
 msgstr "Пожалуйста, подождите перед повторным отключением"
+
+#: src/ui/pages/vpn_page.rs:2641
+msgid "Move to Group"
+msgstr "Переместить в группу"
 
 #: src/ui/pages/vpn_page.ui:45
 msgid "VPN"
