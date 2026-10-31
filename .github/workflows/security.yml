@@ -91,6 +91,10 @@ jobs:
   cargo-audit:
     name: Cargo Audit (RustSec CVEs)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      issues: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

@@ -71,6 +71,11 @@ async fn spawn_real_daemon_api() -> anyhow::Result<(
 async fn test_adversarial_preflight_check_failure_clean_cleanup_and_error_status() {
     let _lock = CONFIG_ENV_LOCK.lock().await;
 
+    if vrxx::daemon::updater::find_singbox_binary().is_none() {
+        eprintln!("Skipping test: sing-box binary not found");
+        return;
+    }
+
     let temp_dir = tempfile::tempdir().expect("Failed to create tempdir");
     let config_path = temp_dir.path().join("staging_config.json");
     std::env::set_var("VRXX_CONFIG_PATH", &config_path);
@@ -175,6 +180,11 @@ async fn test_adversarial_preflight_check_failure_clean_cleanup_and_error_status
 async fn test_adversarial_staging_file_permissions_fresh_creation() {
     let _lock = CONFIG_ENV_LOCK.lock().await;
 
+    if vrxx::daemon::updater::find_singbox_binary().is_none() {
+        eprintln!("Skipping test: sing-box binary not found");
+        return;
+    }
+
     let temp_dir = tempfile::tempdir().expect("Failed to create tempdir");
     let config_path = temp_dir.path().join("secure_config.json");
     std::env::set_var("VRXX_CONFIG_PATH", &config_path);
@@ -224,6 +234,11 @@ async fn test_adversarial_staging_file_permissions_fresh_creation() {
 #[tokio::test]
 async fn test_adversarial_preexisting_insecure_file_permission_retention() {
     let _lock = CONFIG_ENV_LOCK.lock().await;
+
+    if vrxx::daemon::updater::find_singbox_binary().is_none() {
+        eprintln!("Skipping test: sing-box binary not found");
+        return;
+    }
 
     // Attack scenario: An attacker pre-creates the staging config file at
     // /tmp/vrxx/config.json with world-writable/readable permissions (0666).

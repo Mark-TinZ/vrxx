@@ -27,6 +27,16 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libgtk-4-dev libadwaita-1-dev gettext xvfb libssl-dev pkg-config locales locales-all
 
+    - name: Install sing-box for integration tests
+      env:
+        SINGBOX_VERSION: "1.13.18"
+      run: |
+        curl -fSL --retry 3 --retry-delay 2 -o sing-box.tar.gz "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz"
+        tar -xzf sing-box.tar.gz
+        sudo install -m 755 "sing-box-${SINGBOX_VERSION}-linux-amd64/sing-box" /usr/local/bin/sing-box
+        rm -rf sing-box.tar.gz "sing-box-${SINGBOX_VERSION}-linux-amd64"
+        sing-box version
+
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
 

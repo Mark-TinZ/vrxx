@@ -2,15 +2,12 @@
 # Documentation: https://embarkstudios.github.io/cargo-deny/
 
 [advisories]
-version = 2
-vulnerability = "deny"
-unmaintained = "warn"
 yanked = "warn"
-notice = "warn"
+unmaintained = "none"
+unsound = "none"
 ignore = []
 
 [licenses]
-version = 2
 confidence-threshold = 0.8
 allow = [
     "MIT",
@@ -32,7 +29,6 @@ allow = [
 ]
 
 [bans]
-version = 2
 multiple-versions = "warn"
 wildcards = "allow"
 highlight = "all"
@@ -41,7 +37,6 @@ skip = []
 skip-tree = []
 
 [sources]
-version = 2
 unknown-registry = "warn"
 unknown-git = "warn"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
