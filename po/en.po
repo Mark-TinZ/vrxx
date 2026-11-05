@@ -1955,6 +1955,130 @@ msgstr "Text File (*.txt)"
 msgid "Log File (*.log)"
 msgstr "Log File (*.log)"
 
+#: src/tui/ui.rs
+msgid "VRXX TUI Client"
+msgstr "VRXX TUI Client"
+
+#: src/tui/ui.rs
+msgid "Daemon Offline"
+msgstr "Daemon Offline"
+
+#: src/tui/ui.rs
+msgid "Server/Auth Failed"
+msgstr "Server/Auth Failed"
+
+#: src/tui/ui.rs
+msgid "None"
+msgstr "None"
+
+#: src/tui/ui.rs
+msgid "Status"
+msgstr "Status"
+
+#: src/tui/ui.rs
+msgid "Mode"
+msgstr "Mode"
+
+#: src/tui/ui.rs
+msgid "Active Server"
+msgstr "Active Server"
+
+#: src/tui/ui.rs
+msgid "Speed"
+msgstr "Speed"
+
+#: src/tui/ui.rs
+msgid "Download"
+msgstr "Download"
+
+#: src/tui/ui.rs
+msgid "Upload"
+msgstr "Upload"
+
+#: src/tui/ui.rs
+msgid "Total"
+msgstr "Total"
+
+#: src/tui/ui.rs
+msgid "Profiles"
+msgstr "Profiles"
+
+#: src/tui/ui.rs
+msgid "No profiles available. Add a profile in GUI or configuration."
+msgstr "No profiles available. Add a profile in GUI or configuration."
+
+#: src/tui/ui.rs
+msgid "Actions"
+msgstr "Actions"
+
+#: src/tui/ui.rs
+msgid "Connect"
+msgstr "Connect"
+
+#: src/tui/ui.rs
+msgid "Toggle Mode"
+msgstr "Toggle Mode"
+
+#: src/tui/ui.rs
+msgid "Navigate"
+msgstr "Navigate"
+
+#: src/tui/ui.rs
+msgid "Logs"
+msgstr "Logs"
+
+#: src/tui/ui.rs
+msgid "Daemon Event Logs (Press [L] or [Esc] to Close)"
+msgstr "Daemon Event Logs (Press [L] or [Esc] to Close)"
+
+#: src/tui/ui.rs
+msgid "No log entries yet."
+msgstr "No log entries yet."
+
+#: src/tui/app.rs
+msgid "Proxy stopped via TUI"
+msgstr "Proxy stopped via TUI"
+
+#: src/tui/app.rs
+msgid "No profiles available to connect"
+msgstr "No profiles available to connect"
+
+#: src/tui/app.rs
+msgid "Failed to parse key"
+msgstr "Failed to parse key"
+
+#: src/tui/app.rs
+msgid "Key validation error"
+msgstr "Key validation error"
+
+#: src/tui/app.rs
+msgid "Core started. Verifying end-to-end proxy connectivity..."
+msgstr "Core started. Verifying end-to-end proxy connectivity..."
+
+#: src/tui/app.rs
+msgid "Successfully connected to"
+msgstr "Successfully connected to"
+
+#: src/tui/app.rs
+msgid "Connectivity verification failed"
+msgstr "Connectivity verification failed"
+
+#: src/tui/app.rs
+msgid "Start proxy failed"
+msgstr "Start proxy failed"
+
+#: src/tui/app.rs
+msgid "Mode switched to"
+msgstr "Mode switched to"
+
+#: src/tui/events.rs
+msgid "Failed to toggle connection"
+msgstr "Failed to toggle connection"
+
+#: src/tui/events.rs
+msgid "Failed to toggle mode"
+msgstr "Failed to toggle mode"
+
 #~ msgid "Shortcuts"
 #~ msgstr "Shortcuts"
 

@@ -24,6 +24,7 @@ use crate::ipc::DaemonClient;
 use crate::protocol::DaemonConfigOptions;
 use crate::settings::{AppSettings, SettingsManager};
 use anyhow::Result;
+use gettextrs::gettext;
 
 /// Режим отображения экрана в TUI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -133,11 +134,14 @@ impl App {
             self.status = "Disconnected".to_string();
             self.active_server = None;
             self.reset_traffic();
-            self.push_log("[INFO] Proxy stopped via TUI".to_string());
+            self.push_log(format!("[INFO] {}", gettext("Proxy stopped via TUI")));
         } else {
             // Запуск выбранного сервера
             if self.settings.keys.is_empty() {
-                self.push_log("[WARN] No profiles available to connect".to_string());
+                self.push_log(format!(
+                    "[WARN] {}",
+                    gettext("No profiles available to connect")
+                ));
                 return Ok(());
             }
 
@@ -157,24 +161,27 @@ impl App {
                 Ok(pk) => pk,
                 Err(e) => {
                     self.status = "Error (Invalid Key)".to_string();
-                    self.push_log(format!("[ERROR] Failed to parse key: {e}"));
+                    self.push_log(format!("[ERROR] {}: {e}", gettext("Failed to parse key")));
                     return Ok(());
                 }
             };
 
             if let Err(val_err) = parsed_key.validate() {
                 self.status = "Error (Invalid Key)".to_string();
-                self.push_log(format!("[ERROR] Key validation error: {val_err}"));
+                self.push_log(format!(
+                    "[ERROR] {}: {val_err}",
+                    gettext("Key validation error")
+                ));
                 return Ok(());
             }
 
             let options = DaemonConfigOptions::from_settings(&self.settings, self.tun_mode);
             match self.ipc_client.start_proxy(&parsed_key, &options).await {
                 Ok(_) => {
-                    self.push_log(
-                        "[INFO] Core started. Verifying end-to-end proxy connectivity..."
-                            .to_string(),
-                    );
+                    self.push_log(format!(
+                        "[INFO] {}",
+                        gettext("Core started. Verifying end-to-end proxy connectivity...")
+                    ));
                     let target_url = if self.settings.ping_target_url.is_empty() {
                         "https://www.gstatic.com/generate_204"
                     } else {
@@ -196,8 +203,10 @@ impl App {
                             self.total_up = 0;
                             self.reset_traffic();
                             self.push_log(format!(
-                                "[INFO] Successfully connected to {} ({} ms)",
-                                key_name, latency
+                                "[INFO] {} {} ({} ms)",
+                                gettext("Successfully connected to"),
+                                key_name,
+                                latency
                             ));
                         }
                         Err(e) => {
@@ -205,7 +214,10 @@ impl App {
                             self.is_connected = false;
                             self.status = "Error (Server/Auth Failed)".to_string();
                             self.reset_traffic();
-                            self.push_log(format!("[ERROR] Connectivity verification failed: {e}"));
+                            self.push_log(format!(
+                                "[ERROR] {}: {e}",
+                                gettext("Connectivity verification failed")
+                            ));
                         }
                     }
                 }
@@ -213,7 +225,7 @@ impl App {
                     self.is_connected = false;
                     self.status = "Error".to_string();
                     self.reset_traffic();
-                    self.push_log(format!("[ERROR] Start proxy failed: {e}"));
+                    self.push_log(format!("[ERROR] {}: {e}", gettext("Start proxy failed")));
                 }
             }
         }
@@ -228,7 +240,11 @@ impl App {
         manager.save(&self.settings);
 
         let mode_str = if self.tun_mode { "TUN" } else { "Proxy" };
-        self.push_log(format!("[INFO] Mode switched to {}", mode_str));
+        self.push_log(format!(
+            "[INFO] {} {}",
+            gettext("Mode switched to"),
+            mode_str
+        ));
 
         // Если активное подключение уже запущенно - переподключаем
         if self.is_connected {

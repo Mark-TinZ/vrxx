@@ -44,6 +44,9 @@ pub async fn run_tui() -> Result<()> {
     // Создаем экземпляр приложения
     let mut app = App::new();
 
+    // Инициализируем подсистему локализации (Gettext) на основе настроек
+    crate::config::init_i18n(&app.settings.language);
+
     // Загружаем начальные логи и проверяем статус демона
     app.load_initial_logs().await;
     let _ = app.refresh_status().await;

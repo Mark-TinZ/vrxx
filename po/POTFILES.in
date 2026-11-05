@@ -1,5 +1,6 @@
 src/application.rs
 src/backend.rs
+src/bin/vrxx-tui.rs
 src/config.rs
 src/domain/exporter.rs
 src/domain/key_parser.rs
@@ -11,6 +12,10 @@ src/services/geo_updater.rs
 src/services/ping.rs
 src/settings.rs
 src/shortcuts-dialog.ui
+src/tui/app.rs
+src/tui/events.rs
+src/tui/mod.rs
+src/tui/ui.rs
 src/ui/change_tracker.rs
 src/ui/components/log_window.rs
 src/ui/components/log_window.ui

@@ -18,6 +18,7 @@
 //! - Модальное всплывающее окно просмотра системных логов демона
 
 use super::app::{App, ViewMode};
+use gettextrs::gettext;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -78,15 +79,38 @@ pub fn draw_ui(f: &mut Frame, app: &mut App) {
 /// Отрисовка верхней панели статуса.
 fn draw_header(f: &mut Frame, app: &App, area: Rect) {
     let (status_color, status_text) = if app.is_connected {
-        (Color::Green, "CONNECTED")
+        (Color::Green, gettext("Connected"))
+    } else if app.status == "Connecting" {
+        (Color::Yellow, gettext("Connecting..."))
+    } else if app.status == "Disconnecting" {
+        (Color::Yellow, gettext("Disconnecting..."))
+    } else if app.status == "Error (Daemon Offline)" {
+        (
+            Color::Red,
+            format!("{} ({})", gettext("Error"), gettext("Daemon Offline")),
+        )
+    } else if app.status == "Error (Invalid Key)" {
+        (
+            Color::Red,
+            format!("{} ({})", gettext("Error"), gettext("Invalid Key")),
+        )
+    } else if app.status == "Error (Server/Auth Failed)" {
+        (
+            Color::Red,
+            format!("{} ({})", gettext("Error"), gettext("Server/Auth Failed")),
+        )
     } else if app.status.starts_with("Error") {
-        (Color::Red, "ERROR")
+        (Color::Red, gettext("Error"))
     } else {
-        (Color::Yellow, "DISCONNECTED")
+        (Color::DarkGray, gettext("Disconnected"))
     };
 
     let mode_text = if app.tun_mode { "TUN" } else { "Proxy" };
-    let server_text = app.active_server.as_deref().unwrap_or("None");
+    let server_text = app
+        .active_server
+        .as_deref()
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| gettext("None"));
 
     let (down_spd, up_spd) = if app.is_connected {
         (app.current_down_speed, app.current_up_speed)
@@ -97,31 +121,49 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
     let up_speed_str = format_dynamic_bandwidth(up_spd);
 
     let mut header_spans = vec![
-        Span::raw(" Status: "),
         Span::styled(
-            format!(" {} ", status_text),
+            format!(" {}: ", gettext("Status")),
+            Style::default().fg(Color::Gray),
+        ),
+        Span::styled(
+            format!("● {status_text}"),
             Style::default()
-                .bg(status_color)
-                .fg(Color::Black)
+                .fg(status_color)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw("  |  Mode: "),
+        Span::styled("  │  ", Style::default().fg(Color::DarkGray)),
         Span::styled(
-            format!(" {} ", mode_text),
+            format!("{}: ", gettext("Mode")),
+            Style::default().fg(Color::Gray),
+        ),
+        Span::styled(
+            mode_text,
             Style::default()
-                .fg(Color::Cyan)
+                .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw("  |  Active Server: "),
+        Span::styled("  │  ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            format!("{}: ", gettext("Active Server")),
+            Style::default().fg(Color::Gray),
+        ),
         Span::styled(
             server_text,
             Style::default()
-                .fg(Color::Magenta)
+                .fg(if app.active_server.is_some() {
+                    Color::Cyan
+                } else {
+                    Color::DarkGray
+                })
                 .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("  │  ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            format!("{}: ", gettext("Speed")),
+            Style::default().fg(Color::Gray),
         ),
     ];
 
-    header_spans.push(Span::raw("  |  Speed: "));
     if app.is_connected {
         header_spans.push(Span::styled(
             format!("↓ {down_speed_str}  ↑ {up_speed_str}"),
@@ -130,18 +172,14 @@ fn draw_header(f: &mut Frame, app: &App, area: Rect) {
                 .add_modifier(Modifier::BOLD),
         ));
     } else {
-        header_spans.push(Span::styled(
-            "0 B/s",
-            Style::default()
-                .fg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD),
-        ));
+        header_spans.push(Span::styled("0 B/s", Style::default().fg(Color::DarkGray)));
     }
 
     let header = Paragraph::new(Line::from(header_spans)).block(
         Block::default()
             .borders(Borders::ALL)
-            .title(" VRXX TUI Client ")
+            .border_style(Style::default().fg(Color::DarkGray))
+            .title(format!(" {} ", gettext("VRXX TUI Client")))
             .title_alignment(Alignment::Left),
     );
 
@@ -176,15 +214,27 @@ fn draw_center(f: &mut Frame, app: &mut App, area: Rect) {
     let up_total_str = format_dynamic_bytes(app.total_up);
 
     let down_title = if app.total_down > 0 {
-        format!(" Traffic IN: {down_speed_str} (Total: {down_total_str}) ")
+        format!(
+            " {}: {} ({}: {}) ",
+            gettext("Download"),
+            down_speed_str,
+            gettext("Total"),
+            down_total_str
+        )
     } else {
-        format!(" Traffic IN: {down_speed_str} ")
+        format!(" {}: {} ", gettext("Download"), down_speed_str)
     };
 
     let up_title = if app.total_up > 0 {
-        format!(" Traffic OUT: {up_speed_str} (Total: {up_total_str}) ")
+        format!(
+            " {}: {} ({}: {}) ",
+            gettext("Upload"),
+            up_speed_str,
+            gettext("Total"),
+            up_total_str
+        )
     } else {
-        format!(" Traffic OUT: {up_speed_str} ")
+        format!(" {}: {} ", gettext("Upload"), up_speed_str)
     };
 
     let inner_width = traffic_chunks[0].width.saturating_sub(2) as usize;
@@ -199,7 +249,7 @@ fn draw_center(f: &mut Frame, app: &mut App, area: Rect) {
             Block::default()
                 .borders(Borders::ALL)
                 .title(down_title)
-                .border_style(Style::default().fg(Color::Green)),
+                .border_style(Style::default().fg(Color::DarkGray)),
         )
         .data(down_data)
         .style(Style::default().fg(Color::Green));
@@ -209,52 +259,57 @@ fn draw_center(f: &mut Frame, app: &mut App, area: Rect) {
             Block::default()
                 .borders(Borders::ALL)
                 .title(up_title)
-                .border_style(Style::default().fg(Color::Blue)),
+                .border_style(Style::default().fg(Color::DarkGray)),
         )
         .data(up_data)
-        .style(Style::default().fg(Color::Blue));
+        .style(Style::default().fg(Color::Cyan));
 
     f.render_widget(down_sparkline, traffic_chunks[0]);
     f.render_widget(up_sparkline, traffic_chunks[1]);
 
     // 2. Список профилей (Keys)
-    let items: Vec<ListItem> = app
-        .settings
-        .keys
-        .iter()
-        .enumerate()
-        .map(|(idx, key)| {
-            let prefix = if app.active_server.as_deref() == Some(&key.name) {
-                "● "
-            } else {
-                "  "
-            };
+    let items: Vec<ListItem> = if app.settings.keys.is_empty() {
+        vec![ListItem::new(format!(
+            "  {}",
+            gettext("No profiles available. Add a profile in GUI or configuration.")
+        ))
+        .style(Style::default().fg(Color::DarkGray))]
+    } else {
+        app.settings
+            .keys
+            .iter()
+            .enumerate()
+            .map(|(idx, key)| {
+                let is_active = app.active_server.as_deref() == Some(&key.name);
+                let is_selected = idx == app.selected_index;
 
-            let line = format!("{}{} [{}]", prefix, key.name, key.protocol.to_uppercase());
-            let style = if idx == app.selected_index {
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD)
-            } else {
-                Style::default()
-            };
+                let prefix = if is_active { "● " } else { "  " };
+                let line = format!("{prefix}{} [{}]", key.name, key.protocol.to_uppercase());
 
-            ListItem::new(line).style(style)
-        })
-        .collect();
+                let mut style = Style::default();
+                if is_active {
+                    style = style.fg(Color::Green);
+                }
+                if is_selected {
+                    style = style.fg(Color::Cyan).add_modifier(Modifier::BOLD);
+                }
+                ListItem::new(line).style(style)
+            })
+            .collect()
+    };
 
-    let list_title = format!(" Profiles ({}) ", app.settings.keys.len());
+    let list_title = format!(" {} ({}) ", gettext("Profiles"), app.settings.keys.len());
     let list_widget = List::new(items)
         .block(
             Block::default()
                 .borders(Borders::ALL)
                 .title(list_title)
-                .border_style(Style::default().fg(Color::Cyan)),
+                .border_style(Style::default().fg(Color::DarkGray)),
         )
         .highlight_symbol("> ")
         .highlight_style(
             Style::default()
-                .fg(Color::Yellow)
+                .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
         );
 
@@ -267,48 +322,71 @@ fn draw_center(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 /// Отрисовка нижней панели подсказок горячих клавиш.
-fn draw_footer(f: &mut Frame, _app: &App, area: Rect) {
+fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
+    let connect_action = if app.is_connected {
+        gettext("Disconnect")
+    } else {
+        gettext("Connect")
+    };
+
     let footer_text = vec![
         Span::styled(
             " [Space] ",
             Style::default()
-                .fg(Color::Yellow)
+                .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw("Connect/Disconnect  "),
+        Span::styled(
+            format!("{connect_action}  "),
+            Style::default().fg(Color::Gray),
+        ),
         Span::styled(
             " [Tab] ",
             Style::default()
-                .fg(Color::Yellow)
+                .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw("Toggle TUN/Proxy  "),
+        Span::styled(
+            format!("{}  ", gettext("Toggle Mode")),
+            Style::default().fg(Color::Gray),
+        ),
         Span::styled(
             " [↑/↓] ",
             Style::default()
-                .fg(Color::Yellow)
+                .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw("Navigate  "),
+        Span::styled(
+            format!("{}  ", gettext("Navigate")),
+            Style::default().fg(Color::Gray),
+        ),
         Span::styled(
             " [L] ",
             Style::default()
-                .fg(Color::Yellow)
+                .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw("Logs  "),
         Span::styled(
-            " [Q] ",
+            format!("{}  ", gettext("Logs")),
+            Style::default().fg(Color::Gray),
+        ),
+        Span::styled(
+            " [Q/Esc] ",
             Style::default()
-                .fg(Color::Yellow)
+                .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw("Quit"),
+        Span::styled(gettext("Quit"), Style::default().fg(Color::Gray)),
     ];
 
     let footer = Paragraph::new(Line::from(footer_text))
         .alignment(Alignment::Center)
-        .block(Block::default().borders(Borders::ALL).title(" Actions "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::DarkGray))
+                .title(format!(" {} ", gettext("Actions"))),
+        );
 
     f.render_widget(footer, area);
 }
@@ -320,14 +398,24 @@ fn draw_logs_modal(f: &mut Frame, app: &App, area: Rect) {
     // Очищаем область под всплывающим окном
     f.render_widget(Clear, popup_area);
 
-    let logs_text: Vec<Line> = app.logs.iter().map(|l| Line::from(l.as_str())).collect();
+    let logs_text: Vec<Line> = if app.logs.is_empty() {
+        vec![Line::from(Span::styled(
+            gettext("No log entries yet."),
+            Style::default().fg(Color::DarkGray),
+        ))]
+    } else {
+        app.logs.iter().map(|l| Line::from(l.as_str())).collect()
+    };
 
     let logs_widget = Paragraph::new(logs_text)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(" Daemon Event Logs (Press [L] or [Esc] to Close) ")
-                .border_style(Style::default().fg(Color::Magenta)),
+                .title(format!(
+                    " {} ",
+                    gettext("Daemon Event Logs (Press [L] or [Esc] to Close)")
+                ))
+                .border_style(Style::default().fg(Color::DarkGray)),
         )
         .wrap(Wrap { trim: false });
 
@@ -404,5 +492,78 @@ mod tests {
         assert_eq!(format_dynamic_bytes(52_428_800), "50.0 MB");
         assert_eq!(format_dynamic_bytes(1_073_741_824), "1.00 GB");
         assert_eq!(format_dynamic_bytes(1_099_511_627_776), "1.00 TB");
+    }
+
+    #[test]
+    fn test_tui_localization_roundtrip() {
+        // 1. Проверяем русский язык
+        crate::config::init_i18n("ru");
+
+        assert_eq!(gettext("VRXX TUI Client"), "VRXX TUI Клиент");
+        assert_eq!(gettext("Status"), "Статус");
+        assert_eq!(gettext("Connected"), "Подключено");
+        assert_eq!(gettext("Disconnected"), "Отключено");
+        assert_eq!(gettext("Mode"), "Режим");
+        assert_eq!(gettext("Active Server"), "Активный сервер");
+        assert_eq!(gettext("Speed"), "Скорость");
+        assert_eq!(gettext("Download"), "Входящий");
+        assert_eq!(gettext("Upload"), "Исходящий");
+        assert_eq!(gettext("Total"), "Всего");
+        assert_eq!(gettext("Profiles"), "Профили");
+        assert_eq!(gettext("Connect"), "Подключить");
+        assert_eq!(gettext("Disconnect"), "Отключить");
+        assert_eq!(gettext("Toggle Mode"), "Сменить режим");
+        assert_eq!(gettext("Navigate"), "Навигация");
+        assert_eq!(gettext("Logs"), "Логи");
+        assert_eq!(gettext("Quit"), "Выход");
+        assert_eq!(
+            gettext("Daemon Event Logs (Press [L] or [Esc] to Close)"),
+            "Логи событий демона (Нажмите [L] или [Esc] для закрытия)"
+        );
+        assert_eq!(gettext("No log entries yet."), "Записей в логе пока нет.");
+        assert_eq!(
+            gettext("Proxy stopped via TUI"),
+            "Прокси остановлен через TUI"
+        );
+        assert_eq!(
+            gettext("Failed to toggle connection"),
+            "Ошибка переключения подключения"
+        );
+        assert_eq!(
+            gettext("Failed to toggle mode"),
+            "Ошибка переключения режима"
+        );
+
+        // 2. Проверяем возврат к английскому языку
+        crate::config::init_i18n("en");
+
+        assert_eq!(gettext("VRXX TUI Client"), "VRXX TUI Client");
+        assert_eq!(gettext("Status"), "Status");
+        assert_eq!(gettext("Connected"), "Connected");
+        assert_eq!(gettext("Disconnected"), "Disconnected");
+        assert_eq!(gettext("Download"), "Download");
+        assert_eq!(gettext("Upload"), "Upload");
+        assert_eq!(gettext("Quit"), "Quit");
+    }
+
+    #[test]
+    fn test_tui_draw_ui_renders_without_panic() {
+        use ratatui::backend::TestBackend;
+        use ratatui::Terminal;
+
+        let backend = TestBackend::new(120, 40);
+        let mut terminal = Terminal::new(backend).expect("Failed to create TestBackend terminal");
+
+        let mut app = App::new();
+        terminal
+            .draw(|f| draw_ui(f, &mut app))
+            .expect("draw_ui must not panic in Main mode");
+
+        // Проверяем отрисовку в режиме просмотра логов
+        app.view_mode = ViewMode::Logs;
+        app.logs.push("[INFO] Test log line".to_string());
+        terminal
+            .draw(|f| draw_ui(f, &mut app))
+            .expect("draw_ui must not panic in Logs mode");
     }
 }

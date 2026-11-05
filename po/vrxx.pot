@@ -1860,3 +1860,128 @@ msgstr ""
 msgid "Log File (*.log)"
 msgstr ""
 
+#: src/tui/ui.rs
+msgid "VRXX TUI Client"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Daemon Offline"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Server/Auth Failed"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "None"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Status"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Mode"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Active Server"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Speed"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Download"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Upload"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Total"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Profiles"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "No profiles available. Add a profile in GUI or configuration."
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Actions"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Connect"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Toggle Mode"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Navigate"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Logs"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Daemon Event Logs (Press [L] or [Esc] to Close)"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "No log entries yet."
+msgstr ""
+
+#: src/tui/app.rs
+msgid "Proxy stopped via TUI"
+msgstr ""
+
+#: src/tui/app.rs
+msgid "No profiles available to connect"
+msgstr ""
+
+#: src/tui/app.rs
+msgid "Failed to parse key"
+msgstr ""
+
+#: src/tui/app.rs
+msgid "Key validation error"
+msgstr ""
+
+#: src/tui/app.rs
+msgid "Core started. Verifying end-to-end proxy connectivity..."
+msgstr ""
+
+#: src/tui/app.rs
+msgid "Successfully connected to"
+msgstr ""
+
+#: src/tui/app.rs
+msgid "Connectivity verification failed"
+msgstr ""
+
+#: src/tui/app.rs
+msgid "Start proxy failed"
+msgstr ""
+
+#: src/tui/app.rs
+msgid "Mode switched to"
+msgstr ""
+
+#: src/tui/events.rs
+msgid "Failed to toggle connection"
+msgstr ""
+
+#: src/tui/events.rs
+msgid "Failed to toggle mode"
+msgstr ""
+
+

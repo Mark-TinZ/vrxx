@@ -1957,6 +1957,130 @@ msgstr "Текстовый файл (*.txt)"
 msgid "Log File (*.log)"
 msgstr "Файл лога (*.log)"
 
+#: src/tui/ui.rs
+msgid "VRXX TUI Client"
+msgstr "VRXX TUI Клиент"
+
+#: src/tui/ui.rs
+msgid "Daemon Offline"
+msgstr "Демон оффлайн"
+
+#: src/tui/ui.rs
+msgid "Server/Auth Failed"
+msgstr "Сбой сервера/аутентификации"
+
+#: src/tui/ui.rs
+msgid "None"
+msgstr "Нет"
+
+#: src/tui/ui.rs
+msgid "Status"
+msgstr "Статус"
+
+#: src/tui/ui.rs
+msgid "Mode"
+msgstr "Режим"
+
+#: src/tui/ui.rs
+msgid "Active Server"
+msgstr "Активный сервер"
+
+#: src/tui/ui.rs
+msgid "Speed"
+msgstr "Скорость"
+
+#: src/tui/ui.rs
+msgid "Download"
+msgstr "Входящий"
+
+#: src/tui/ui.rs
+msgid "Upload"
+msgstr "Исходящий"
+
+#: src/tui/ui.rs
+msgid "Total"
+msgstr "Всего"
+
+#: src/tui/ui.rs
+msgid "Profiles"
+msgstr "Профили"
+
+#: src/tui/ui.rs
+msgid "No profiles available. Add a profile in GUI or configuration."
+msgstr "Нет доступных профилей. Добавьте профиль в GUI или конфигурации."
+
+#: src/tui/ui.rs
+msgid "Actions"
+msgstr "Действия"
+
+#: src/tui/ui.rs
+msgid "Connect"
+msgstr "Подключить"
+
+#: src/tui/ui.rs
+msgid "Toggle Mode"
+msgstr "Сменить режим"
+
+#: src/tui/ui.rs
+msgid "Navigate"
+msgstr "Навигация"
+
+#: src/tui/ui.rs
+msgid "Logs"
+msgstr "Логи"
+
+#: src/tui/ui.rs
+msgid "Daemon Event Logs (Press [L] or [Esc] to Close)"
+msgstr "Логи событий демона (Нажмите [L] или [Esc] для закрытия)"
+
+#: src/tui/ui.rs
+msgid "No log entries yet."
+msgstr "Записей в логе пока нет."
+
+#: src/tui/app.rs
+msgid "Proxy stopped via TUI"
+msgstr "Прокси остановлен через TUI"
+
+#: src/tui/app.rs
+msgid "No profiles available to connect"
+msgstr "Нет доступных профилей для подключения"
+
+#: src/tui/app.rs
+msgid "Failed to parse key"
+msgstr "Не удалось разобрать ключ"
+
+#: src/tui/app.rs
+msgid "Key validation error"
+msgstr "Ошибка валидации ключа"
+
+#: src/tui/app.rs
+msgid "Core started. Verifying end-to-end proxy connectivity..."
+msgstr "Ядро запущено. Проверка сквозного подключения прокси..."
+
+#: src/tui/app.rs
+msgid "Successfully connected to"
+msgstr "Успешное подключение к"
+
+#: src/tui/app.rs
+msgid "Connectivity verification failed"
+msgstr "Сбой проверки подключения"
+
+#: src/tui/app.rs
+msgid "Start proxy failed"
+msgstr "Не удалось запустить прокси"
+
+#: src/tui/app.rs
+msgid "Mode switched to"
+msgstr "Режим переключен на"
+
+#: src/tui/events.rs
+msgid "Failed to toggle connection"
+msgstr "Ошибка переключения подключения"
+
+#: src/tui/events.rs
+msgid "Failed to toggle mode"
+msgstr "Ошибка переключения режима"
+
 #~ msgid "Shortcuts"
 #~ msgstr "Горячие клавиши"
 
