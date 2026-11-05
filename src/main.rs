@@ -1,3 +1,14 @@
+/* main.rs
+ *
+ * Copyright 2026 Mark
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * SPDX-License-Identifier: MPL-2.0
+ */
+
 //! # Точка входа в приложение VRXX
 //!
 //! Отвечает за:
@@ -25,8 +36,6 @@ mod window;
 
 use self::application::VrxxApplication;
 use clap::{Parser, Subcommand};
-use config::{GETTEXT_PACKAGE, LOCALEDIR};
-use gettextrs::{bind_textdomain_codeset, bindtextdomain, setlocale, textdomain, LocaleCategory};
 use gtk::prelude::*;
 use gtk::{gio, glib};
 
@@ -76,6 +85,9 @@ fn main() -> glib::ExitCode {
         // Инициализация Tracing для TUI: вывод направляется в файл, а не в stdout/stderr терминала
         let _guard = logger::init_gui_logging(logger_config);
 
+        // Инициализация подсистемы интернационализации (Gettext) для TUI
+        config::init_i18n(&app_settings.language);
+
         let rt = match tokio::runtime::Runtime::new() {
             Ok(runtime) => runtime,
             Err(e) => {
@@ -120,95 +132,8 @@ fn main() -> glib::ExitCode {
     crate::services::geo_updater::spawn_background_updater();
 
     // Инициализация подсистемы интернационализации (Gettext) и системной локали
-    // 1. Инициализируем локаль libc
-    let mut loc = setlocale(LocaleCategory::LcAll, "");
-
-    // Если локаль не была установлена (None) или сбросилась в "C" / "POSIX" / "C.UTF-8",
-    // gettext в glibc отключает перевод по переменной LANGUAGE. Переключаем процесс на доступную UTF-8 локаль:
-    if loc
-        .as_deref()
-        .is_none_or(|l| l == b"C" || l == b"POSIX" || l == b"C.UTF-8" || l == b"C.utf8")
-    {
-        loc = setlocale(LocaleCategory::LcAll, "en_US.UTF-8")
-            .or_else(|| setlocale(LocaleCategory::LcAll, "en_US.utf8"))
-            .or_else(|| setlocale(LocaleCategory::LcAll, "ru_RU.UTF-8"))
-            .or_else(|| setlocale(LocaleCategory::LcAll, "ru_RU.utf8"))
-            .or_else(|| setlocale(LocaleCategory::LcAll, "C.UTF-8"));
-    }
-
-    // 2. Установка языка приложения (LANGUAGE)
-
-    match app_settings.language.as_str() {
-        "ru" => {
-            std::env::set_var("LANGUAGE", "ru");
-        }
-        "en" => {
-            std::env::set_var("LANGUAGE", "en");
-        }
-        _ => {
-            // "system": если в системном LANG указан русский (ru), но в системе нет сгенерированной ru_RU локали
-            // и LANGUAGE не был задан явно, активируем LANGUAGE=ru
-            if let Ok(sys_lang) = std::env::var("LANG") {
-                if sys_lang.starts_with("ru") && std::env::var("LANGUAGE").is_err() {
-                    std::env::set_var("LANGUAGE", "ru");
-                }
-            }
-        }
-    }
-
-    tracing::info!(
-        "VRXX application started (locale: {:?}, language: {})",
-        loc.as_deref()
-            .map(|b| String::from_utf8_lossy(b).into_owned()),
-        app_settings.language
-    );
-
-    // 3. Каскадный поиск каталога файлов локализации (.mo)
     gtk::glib::set_application_name("Vrxx");
-
-    let configured_locale_dir = if std::path::Path::new(LOCALEDIR).is_relative() {
-        std::env::current_dir()
-            .map(|p| p.join(LOCALEDIR))
-            .unwrap_or_else(|_| std::path::PathBuf::from(LOCALEDIR))
-    } else {
-        std::path::PathBuf::from(LOCALEDIR)
-    };
-
-    let candidate_dirs = [
-        configured_locale_dir.clone(),
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|d| d.join("../share/locale")))
-            .unwrap_or_default(),
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|d| d.join("locale")))
-            .unwrap_or_default(),
-        std::env::current_dir()
-            .map(|p| p.join("locale"))
-            .unwrap_or_default(),
-    ];
-
-    let mut locale_dir = configured_locale_dir;
-    for dir in &candidate_dirs {
-        if dir.exists()
-            && (dir.join("ru/LC_MESSAGES/vrxx.mo").exists()
-                || dir.join("en/LC_MESSAGES/vrxx.mo").exists())
-        {
-            locale_dir = dir.clone();
-            break;
-        }
-    }
-
-    if let Err(e) = bindtextdomain(GETTEXT_PACKAGE, &locale_dir) {
-        tracing::warn!("Failed to bind gettext localization domain: {}", e);
-    }
-    if let Err(e) = bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8") {
-        tracing::warn!("Failed to set gettext domain codeset: {}", e);
-    }
-    if let Err(e) = textdomain(GETTEXT_PACKAGE) {
-        tracing::warn!("Failed to switch gettext domain: {}", e);
-    }
+    config::init_i18n(&app_settings.language);
 
     // Загрузка скомпилированных ресурсов GResource
     let res_data = include_bytes!(concat!(env!("OUT_DIR"), "/vrxx.gresource"));

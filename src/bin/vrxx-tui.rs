@@ -37,9 +37,12 @@ async fn main() -> Result<()> {
     let logger_config = vrxx::logger::LoggerConfig {
         is_tui: true,
         is_daemon: false,
-        initial_level: app_settings.log_level,
+        initial_level: app_settings.log_level.clone(),
     };
     let _guard = vrxx::logger::init_gui_logging(logger_config);
+
+    // Инициализация подсистемы интернационализации (Gettext) для TUI
+    vrxx::config::init_i18n(&app_settings.language);
 
     vrxx::tui::run_tui().await
 }

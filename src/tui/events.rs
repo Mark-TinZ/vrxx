@@ -16,11 +16,12 @@
 //! - Подключение / отключение: `Space` / `Enter`
 //! - Переключение режима: `Tab` (TUN / Proxy)
 //! - Просмотр логов: `L` / `Esc`
-//! - Выход из приложения: `Q`
+//! - Выход из приложения: `Q` / `Esc`
 
 use super::app::{App, ViewMode};
 use anyhow::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use gettextrs::gettext;
 use std::time::Duration;
 
 /// Обработка пользовательского ввода с таймаутом (неблокирующая).
@@ -30,7 +31,7 @@ pub async fn handle_events(app: &mut App) -> Result<()> {
             if key.kind == KeyEventKind::Press {
                 match app.view_mode {
                     ViewMode::Main => match key.code {
-                        KeyCode::Char('q') | KeyCode::Char('Q') => {
+                        KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => {
                             app.should_quit = true;
                         }
                         KeyCode::Up | KeyCode::Char('k') => {
@@ -42,13 +43,17 @@ pub async fn handle_events(app: &mut App) -> Result<()> {
                         KeyCode::Char(' ') | KeyCode::Enter => {
                             if let Err(e) = app.toggle_connect().await {
                                 app.push_log(format!(
-                                    "[ERROR] Ошибка переключения подключения: {e}"
+                                    "[ERROR] {}: {e}",
+                                    gettext("Failed to toggle connection")
                                 ));
                             }
                         }
                         KeyCode::Tab => {
                             if let Err(e) = app.toggle_mode().await {
-                                app.push_log(format!("[ERROR] Ошибка переключения режима: {e}"));
+                                app.push_log(format!(
+                                    "[ERROR] {}: {e}",
+                                    gettext("Failed to toggle mode")
+                                ));
                             }
                         }
                         KeyCode::Char('l') | KeyCode::Char('L') => {
