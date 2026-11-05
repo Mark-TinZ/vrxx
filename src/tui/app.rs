@@ -92,14 +92,16 @@ impl App {
     pub async fn refresh_status(&mut self) -> Result<()> {
         match self.ipc_client.is_running().await {
             Ok(running) => {
-                self.is_connected = running;
                 if running {
-                    let status_str = match self.ipc_client.status().await {
-                        Ok(st) => st.to_string(),
-                        Err(_) => "Connected".to_string(),
-                    };
-                    self.status = status_str;
+                    let status = self
+                        .ipc_client
+                        .status()
+                        .await
+                        .unwrap_or(crate::protocol::DaemonStatus::Connected);
+                    self.is_connected = status == crate::protocol::DaemonStatus::Connected;
+                    self.status = status.to_string();
                 } else {
+                    self.is_connected = false;
                     self.status = "Disconnected".to_string();
                     self.active_server = None;
                     self.reset_traffic();
@@ -129,6 +131,7 @@ impl App {
     pub async fn toggle_connect(&mut self) -> Result<()> {
         if self.is_connected {
             // Остановка
+            self.status = "Disconnecting".to_string();
             self.ipc_client.stop_proxy().await?;
             self.is_connected = false;
             self.status = "Disconnected".to_string();
@@ -156,6 +159,8 @@ impl App {
                 ),
                 None => return Ok(()),
             };
+
+            self.status = "Connecting".to_string();
 
             let parsed_key = match ParsedKey::parse(&key_url) {
                 Ok(pk) => pk,
@@ -239,7 +244,11 @@ impl App {
         let manager = SettingsManager::new();
         manager.save(&self.settings);
 
-        let mode_str = if self.tun_mode { "TUN" } else { "Proxy" };
+        let mode_str = if self.tun_mode {
+            "TUN".to_string()
+        } else {
+            gettext("Proxy")
+        };
         self.push_log(format!(
             "[INFO] {} {}",
             gettext("Mode switched to"),

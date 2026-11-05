@@ -78,34 +78,29 @@ pub fn draw_ui(f: &mut Frame, app: &mut App) {
 
 /// Отрисовка верхней панели статуса.
 fn draw_header(f: &mut Frame, app: &App, area: Rect) {
-    let (status_color, status_text) = if app.is_connected {
-        (Color::Green, gettext("Connected"))
-    } else if app.status == "Connecting" {
+    let (status_color, status_text) = if app.status == "Connecting" {
         (Color::Yellow, gettext("Connecting..."))
     } else if app.status == "Disconnecting" {
         (Color::Yellow, gettext("Disconnecting..."))
     } else if app.status == "Error (Daemon Offline)" {
-        (
-            Color::Red,
-            format!("{} ({})", gettext("Error"), gettext("Daemon Offline")),
-        )
+        (Color::Red, gettext("Error: Daemon Offline"))
     } else if app.status == "Error (Invalid Key)" {
-        (
-            Color::Red,
-            format!("{} ({})", gettext("Error"), gettext("Invalid Key")),
-        )
+        (Color::Red, gettext("Error: Invalid Key"))
     } else if app.status == "Error (Server/Auth Failed)" {
-        (
-            Color::Red,
-            format!("{} ({})", gettext("Error"), gettext("Server/Auth Failed")),
-        )
+        (Color::Red, gettext("Error: Server/Auth Failed"))
     } else if app.status.starts_with("Error") {
-        (Color::Red, gettext("Error"))
+        (Color::Red, gettext("Connection error"))
+    } else if app.is_connected {
+        (Color::Green, gettext("Connected"))
     } else {
         (Color::DarkGray, gettext("Disconnected"))
     };
 
-    let mode_text = if app.tun_mode { "TUN" } else { "Proxy" };
+    let mode_text = if app.tun_mode {
+        "TUN".to_string()
+    } else {
+        gettext("Proxy")
+    };
     let server_text = app
         .active_server
         .as_deref()
@@ -283,17 +278,32 @@ fn draw_center(f: &mut Frame, app: &mut App, area: Rect) {
                 let is_active = app.active_server.as_deref() == Some(&key.name);
                 let is_selected = idx == app.selected_index;
 
-                let prefix = if is_active { "● " } else { "  " };
-                let line = format!("{prefix}{} [{}]", key.name, key.protocol.to_uppercase());
-
-                let mut style = Style::default();
+                let mut spans = Vec::new();
                 if is_active {
-                    style = style.fg(Color::Green);
+                    spans.push(Span::styled(
+                        "● ",
+                        Style::default()
+                            .fg(Color::Green)
+                            .add_modifier(Modifier::BOLD),
+                    ));
+                } else {
+                    spans.push(Span::raw("  "));
                 }
-                if is_selected {
-                    style = style.fg(Color::Cyan).add_modifier(Modifier::BOLD);
-                }
-                ListItem::new(line).style(style)
+
+                let name_style = if is_selected {
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(Color::White)
+                };
+                spans.push(Span::styled(key.name.clone(), name_style));
+                spans.push(Span::styled(
+                    format!(" [{}]", key.protocol.to_uppercase()),
+                    Style::default().fg(Color::DarkGray),
+                ));
+
+                ListItem::new(Line::from(spans))
             })
             .collect()
     };
@@ -502,9 +512,23 @@ mod tests {
         assert_eq!(gettext("VRXX TUI Client"), "VRXX TUI Клиент");
         assert_eq!(gettext("Status"), "Статус");
         assert_eq!(gettext("Connected"), "Подключено");
+        assert_eq!(gettext("Connecting..."), "Подключение...");
+        assert_eq!(gettext("Disconnecting..."), "Отключение...");
         assert_eq!(gettext("Disconnected"), "Отключено");
+        assert_eq!(gettext("Error: Daemon Offline"), "Ошибка: демон оффлайн");
+        assert_eq!(
+            gettext("Error: Invalid Key"),
+            "Ошибка: недействительный ключ"
+        );
+        assert_eq!(
+            gettext("Error: Server/Auth Failed"),
+            "Ошибка: сбой сервера/аутентификации"
+        );
+        assert_eq!(gettext("Connection error"), "Ошибка соединения");
         assert_eq!(gettext("Mode"), "Режим");
+        assert_eq!(gettext("Proxy"), "Прокси");
         assert_eq!(gettext("Active Server"), "Активный сервер");
+        assert_eq!(gettext("None"), "Нет");
         assert_eq!(gettext("Speed"), "Скорость");
         assert_eq!(gettext("Download"), "Входящий");
         assert_eq!(gettext("Upload"), "Исходящий");
@@ -540,7 +564,17 @@ mod tests {
         assert_eq!(gettext("VRXX TUI Client"), "VRXX TUI Client");
         assert_eq!(gettext("Status"), "Status");
         assert_eq!(gettext("Connected"), "Connected");
+        assert_eq!(gettext("Connecting..."), "Connecting...");
+        assert_eq!(gettext("Disconnecting..."), "Disconnecting...");
         assert_eq!(gettext("Disconnected"), "Disconnected");
+        assert_eq!(gettext("Error: Daemon Offline"), "Error: Daemon Offline");
+        assert_eq!(gettext("Error: Invalid Key"), "Error: Invalid Key");
+        assert_eq!(
+            gettext("Error: Server/Auth Failed"),
+            "Error: Server/Auth Failed"
+        );
+        assert_eq!(gettext("Connection error"), "Connection error");
+        assert_eq!(gettext("Proxy"), "Proxy");
         assert_eq!(gettext("Download"), "Download");
         assert_eq!(gettext("Upload"), "Upload");
         assert_eq!(gettext("Quit"), "Quit");
@@ -551,19 +585,53 @@ mod tests {
         use ratatui::backend::TestBackend;
         use ratatui::Terminal;
 
-        let backend = TestBackend::new(120, 40);
-        let mut terminal = Terminal::new(backend).expect("Failed to create TestBackend terminal");
-
         let mut app = App::new();
-        terminal
-            .draw(|f| draw_ui(f, &mut app))
-            .expect("draw_ui must not panic in Main mode");
 
-        // Проверяем отрисовку в режиме просмотра логов
-        app.view_mode = ViewMode::Logs;
-        app.logs.push("[INFO] Test log line".to_string());
+        // Проверяем отрисовку при различных размерах терминала
+        for (width, height) in [(120, 40), (80, 24), (40, 15), (20, 8), (10, 5)] {
+            let backend = TestBackend::new(width, height);
+            let mut terminal =
+                Terminal::new(backend).expect("Failed to create TestBackend terminal");
+
+            terminal
+                .draw(|f| draw_ui(f, &mut app))
+                .expect("draw_ui must not panic in Main mode");
+
+            // Проверяем режим логов
+            app.view_mode = ViewMode::Logs;
+            app.logs.push("[INFO] Test log line".to_string());
+            terminal
+                .draw(|f| draw_ui(f, &mut app))
+                .expect("draw_ui must not panic in Logs mode");
+            app.view_mode = ViewMode::Main;
+        }
+
+        // Проверяем отрисовку с активными ключами и подключениями
+        app.settings.keys.push(crate::settings::VpnKeyData {
+            name: "TestServer".to_string(),
+            protocol: "vless".to_string(),
+            is_active: true,
+            traffic_down: "0 MB".to_string(),
+            traffic_up: "0 MB".to_string(),
+            time_connected: "00:00:00".to_string(),
+            ping: "25 ms".to_string(),
+            location: "DE".to_string(),
+            country_code: "DE".to_string(),
+            city: "Frankfurt".to_string(),
+            isp: "Test ISP".to_string(),
+            timezone: "UTC".to_string(),
+            url: "vless://test".to_string(),
+            group: "Default".to_string(),
+        });
+        app.is_connected = true;
+        app.status = "Connected".to_string();
+        app.active_server = Some("TestServer".to_string());
+        app.apply_traffic(1024, 2048, 5000, 10000);
+
+        let backend = TestBackend::new(80, 24);
+        let mut terminal = Terminal::new(backend).expect("Failed to create TestBackend terminal");
         terminal
             .draw(|f| draw_ui(f, &mut app))
-            .expect("draw_ui must not panic in Logs mode");
+            .expect("draw_ui must not panic with populated state");
     }
 }

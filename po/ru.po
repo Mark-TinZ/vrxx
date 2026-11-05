@@ -2081,6 +2081,18 @@ msgstr "Ошибка переключения подключения"
 msgid "Failed to toggle mode"
 msgstr "Ошибка переключения режима"
 
+#: src/tui/ui.rs
+msgid "Error: Daemon Offline"
+msgstr "Ошибка: демон оффлайн"
+
+#: src/tui/ui.rs
+msgid "Error: Invalid Key"
+msgstr "Ошибка: недействительный ключ"
+
+#: src/tui/ui.rs
+msgid "Error: Server/Auth Failed"
+msgstr "Ошибка: сбой сервера/аутентификации"
+
 #~ msgid "Shortcuts"
 #~ msgstr "Горячие клавиши"
 

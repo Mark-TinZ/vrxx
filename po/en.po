@@ -2079,6 +2079,18 @@ msgstr "Failed to toggle connection"
 msgid "Failed to toggle mode"
 msgstr "Failed to toggle mode"
 
+#: src/tui/ui.rs
+msgid "Error: Daemon Offline"
+msgstr "Error: Daemon Offline"
+
+#: src/tui/ui.rs
+msgid "Error: Invalid Key"
+msgstr "Error: Invalid Key"
+
+#: src/tui/ui.rs
+msgid "Error: Server/Auth Failed"
+msgstr "Error: Server/Auth Failed"
+
 #~ msgid "Shortcuts"
 #~ msgstr "Shortcuts"
 

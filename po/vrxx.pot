@@ -1984,4 +1984,14 @@ msgstr ""
 msgid "Failed to toggle mode"
 msgstr ""
 
+#: src/tui/ui.rs
+msgid "Error: Daemon Offline"
+msgstr ""
 
+#: src/tui/ui.rs
+msgid "Error: Invalid Key"
+msgstr ""
+
+#: src/tui/ui.rs
+msgid "Error: Server/Auth Failed"
+msgstr ""
