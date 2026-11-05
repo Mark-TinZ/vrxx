@@ -2107,3 +2107,177 @@ msgstr "Файл лога (*.log)"
 #~ "Ping (проверка IP хоста) или HTTP GET/HEAD через прокси (сквозной тест "
 #~ "через туннель)."
 
+
+msgid "Add Connection"
+msgstr "Добавить подключение"
+
+msgid "Add Group"
+msgstr "Добавить группу"
+
+msgid "Add Group…"
+msgstr "Добавить группу…"
+
+msgid "Add Key…"
+msgstr "Добавить ключ…"
+
+msgid "Add Subscription"
+msgstr "Добавить подписку"
+
+msgid "Add Subscription…"
+msgstr "Добавить подписку…"
+
+msgid "Add a new connection to get started."
+msgstr "Добавьте новое подключение, чтобы начать работу."
+
+msgid "Add group"
+msgstr "Добавить группу"
+
+msgid "Add key"
+msgstr "Добавить ключ"
+
+msgid "Add key to this group"
+msgstr "Добавить ключ в эту группу"
+
+msgid "Add subscription"
+msgstr "Добавить подписку"
+
+msgid "Add…"
+msgstr "Добавить…"
+
+msgid "All keys imported from this subscription will also be deleted."
+msgstr "Все ключи, импортированные из этой подписки, также будут удалены."
+
+msgid "Auto-update Geo Data"
+msgstr "Автообновление гео-баз"
+
+msgid "Bi-weekly (14 days)"
+msgstr "Раз в две недели (14 дней)"
+
+msgid "Check"
+msgstr "Проверить"
+
+msgid "Connect"
+msgstr "Подключить"
+
+msgid "Daily (1 day)"
+msgstr "Ежедневно (1 день)"
+
+msgid "Delete Group"
+msgstr "Удалить группу"
+
+msgid "Delete Subscription"
+msgstr "Удалить подписку"
+
+msgid "Edit"
+msgstr "Изменить"
+
+msgid "Edit Subscription"
+msgstr "Редактировать подписку"
+
+msgid "Enables periodic background checks and updates of compiled GeoIP and GeoSite database files."
+msgstr "Включает периодическую фоновую проверку и обновление скомпилированных файлов баз данных GeoIP и GeoSite."
+
+msgid "Enter a name for the new key group:"
+msgstr "Введите название новой группы ключей:"
+
+msgid "Enter a new name for the group:"
+msgstr "Введите новое название группы:"
+
+msgid "Enter a subscription name and URL:"
+msgstr "Введите название и URL подписки:"
+
+msgid "GNOME proxy GSettings scheme is unavailable on {}. Use TUN mode for system-wide routing."
+msgstr "Схема GSettings для прокси GNOME недоступна в окружении {}. Используйте режим TUN для маршрутизации всей системы."
+
+msgid "Geo Data Updated"
+msgstr "Гео-базы обновлены"
+
+msgid "Group"
+msgstr "Группа"
+
+msgid "Group Name"
+msgstr "Название группы"
+
+msgid "How often to refresh databases"
+msgstr "Как часто обновлять базы данных"
+
+msgid "ISP / Host"
+msgstr "Провайдер / Хост"
+
+msgid "Import from Clipboard"
+msgstr "Импорт из буфера обмена"
+
+msgid "Keys in this group will not be deleted, but moved to ungrouped."
+msgstr "Ключи из этой группы не будут удалены, а перенесены в категорию без группы."
+
+msgid "Modify the subscription parameters:"
+msgstr "Измените параметры подписки:"
+
+msgid "Monthly (30 days)"
+msgstr "Ежемесячно (30 дней)"
+
+msgid "None (Ungrouped)"
+msgstr "Без группы"
+
+msgid "Periodically check and download updated rule-sets"
+msgstr "Периодически проверять и скачивать обновленные наборы правил"
+
+msgid "Rename"
+msgstr "Переименовать"
+
+msgid "Rename Group"
+msgstr "Переименовать группу"
+
+msgid "Save QR Code as…"
+msgstr "Сохранить QR-код как…"
+
+msgid "Select a group for key"
+msgstr "Выберите группу для ключа"
+
+msgid "Service Unavailable"
+msgstr "Служба недоступна"
+
+msgid "Subscription"
+msgstr "Подписка"
+
+msgid "Subscription Name"
+msgstr "Название подписки"
+
+msgid "System daemon is running and connected"
+msgstr "Системный демон запущен и подключен"
+
+msgid "System daemon vrxx-daemon is not running"
+msgstr "Системный демон vrxx-daemon не запущен"
+
+msgid "Testing…"
+msgstr "Проверка…"
+
+msgid "Ungrouped"
+msgstr "Без группы"
+
+msgid "Update Frequency"
+msgstr "Частота обновления"
+
+msgid "Update subscription keys"
+msgstr "Обновить ключи подписки"
+
+msgid "Updating subscription"
+msgstr "Обновление подписки"
+
+msgid "VRXX system daemon is not running. Please start vrxx-daemon to enable VPN and routing."
+msgstr "Системный демон VRXX не запущен. Запустите vrxx-daemon для работы VPN и маршрутизации."
+
+msgid "Weekly (7 days)"
+msgstr "Еженедельно (7 дней)"
+
+msgid "_Ping All Keys"
+msgstr "_Пинг всех ключей"
+
+msgid "failed to update subscription"
+msgstr "не удалось обновить подписку"
+
+msgid "keys"
+msgstr "ключей"
+
+msgid "updated"
+msgstr "обновлено"

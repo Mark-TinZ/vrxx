@@ -341,7 +341,7 @@
                                             </child>
                                             <child>
                                               <object class="GtkLabel" id="active_popover_mode">
-                                                <property name="label">TUN Mode</property>
+                                                <property name="label" translatable="yes">TUN Mode</property>
                                                 <property name="halign">end</property>
                                                 <style>
                                                   <class name="caption"/>
@@ -379,7 +379,7 @@
                                             </child>
                                             <child>
                                               <object class="GtkLabel" id="active_popover_location">
-                                                <property name="label">Unknown Location</property>
+                                                <property name="label" translatable="yes">Unknown Location</property>
                                                 <property name="halign">start</property>
                                                 <property name="ellipsize">end</property>
                                                 <style>

@@ -35,17 +35,29 @@ VRXX поддерживает мультиязычность. Для локал�
 
 ## Настройка языка в приложении
 
-Когда пользователь меняет язык в Настройках (например, с `"system"` на `"ru"`), `VRXX` устанавливает системные переменные окружения прямо внутри процесса приложения перед инициализацией GTK:
+Когда пользователь меняет язык в Настройках (например, с `"system"` на `"ru"`), `VRXX` устанавливает системную переменную окружения `LANGUAGE` прямо внутри процесса перед инициализацией GTK:
 
 ```rust
-// Устанавливаем принудительный язык
-std::env::set_var("LANGUAGE", "ru");
-std::env::set_var("LC_ALL", "ru_RU.UTF-8");
-std::env::set_var("LANG", "ru_RU.UTF-8");
-std::env::set_var("LC_MESSAGES", "ru_RU.UTF-8");
+match app_settings.language.as_str() {
+    "ru" => {
+        std::env::set_var("LANGUAGE", "ru");
+    }
+    "en" => {
+        std::env::set_var("LANGUAGE", "en");
+    }
+    _ => {
+        // "system": если в системном LANG указан русский (ru), но в системе нет сгенерированной ru_RU локали
+        // и LANGUAGE не был задан явно, активируем LANGUAGE=ru
+        if let Ok(sys_lang) = std::env::var("LANG") {
+            if sys_lang.starts_with("ru") && std::env::var("LANGUAGE").is_err() {
+                std::env::set_var("LANGUAGE", "ru");
+            }
+        }
+    }
+}
 ```
 
-После этого вызывается `setlocale(LocaleCategory::LcAll, "")`, и интерфейс загружается на выбранном языке.
+Перед этим выполняется автоматическая нормализация локали libc через `setlocale(LocaleCategory::LcAll, "")` с безопасным переключением на UTF-8 локали (`en_US.UTF-8`, `ru_RU.UTF-8`, `C.UTF-8`), предотвращая отключение перевода в glibc в минимальных POSIX/C окружениях.
 
 ## Как добавить новый язык
 

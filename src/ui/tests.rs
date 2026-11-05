@@ -408,6 +408,13 @@ mod ui_testing {
             "Быстрый импорт по ссылке"
         );
         assert_eq!(gettextrs::gettext("_Ping"), "_Пинг");
+        assert_eq!(gettextrs::gettext("_Ping All Keys"), "_Пинг всех ключей");
+        assert_eq!(gettextrs::gettext("Add Group"), "Добавить группу");
+        assert_eq!(gettextrs::gettext("Add Subscription"), "Добавить подписку");
+        assert_eq!(
+            gettextrs::gettext("Auto-update Geo Data"),
+            "Автообновление гео-баз"
+        );
     }
 
     /// Проверяет безопасное переключение системного прокси без создания экземпляра Tokio Runtime.

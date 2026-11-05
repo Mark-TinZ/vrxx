@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | `AdwApplicationWindow` | `src/window.rs`, `src/window.ui` | Главное окно с поддержкой темных/светлых схем и жестов. |
 | `AdwHeaderBar` | Все `.ui` файлы страниц | Стандартный заголовок с названием страницы, кнопками действий и главным меню. |
-| `AdwPreferencesPage` | `proxy_page.ui`, `settings_page.ui`, `whitelist_page.ui` | Страницы настроек со скругленными блоками и стандартизированными отступами. |
+| `AdwPreferencesPage` | `proxy_page.ui`, `settings_page.ui`, `routing_page.ui` | Страницы настроек со скругленными блоками и стандартизированными отступами. |
 | `AdwPreferencesGroup` | Страницы приложения | Группировка связанных опций с заголовками и описанием. |
 | `AdwActionRow` | `settings_page.ui`, `navigation_list` | Интерактивные строки настроек и меню. |
 | `AdwSwitchRow` | `proxy_page.ui`, `settings_page.ui` | Строки переключения режимов (системный прокси, TUN, уведомления). |
@@ -28,12 +28,12 @@
 ```xml
 <child>
   <object class="AdwBreakpoint">
-    <condition>max-width: 600sp</condition>
+    <condition>max-width: 720sp</condition>
     <setter object="split_view" property="collapsed">True</setter>
   </object>
 </child>
 ```
-При уменьшении ширины окна менее `600sp` боковая панель `AdwNavigationSplitView` автоматически сворачивается в компактный мобильный вид с кнопкой вызова меню.
+При уменьшении ширины окна менее `720sp` боковая панель `AdwNavigationSplitView` автоматически сворачивается в компактный мобильный вид с кнопкой вызова меню.
 
 ### Автоматическое соответствие системной палитре
 
