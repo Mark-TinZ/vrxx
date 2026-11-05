@@ -5,12 +5,12 @@
 
 Модуль состоит из двух основных слоев:
 - **Domain Layer (`src/domain/exporter.rs`)**: Независимая чистая логика рендеринга матрицы QR-кодов в векторный SVG или растровый PNG формат с использованием библиотек `qrcode` и `image`.
-- **UI Layer (`src/ui/qr_dialog.rs`)**: Модальный интерфейс на базе `AdwDialog` (`adw::AlertDialog` + `adw::ToastOverlay`), отображаемый из контекстного меню любого ключа (`VrxxVpnKeyRow`).
+- **UI Layer (`src/ui/dialogs/qr_dialog.rs`)**: Модальный интерфейс на базе `AdwDialog` (`adw::AlertDialog` + `adw::ToastOverlay`), отображаемый из контекстного меню любого ключа (`VrxxVpnKeyRow`).
 
 ```mermaid
 flowchart TD
     SubGraphDomain["Domain Layer (src/domain/exporter.rs)"]
-    SubGraphUI["UI Layer (src/ui/qr_dialog.rs)"]
+    SubGraphUI["UI Layer (src/ui/dialogs/qr_dialog.rs)"]
     
     URI["URI (vless://, vmess://, hy2://...)"] --> Exporter["exporter::generate_qr_texture()"]
     Exporter -->|RgbImage -> PNG Bytes| Texture["gdk::Texture (in-memory)"]
@@ -19,7 +19,7 @@ flowchart TD
     QrDialog --> CopyAction["Copy Link (Clipboard)"]
     CopyAction --> ToastCopy["AdwToast ('Link copied')"]
     
-    QrDialog --> SaveAction["Save QR Code as... (gtk::FileDialog)"]
+    QrDialog --> SaveAction["Save QR Code as… (gtk::FileDialog)"]
     SaveAction -->|Save PNG/SVG| FileExport["gio::File async export"]
     FileExport --> ToastSave["AdwToast ('QR code saved')"]
 ```
@@ -37,12 +37,12 @@ flowchart TD
 
 ---
 
-## 3. Интерактивный диалог (`src/ui/qr_dialog.rs`)
+## 3. Интерактивный диалог (`src/ui/dialogs/qr_dialog.rs`)
 
 ### Компоненты UI:
 - **Белый контрастный контейнер (`card`)**: Из-за наличия системной темной темы сканирование черного QR-кода на темном фоне может вызывать трудности у камер смартфонов. В VRXX виджет `gtk::Picture` помещен внутрь белого рамки-карточки, что гарантирует мгновенное считывание независимо от системной темы Linux.
 - **Кнопка «Скопировать ссылку»**: Копирует оригинальный URI в системный буфер обмена `parent.clipboard()` и вызывает всплывающий `AdwToast`.
-- **Кнопка «Сохранить QR-код как...»**: Использует нативный `gtk::FileDialog` среды рабочей стола.
+- **Кнопка «Сохранить QR-код как…»**: Использует нативный `gtk::FileDialog` среды рабочей стола.
   - Поддерживает выбор фильтров форматирования: `PNG Image (*.png)` и `SVG Vector (*.svg)`.
   - Предоставляет асинхронное неблокирующее сохранение файла через `file_dialog.save(...)`.
 

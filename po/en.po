@@ -2276,3 +2276,12 @@ msgstr "keys"
 
 msgid "updated"
 msgstr "updated"
+
+msgid "New VPN Profile"
+msgstr "New VPN Profile"
+
+msgid "Ping: -"
+msgstr "Ping: -"
+
+msgid "Server Name"
+msgstr "Server Name"

@@ -415,6 +415,9 @@ mod ui_testing {
             gettextrs::gettext("Auto-update Geo Data"),
             "Автообновление гео-баз"
         );
+        assert_eq!(gettextrs::gettext("New VPN Profile"), "Новый профиль VPN");
+        assert_eq!(gettextrs::gettext("Server Name"), "Имя сервера");
+        assert_eq!(gettextrs::gettext("Ping: -"), "Пинг: -");
     }
 
     /// Проверяет безопасное переключение системного прокси без создания экземпляра Tokio Runtime.

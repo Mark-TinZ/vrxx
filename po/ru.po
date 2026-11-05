@@ -2281,3 +2281,12 @@ msgstr "ключей"
 
 msgid "updated"
 msgstr "обновлено"
+
+msgid "New VPN Profile"
+msgstr "Новый профиль VPN"
+
+msgid "Ping: -"
+msgstr "Пинг: -"
+
+msgid "Server Name"
+msgstr "Имя сервера"

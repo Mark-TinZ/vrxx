@@ -2034,3 +2034,12 @@ msgstr ""
 
 msgid "updated"
 msgstr ""
+
+msgid "New VPN Profile"
+msgstr ""
+
+msgid "Ping: -"
+msgstr ""
+
+msgid "Server Name"
+msgstr ""
