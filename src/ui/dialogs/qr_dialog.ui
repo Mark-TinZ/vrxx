@@ -223,7 +223,7 @@
                     <!-- Кнопка «Сохранить QR» с иконкой и подписью -->
                     <child>
                       <object class="GtkButton" id="btn_save_qr">
-                        <property name="tooltip-text" translatable="yes">Save QR Code as...</property>
+                        <property name="tooltip-text" translatable="yes">Save QR Code as…</property>
                         <child>
                           <object class="GtkBox">
                             <property name="orientation">horizontal</property>

@@ -2238,3 +2238,183 @@ msgstr "Error: Server/Auth Failed"
 #~ "Ping (tests remote IP), or HTTP GET/HEAD via Proxy (real end-to-end test "
 #~ "through tunnel)."
 
+
+msgid "Add Connection"
+msgstr "Add Connection"
+
+msgid "Add Group"
+msgstr "Add Group"
+
+msgid "Add Group…"
+msgstr "Add Group…"
+
+msgid "Add Key…"
+msgstr "Add Key…"
+
+msgid "Add Subscription"
+msgstr "Add Subscription"
+
+msgid "Add Subscription…"
+msgstr "Add Subscription…"
+
+msgid "Add a new connection to get started."
+msgstr "Add a new connection to get started."
+
+msgid "Add group"
+msgstr "Add group"
+
+msgid "Add key"
+msgstr "Add key"
+
+msgid "Add key to this group"
+msgstr "Add key to this group"
+
+msgid "Add subscription"
+msgstr "Add subscription"
+
+msgid "Add…"
+msgstr "Add…"
+
+msgid "All keys imported from this subscription will also be deleted."
+msgstr "All keys imported from this subscription will also be deleted."
+
+msgid "Auto-update Geo Data"
+msgstr "Auto-update Geo Data"
+
+msgid "Bi-weekly (14 days)"
+msgstr "Bi-weekly (14 days)"
+
+msgid "Check"
+msgstr "Check"
+
+msgid "Daily (1 day)"
+msgstr "Daily (1 day)"
+
+msgid "Delete Group"
+msgstr "Delete Group"
+
+msgid "Delete Subscription"
+msgstr "Delete Subscription"
+
+msgid "Edit"
+msgstr "Edit"
+
+msgid "Edit Subscription"
+msgstr "Edit Subscription"
+
+msgid "Enables periodic background checks and updates of compiled GeoIP and GeoSite database files."
+msgstr "Enables periodic background checks and updates of compiled GeoIP and GeoSite database files."
+
+msgid "Enter a name for the new key group:"
+msgstr "Enter a name for the new key group:"
+
+msgid "Enter a new name for the group:"
+msgstr "Enter a new name for the group:"
+
+msgid "Enter a subscription name and URL:"
+msgstr "Enter a subscription name and URL:"
+
+msgid "GNOME proxy GSettings scheme is unavailable on {}. Use TUN mode for system-wide routing."
+msgstr "GNOME proxy GSettings scheme is unavailable on {}. Use TUN mode for system-wide routing."
+
+msgid "Geo Data Updated"
+msgstr "Geo Data Updated"
+
+msgid "Group"
+msgstr "Group"
+
+msgid "Group Name"
+msgstr "Group Name"
+
+msgid "How often to refresh databases"
+msgstr "How often to refresh databases"
+
+msgid "ISP / Host"
+msgstr "ISP / Host"
+
+msgid "Import from Clipboard"
+msgstr "Import from Clipboard"
+
+msgid "Keys in this group will not be deleted, but moved to ungrouped."
+msgstr "Keys in this group will not be deleted, but moved to ungrouped."
+
+msgid "Modify the subscription parameters:"
+msgstr "Modify the subscription parameters:"
+
+msgid "Monthly (30 days)"
+msgstr "Monthly (30 days)"
+
+msgid "None (Ungrouped)"
+msgstr "None (Ungrouped)"
+
+msgid "Periodically check and download updated rule-sets"
+msgstr "Periodically check and download updated rule-sets"
+
+msgid "Rename"
+msgstr "Rename"
+
+msgid "Rename Group"
+msgstr "Rename Group"
+
+msgid "Save QR Code as…"
+msgstr "Save QR Code as…"
+
+msgid "Select a group for key"
+msgstr "Select a group for key"
+
+msgid "Service Unavailable"
+msgstr "Service Unavailable"
+
+msgid "Subscription"
+msgstr "Subscription"
+
+msgid "Subscription Name"
+msgstr "Subscription Name"
+
+msgid "System daemon is running and connected"
+msgstr "System daemon is running and connected"
+
+msgid "System daemon vrxx-daemon is not running"
+msgstr "System daemon vrxx-daemon is not running"
+
+msgid "Testing…"
+msgstr "Testing…"
+
+msgid "Ungrouped"
+msgstr "Ungrouped"
+
+msgid "Update Frequency"
+msgstr "Update Frequency"
+
+msgid "Update subscription keys"
+msgstr "Update subscription keys"
+
+msgid "Updating subscription"
+msgstr "Updating subscription"
+
+msgid "VRXX system daemon is not running. Please start vrxx-daemon to enable VPN and routing."
+msgstr "VRXX system daemon is not running. Please start vrxx-daemon to enable VPN and routing."
+
+msgid "Weekly (7 days)"
+msgstr "Weekly (7 days)"
+
+msgid "_Ping All Keys"
+msgstr "_Ping All Keys"
+
+msgid "failed to update subscription"
+msgstr "failed to update subscription"
+
+msgid "keys"
+msgstr "keys"
+
+msgid "updated"
+msgstr "updated"
+
+msgid "New VPN Profile"
+msgstr "New VPN Profile"
+
+msgid "Ping: -"
+msgstr "Ping: -"
+
+msgid "Server Name"
+msgstr "Server Name"

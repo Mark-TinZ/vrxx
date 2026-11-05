@@ -37,6 +37,7 @@
 | `autostart` | bool | `true` | Добавление в автозагрузку системы (`~/.config/autostart/`) |
 | `connect_on_startup` | bool | `false` | Автоматически подключать активный профиль при старте |
 | `notifications` | bool | `true` | Системные уведомления (desktop notifications) |
+| `notification_level` | String | `"all"` | Уровень уведомлений: `"all"` (все), `"important"`, `"none"` |
 | `streamer_mode` | bool | `false` | Режим стримера (скрытие IP, SNI и UUID в интерфейсе) |
 | `log_level` | String | `"info"` | Уровень логгирования: `"error"`, `"warning"`, `"info"`, `"debug"` |
 | `set_system_proxy` | bool | `true` | Устанавливать системный прокси GNOME при подключении |
@@ -54,6 +55,8 @@
 | `enable_fragment` | bool | `false` | Включить TLS-фрагментацию ClientHello для обхода блокировок DPI/SNI (TLS и Reality) |
 | `ping_algorithm` | String | `"via_proxy_get"` | Алгоритм пинга: `"via_proxy_get"` (дефолтный универсальный), `"via_proxy_head"`, `"tcp_handshake"`, `"icmp_ping"` |
 | `ping_target_url` | String | `"https://www.gstatic.com/generate_204"` | URL-адрес для HTTP проверки задержки через прокси |
+| `auto_ping_on_startup`| bool | `true` | Автоматический замер задержки профилей при старте |
+| `auto_ping_interval`  | u64  | `0` | Интервал периодического замера задержки в секундах (0 = выключен) |
 | `keys` | Vec<VpnKeyData>| `[]` | Список VPN-ключей (в памяти; сохраняется в зашифрованном `data.dat`) |
 | `whitelist` | Vec<String>| `[]` | Белый список доменов |
 | `enable_routing` | bool | `true` | Активировать продвинутую маршрутизацию |
@@ -61,27 +64,39 @@
 | `route_ru` | bool | `true` | Подключить правила для РФ (legacy флаг) |
 | `route_ru_sites` | bool | `true` | Направлять сайты РФ напрямую (`geosite-ru`) |
 | `route_ru_ips` | bool | `true` | Направлять IP РФ напрямую (`geoip-ru`) |
-| `route_ir` | bool | `false` | Подключить правила для Ирана |
-| `route_cn` | bool | `false` | Подключить правила для Китая |
+| `route_ir` | bool | `false` | Подключить правила для Ирана (legacy флаг) |
+| `route_ir_sites` | bool | `false` | Направлять сайты Ирана напрямую (`geosite-ir`) |
+| `route_ir_ips` | bool | `false` | Направлять IP Ирана напрямую (`geoip-ir`) |
+| `route_cn` | bool | `false` | Подключить правила для Китая (legacy флаг) |
+| `route_cn_sites` | bool | `false` | Направлять сайты Китая напрямую (`geosite-cn`) |
+| `route_cn_ips` | bool | `false` | Направлять IP Китая напрямую (`geoip-cn`) |
 | `route_antifilter`| bool | `false` | Подключить правила Antifilter |
 | `block_ads` | bool | `false` | Блокировать рекламные домены (`geosite-ads`) |
+| `auto_update_geodata` | bool | `true` | Автоматически обновлять базы гео-данных (GeoIP / GeoSite .srs) |
+| `geodata_update_interval_days` | u32 | `7` | Интервал автообновления гео-баз в днях (1, 7, 14, 30) |
 | `disable_ipv6` | bool | `true` | Блокировать весь IPv6 трафик (отклонять AAAA запросы) |
 | `routing_rules` | Vec<RoutingRule>| `[]` | Пользовательские правила маршрутизации |
+| `groups` | Vec<VpnGroupData> | `[]` | Пользовательские группы для организации ключей |
+| `subscriptions` | Vec<VpnSubscriptionData> | `[]` | Подписки на удаленные списки VPN-ключей |
 
 ---
 
-## Архитектура защиты ключей (Host-Bound Keystore)
+## Архитектура защиты ключей (User-Isolated Keystore V2)
 
-Для защиты чувствительных данных (URL-адреса, пароли, UUID, приватные ключи WireGuard) используется привязка к хосту:
+Для защиты чувствительных данных (URL-адреса, пароли, UUID, приватные ключи WireGuard) используется современная изолированная модель безопасности `VRXXDAT2` с автоматической миграцией:
 
-1. **Источник энтропии**: Системный 128-битный UUID `/etc/machine-id` (с fallback на `/var/lib/dbus/machine-id`). Этот идентификатор доступен без root-прав (`0444`), сохраняется при всех перезагрузках и обновлениях ядра/дистрибутива, но меняется при чистой переустановке ОС.
-2. **Деривация ключа**:
-   - `PRK = HMAC-SHA256(APP_UNIQUE_ID, machine_id)`
-   - `KEY = HKDF-SHA256(Salt, PRK, info: "vrxx-aes-256-gcm-data-key")`
-   - На выходе формируется 256-битный симметричный ключ.
-3. **Шифрование контейнера `data.dat`**:
-   - Формат контейнера: `VRXXDAT1` (8 байт) + `Nonce` (12 байт из `OsRng`) + `Ciphertext` + `Auth Tag` (16 байт).
-   - Алгоритм: **AES-256-GCM** (аутентифицированное шифрование с защитой от подделки и повреждения данных).
+1. **Изолированный ключ пользователя (`~/.config/vrxx/.user_key`)**:
+   - Генерируется криптографически стойким генератором `OsRng` (32 байта энтропии).
+   - Сохраняется со строгими POSIX-правами доступа `0600` (`-rw-------`), исключая доступ других локальных пользователей системы.
+2. **Деривация рабочего ключа**:
+   - `KEY = HKDF-SHA256(Salt, user_secret, info: "vrxx-keystore-v2")`
+   - На выходе формируется 256-битный ключ для AES-256-GCM.
+3. **Шифрование контейнера `data.dat` (`VRXXDAT2`)**:
+   - Формат контейнера: `VRXXDAT2` (8 байт) + `Nonce` (12 байт из `OsRng`) + `Ciphertext` + `Auth Tag` (16 байт).
+   - Алгоритм: **AES-256-GCM** (аутентифицированное шифрование с аппаратным ускорением и защитой целостности).
+4. **Обратная совместимость и авто-миграция**:
+   - При чтении контейнера распознается как актуальный заголовок `VRXXDAT2`, так и устаревший `VRXXDAT1` (на базе `machine-id`).
+   - Legacy-контейнеры `VRXXDAT1` прозрачно дешифруются и автоматически перешифровываются в защищенный формат `VRXXDAT2`.
 
 ---
 

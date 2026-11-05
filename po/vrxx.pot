@@ -1995,3 +1995,183 @@ msgstr ""
 #: src/tui/ui.rs
 msgid "Error: Server/Auth Failed"
 msgstr ""
+
+msgid "Add Connection"
+msgstr ""
+
+msgid "Add Group"
+msgstr ""
+
+msgid "Add Group…"
+msgstr ""
+
+msgid "Add Key…"
+msgstr ""
+
+msgid "Add Subscription"
+msgstr ""
+
+msgid "Add Subscription…"
+msgstr ""
+
+msgid "Add a new connection to get started."
+msgstr ""
+
+msgid "Add group"
+msgstr ""
+
+msgid "Add key"
+msgstr ""
+
+msgid "Add key to this group"
+msgstr ""
+
+msgid "Add subscription"
+msgstr ""
+
+msgid "Add…"
+msgstr ""
+
+msgid "All keys imported from this subscription will also be deleted."
+msgstr ""
+
+msgid "Auto-update Geo Data"
+msgstr ""
+
+msgid "Bi-weekly (14 days)"
+msgstr ""
+
+msgid "Check"
+msgstr ""
+
+msgid "Daily (1 day)"
+msgstr ""
+
+msgid "Delete Group"
+msgstr ""
+
+msgid "Delete Subscription"
+msgstr ""
+
+msgid "Edit"
+msgstr ""
+
+msgid "Edit Subscription"
+msgstr ""
+
+msgid "Enables periodic background checks and updates of compiled GeoIP and GeoSite database files."
+msgstr ""
+
+msgid "Enter a name for the new key group:"
+msgstr ""
+
+msgid "Enter a new name for the group:"
+msgstr ""
+
+msgid "Enter a subscription name and URL:"
+msgstr ""
+
+msgid "GNOME proxy GSettings scheme is unavailable on {}. Use TUN mode for system-wide routing."
+msgstr ""
+
+msgid "Geo Data Updated"
+msgstr ""
+
+msgid "Group"
+msgstr ""
+
+msgid "Group Name"
+msgstr ""
+
+msgid "How often to refresh databases"
+msgstr ""
+
+msgid "ISP / Host"
+msgstr ""
+
+msgid "Import from Clipboard"
+msgstr ""
+
+msgid "Keys in this group will not be deleted, but moved to ungrouped."
+msgstr ""
+
+msgid "Modify the subscription parameters:"
+msgstr ""
+
+msgid "Monthly (30 days)"
+msgstr ""
+
+msgid "None (Ungrouped)"
+msgstr ""
+
+msgid "Periodically check and download updated rule-sets"
+msgstr ""
+
+msgid "Rename"
+msgstr ""
+
+msgid "Rename Group"
+msgstr ""
+
+msgid "Save QR Code as…"
+msgstr ""
+
+msgid "Select a group for key"
+msgstr ""
+
+msgid "Service Unavailable"
+msgstr ""
+
+msgid "Subscription"
+msgstr ""
+
+msgid "Subscription Name"
+msgstr ""
+
+msgid "System daemon is running and connected"
+msgstr ""
+
+msgid "System daemon vrxx-daemon is not running"
+msgstr ""
+
+msgid "Testing…"
+msgstr ""
+
+msgid "Ungrouped"
+msgstr ""
+
+msgid "Update Frequency"
+msgstr ""
+
+msgid "Update subscription keys"
+msgstr ""
+
+msgid "Updating subscription"
+msgstr ""
+
+msgid "VRXX system daemon is not running. Please start vrxx-daemon to enable VPN and routing."
+msgstr ""
+
+msgid "Weekly (7 days)"
+msgstr ""
+
+msgid "_Ping All Keys"
+msgstr ""
+
+msgid "failed to update subscription"
+msgstr ""
+
+msgid "keys"
+msgstr ""
+
+msgid "updated"
+msgstr ""
+
+msgid "New VPN Profile"
+msgstr ""
+
+msgid "Ping: -"
+msgstr ""
+
+msgid "Server Name"
+msgstr ""

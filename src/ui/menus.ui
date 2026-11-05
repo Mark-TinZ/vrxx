@@ -42,7 +42,7 @@
     <section>
       <!-- Общий пинг -->
       <item>
-        <attribute name="label" translatable="yes">_Ping</attribute>
+        <attribute name="label" translatable="yes">_Ping All Keys</attribute>
         <attribute name="action">app.pingall</attribute>
       </item>
       <!-- Настройки -->
