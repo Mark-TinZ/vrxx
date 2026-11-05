@@ -175,10 +175,11 @@ impl VrxxProxyPage {
         if s.set_system_proxy {
             if let crate::backend::SystemProxyResult::SchemaUnavailable { desktop } = result {
                 if let Some(window) = self.root().and_downcast::<crate::window::VrxxWindow>() {
-                    let msg = gettext(format!(
-                        "GNOME proxy GSettings scheme is unavailable on {}. Use TUN mode for system-wide routing.",
-                        desktop
-                    ));
+                    let template = gettext(
+                        "GNOME proxy GSettings scheme is unavailable on {}. Use TUN mode for system-wide routing."
+                    );
+                    let desktop_str = desktop.to_string();
+                    let msg = template.replace("{}", &desktop_str);
                     let toast = adw::Toast::new(&msg);
                     toast.set_button_label(Some(&gettext("Switch to TUN")));
 

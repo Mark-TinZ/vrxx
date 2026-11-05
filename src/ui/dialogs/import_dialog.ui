@@ -106,7 +106,7 @@
                 <child>
                   <object class="AdwActionRow" id="row_latency">
                     <property name="title" translatable="yes">Latency</property>
-                    <property name="subtitle" translatable="yes">Testing...</property>
+                    <property name="subtitle" translatable="yes">Testing…</property>
                     <child type="suffix">
                       <object class="GtkSpinner" id="spinner_latency">
                         <property name="spinning">True</property>

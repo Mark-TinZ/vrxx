@@ -408,6 +408,16 @@ mod ui_testing {
             "Быстрый импорт по ссылке"
         );
         assert_eq!(gettextrs::gettext("_Ping"), "_Пинг");
+        assert_eq!(gettextrs::gettext("_Ping All Keys"), "_Пинг всех ключей");
+        assert_eq!(gettextrs::gettext("Add Group"), "Добавить группу");
+        assert_eq!(gettextrs::gettext("Add Subscription"), "Добавить подписку");
+        assert_eq!(
+            gettextrs::gettext("Auto-update Geo Data"),
+            "Автообновление гео-баз"
+        );
+        assert_eq!(gettextrs::gettext("New VPN Profile"), "Новый профиль VPN");
+        assert_eq!(gettextrs::gettext("Server Name"), "Имя сервера");
+        assert_eq!(gettextrs::gettext("Ping: -"), "Пинг: -");
     }
 
     /// Проверяет безопасное переключение системного прокси без создания экземпляра Tokio Runtime.

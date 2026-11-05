@@ -2466,7 +2466,7 @@ impl VrxxVpnPage {
         };
 
         self.show_toast(&format!(
-            "{} '{}'...",
+            "{} '{}'…",
             gettext("Updating subscription"),
             sub.name
         ));
