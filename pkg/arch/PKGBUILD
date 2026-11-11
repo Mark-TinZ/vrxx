@@ -1,6 +1,6 @@
 # Maintainer: Mark <https://github.com/Mark-TinZ/vrxx>
 pkgname=vrxx
-pkgver=26.1.0_beta.2
+pkgver=26.1.0_beta.3
 pkgrel=1
 pkgdesc="Fast, modern Linux GTK4/Libadwaita GUI and TUI client for sing-box"
 arch=('x86_64' 'aarch64')

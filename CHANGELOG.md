@@ -2,10 +2,16 @@
 
 Все изменения проекта документируются в соответствии с [Conventional Commits](https://www.conventionalcommits.org/).
 
-## [26.1.0-beta.3] - 2026-09-23
+## [26.1.0-beta.3] - 2026-11-11
 
 ### 🚀 Новые возможности
 
+- *(security)* **Overhaul Daemon IPC to UDS & Hardening**: Migrated daemon IPC to Unix Domain Sockets (UDS) with strict peer credential authentication (`SO_PEERCRED`), systemd service sandboxing (`CapabilityBoundingSet`, `ProtectSystem=strict`, `MemoryDenyWriteExecute`), and stale socket recovery
+- *(security)* **Keystore v2 (`VRXXDAT2`)**: Upgraded cryptographic profile storage to container format v2 using HKDF-SHA256 key derivation and AES-256-GCM authenticated encryption with automatic zero-downtime migration from legacy format
+- *(tui)* **TUI Redesign & Bilingual Localization**: Complete overhaul of terminal UI (`vrxx-tui`) adhering to unslop design standards, active profile rendering, real-time traffic sparklines, and 100% full English and Russian localization
+- *(domain)* **Subscription Management & Key Grouping**: Added subscription URL parser, auto-updating, Base64 profile imports, custom grouping ("Move to Group"), and live ping in the VPN manager
+- *(ui)* **Smart Location Resolver**: Integrated IP-based country flag and geolocation detection in key row displaying endpoint country and flag icon
+- *(protocols)* **sing-box 1.13.18 Integration**: Added full sing-box 1.13.18 protocol matrix support, TLS fragmentation, TCP ping defaults, and Antizapret geodata rule-sets
 - *(logging)* **Enterprise Tracing Standard**: Production-grade structured logging with `tracing`, hot-reload of log level without restarts (`tracing_subscriber::reload::Handle`), automatic PII/token masking (`mask_secret`), 10MB file rotation, and 7-day retention cleanup
 - *(ui)* **Declarative Dialogs**: Moved and converted all modal dialogs to declarative Libadwaita `.ui` templates under `src/ui/dialogs/` (`VrxxKeyDialog`, `VrxxRuleDialog`, `VrxxQrDialog`, `VrxxExportDialog`, `VrxxImportDialog`)
 - *(ui)* **Mobile Adaptivity**: Adaptive presentation mode (`bottom-sheet`) and responsive `AdwClamp` sizing for narrow screen geometries (< 500px)
@@ -15,9 +21,20 @@
 
 ### 🐛 Исправления ошибок
 
+- *(ci)* Sanitize pre-release version strings for RPM packaging (`~beta.3`)
+- *(ci)* Fix cargo-deny schema and grant checks permissions for cargo-audit
+- *(ci)* Install sing-box in CI for integration tests and guard missing binary in tests
+- *(tui)* Fix status, error localization and active profile state rendering
+- *(ui)* Translate default profile name and server labels, sync docs with keystore v2 and settings
 - *(proxy)* **GNOME System Proxy Fix**: Guaranteed proxy reset to `'none'` on VPN disconnection and in TUN mode, preventing network loss; added startup self-healing
 - *(ui)* **VPN Key Row Subtitle**: Removed IP address from subtitle, displaying protocol only for cleaner HIG appearance
 - *(ui)* **QR Dialog Privacy**: Converted to native `AdwDialog` with hardware-accelerated CSS opacity blur shroud, eliminating GTK CSS errors
+
+### 🔧 Обслуживание и CI
+
+- *(security)* Integrate DevSecOps linters: Gitleaks secrets detection, Semgrep SAST, Trivy CVE scanner, and Cargo Audit
+- *(workflow)* Dynamic prerelease detection in GitHub release workflow based on semver tags
+- *(packaging)* Update Arch Linux PKGBUILD to 26.1.0_beta.3
 
 ## [26.1.0-beta.2] - 2026-08-30
 

@@ -65,17 +65,19 @@
   </branding>
 
   <releases>
-    <release version="26.1.0-beta.3" date="2026-09-23">
+    <release version="26.1.0-beta.3" date="2026-11-11">
       <description translate="no">
         <p>Release 26.1.0-beta.3</p>
         <ul>
+          <li>Security overhaul: Unix Domain Sockets (UDS) IPC with SO_PEERCRED authentication and systemd sandbox hardening</li>
+          <li>Keystore v2: VRXXDAT2 encrypted container format with HKDF-SHA256, AES-256-GCM, and transparent migration</li>
+          <li>Complete TUI redesign adhering to the unslop standard with comprehensive RU/EN bilingual localization</li>
+          <li>VPN subscription management: Base64 profile parsing, custom key group assignments, and live ping</li>
+          <li>Smart country &amp; location resolver with flag icons for VPN endpoints</li>
+          <li>sing-box 1.13.18 protocol matrix integration, TLS fragmentation, and Antizapret geodata rule-sets</li>
           <li>Enterprise-grade structured tracing with runtime log level reload, PII sanitization, and 7-day retention</li>
-          <li>Fix GNOME system proxy bug: automatic deactivation on disconnect and in TUN mode with startup self-healing</li>
-          <li>Full keyboard shortcuts and window accelerators (Disconnect, Ping, Zoom, Settings)</li>
-          <li>Declarative dialog architecture (.ui templates under src/ui/dialogs/)</li>
-          <li>Mobile adaptivity for small screens with bottom-sheet presentation and responsive clamping</li>
-          <li>Dynamic protocol form adaptation in KeyDialog (WireGuard, Shadowsocks, TUIC, Hysteria2, SOCKS5, HTTP)</li>
-          <li>Ping All Keys action, startup auto-ping, and configurable background cooldown timer</li>
+          <li>Declarative Libadwaita dialog architecture (.ui templates) with mobile adaptivity and bottom-sheet mode</li>
+          <li>Fix GNOME system proxy reset on disconnect and self-healing startup guards</li>
         </ul>
       </description>
     </release>
